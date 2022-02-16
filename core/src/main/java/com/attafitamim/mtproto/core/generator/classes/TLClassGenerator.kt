@@ -1,24 +1,27 @@
-package com.attafitamim.mtproto.generator.classes
+package com.attafitamim.mtproto.core.generator.classes
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.attafitamim.mtproto.generator.classes.Constants.BASE_PACKAGE_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.BUFFER_PARAMETER_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.DATA_BUFFER_INTERFACE_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.EXCEPTION_PARAMETER_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.FLAGS_PROPERTY_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.GLOBAL_DATA_TYPES_FOLDER_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.METHODS_FOLDER_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.OBJECT_NAME_SPACE_SEPARATOR
-import com.attafitamim.mtproto.generator.classes.Constants.PACKAGE_SEPARATOR
-import com.attafitamim.mtproto.generator.classes.Constants.PARSE_METHOD_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.PARSE_RESPONSE_METHOD_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.SERIALIZE_METHOD_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.TL_VECTOR_TYPE_CONSTRUCTOR
-import com.attafitamim.mtproto.generator.classes.Constants.TL_VECTOR_TYPE_NAME
-import com.attafitamim.mtproto.generator.classes.Constants.TYPES_FOLDER_NAME
-import com.attafitamim.mtproto.generator.types.TLObjectSpecs
-import com.attafitamim.mtproto.generator.types.TLPropertySpecs
+import com.attafitamim.mtproto.core.generator.classes.Constants.BASE_PACKAGE_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.BUFFER_PARAMETER_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.EXCEPTION_PARAMETER_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.FLAGS_PROPERTY_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.GLOBAL_DATA_TYPES_FOLDER_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.METHODS_FOLDER_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.OBJECT_NAME_SPACE_SEPARATOR
+import com.attafitamim.mtproto.core.generator.classes.Constants.PACKAGE_SEPARATOR
+import com.attafitamim.mtproto.core.generator.classes.Constants.PARSE_METHOD_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.PARSE_RESPONSE_METHOD_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.SERIALIZE_METHOD_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.TL_VECTOR_TYPE_CONSTRUCTOR
+import com.attafitamim.mtproto.core.generator.classes.Constants.TL_VECTOR_TYPE_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.TYPES_FOLDER_NAME
+import com.attafitamim.mtproto.core.generator.types.TLObjectSpecs
+import com.attafitamim.mtproto.core.generator.types.TLPropertySpecs
+import com.attafitamim.mtproto.core.objects.MTMethod
+import com.attafitamim.mtproto.core.objects.MTObject
+import com.attafitamim.mtproto.core.stream.MTInputStream
+import com.attafitamim.mtproto.core.stream.MTOutputStream
 import org.gradle.api.GradleException
 import java.util.*
 import kotlin.math.pow
@@ -47,12 +50,10 @@ internal object TLClassGenerator {
     fun generateSuperDataObjectClass(name: String, tlObjectsSpecs: List<TLObjectSpecs>): FileSpec {
         try {
             val className = createDataObjectClassName(name)
-            val superClassName =
-                TLCoreClassGenerator.createCoreObjectClassName(Constants.TL_BASE_OBJECT_NAME)
 
             val classTypeBuilder = TypeSpec.classBuilder(className)
                     .addModifiers(KModifier.ABSTRACT)
-                    .superclass(superClassName)
+                    .superclass(MTObject::class)
 
             tlObjectsSpecs.groupBy(TLObjectSpecs::name).forEach { group ->
                 if (group.value.size == 1) {
@@ -99,12 +100,12 @@ internal object TLClassGenerator {
             if (tlObjectSpecs.superClassName.startsWith(TL_VECTOR_TYPE_NAME, true)) {
                 val vectorGenericType = getVectorGenericType(tlObjectSpecs.superClassName)
                 val listTypeName = List::class.asTypeName().parameterizedBy(vectorGenericType)
-                val superClassName = TLCoreClassGenerator.createCoreObjectClassName(Constants.TL_BASE_METHOD_NAME)
+                val superClassName = MTMethod::class.asClassName()
                         .parameterizedBy(listTypeName)
 
                 classBuilder.addMethodVectorParseFunction(tlObjectSpecs.superClassName).superclass(superClassName)
             } else {
-                val superClassName = TLCoreClassGenerator.createCoreObjectClassName(Constants.TL_BASE_METHOD_NAME)
+                val superClassName = MTMethod::class.asClassName()
                         .parameterizedBy(responseClassName)
 
                 classBuilder.addMethodParseFunction(responseClassName).superclass(superClassName)
@@ -246,8 +247,7 @@ internal object TLClassGenerator {
         try {
             if (!name.startsWith(TL_VECTOR_TYPE_NAME, true)) return@apply
 
-            val bufferClassName =
-                TLCoreClassGenerator.createCoreObjectClassName(DATA_BUFFER_INTERFACE_NAME)
+            val bufferClassName = MTInputStream::class.asClassName()
 
             val vectorGenericName = getVectorGenericName(name)
             val itemTypeName = getVectorGenericType(name)
@@ -314,8 +314,7 @@ internal object TLClassGenerator {
 
     fun TypeSpec.Builder.addMethodParseFunction(returnType: ClassName): TypeSpec.Builder = this.apply {
         try {
-            val bufferClassName =
-                TLCoreClassGenerator.createCoreObjectClassName(DATA_BUFFER_INTERFACE_NAME)
+            val bufferClassName = MTInputStream::class.asClassName()
 
             val returnStatement = "return ${returnType.simpleName}.$PARSE_METHOD_NAME($BUFFER_PARAMETER_NAME, ${TLObjectSpecs::constructor.name}, $EXCEPTION_PARAMETER_NAME)"
 
@@ -342,8 +341,7 @@ internal object TLClassGenerator {
 
     fun TypeSpec.Builder.addObjectSerializeFunction(tlObjectSpecs: TLObjectSpecs): TypeSpec.Builder = this.apply {
         try {
-            val bufferClassName =
-                TLCoreClassGenerator.createCoreObjectClassName(DATA_BUFFER_INTERFACE_NAME)
+            val bufferClassName = MTOutputStream::class.asClassName()
 
             val functionBuilder = FunSpec.builder(SERIALIZE_METHOD_NAME)
                     .addParameter(BUFFER_PARAMETER_NAME, bufferClassName)
@@ -384,8 +382,7 @@ internal object TLClassGenerator {
 
     fun TypeSpec.Builder.addBaseObjectParseFunction(returnType: ClassName, tlObjectsSpecs: List<TLObjectSpecs>): TypeSpec.Builder = this.apply {
         try {
-            val bufferClassName =
-                TLCoreClassGenerator.createCoreObjectClassName(DATA_BUFFER_INTERFACE_NAME)
+            val bufferClassName = MTInputStream::class.asClassName()
 
             val hashParameterName = TLObjectSpecs::constructor.name
             val functionBuilder = FunSpec.builder(PARSE_METHOD_NAME)
@@ -432,9 +429,7 @@ internal object TLClassGenerator {
 
     fun TypeSpec.Builder.addObjectParseFunction(tlObjectSpecs: TLObjectSpecs, returnType: ClassName): TypeSpec.Builder = this.apply {
         try {
-            val bufferClassName =
-                TLCoreClassGenerator.createCoreObjectClassName(DATA_BUFFER_INTERFACE_NAME)
-
+            val bufferClassName = MTInputStream::class.asClassName()
             val functionBuilder = FunSpec.builder(PARSE_METHOD_NAME)
                     .addParameter(BUFFER_PARAMETER_NAME, bufferClassName)
                     .addParameter(TLObjectSpecs::constructor.name, Int::class)

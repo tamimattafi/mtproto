@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.generator.classes
+package com.attafitamim.mtproto.core.generator.classes
 
 import org.gradle.api.GradleException
 

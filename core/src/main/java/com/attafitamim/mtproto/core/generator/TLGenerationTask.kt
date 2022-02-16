@@ -1,9 +1,8 @@
-package com.attafitamim.mtproto.generator
+package com.attafitamim.mtproto.core.generator
 
-import com.attafitamim.mtproto.generator.classes.TLClassGenerator
-import com.attafitamim.mtproto.generator.classes.TLCoreClassGenerator
-import com.attafitamim.mtproto.generator.parsers.TLObjectParser
-import com.attafitamim.mtproto.generator.types.TLObjectSpecs
+import com.attafitamim.mtproto.core.generator.classes.TLClassGenerator
+import com.attafitamim.mtproto.core.generator.parsers.TLObjectParser
+import com.attafitamim.mtproto.core.generator.types.TLObjectSpecs
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Input
@@ -28,10 +27,6 @@ open class TLGenerationTask : DefaultTask() {
         val sourceCodePath = File(project.buildDir, outputDir)
         if (sourceCodePath.exists()) sourceCodePath.deleteRecursively()
         sourceCodePath.mkdirs()
-
-        TLCoreClassGenerator.generateTlBufferInterface().writeTo(sourceCodePath)
-        TLCoreClassGenerator.generateTLBaseObject().writeTo(sourceCodePath)
-        TLCoreClassGenerator.generateTLBaseMethod().writeTo(sourceCodePath)
 
         if (schemesDirectory.isDirectory) {
             val filesTree = schemesDirectory.walkTopDown()

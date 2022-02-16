@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.generator
+package com.attafitamim.mtproto.core.generator
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project

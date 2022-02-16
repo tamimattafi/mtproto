@@ -1,6 +1,6 @@
-package com.attafitamim.mtproto.generator.parsers
+package com.attafitamim.mtproto.core.generator.parsers
 
-import com.attafitamim.mtproto.generator.types.TLPropertySpecs
+import com.attafitamim.mtproto.core.generator.types.TLPropertySpecs
 import org.gradle.api.GradleException
 
 object TLPropertyParser {

@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.generator.types
+package com.attafitamim.mtproto.core.generator.types
 
 data class TLPropertySpecs(
         val rawScheme: String,

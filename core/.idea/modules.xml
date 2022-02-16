@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MTProto.Generator.iml" filepath="$PROJECT_DIR$/.idea/modules/MTProto.Generator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MTProto.Core.iml" filepath="$PROJECT_DIR$/.idea/modules/MTProto.Core.iml" />
     </modules>
   </component>
 </project>
