@@ -20,14 +20,14 @@ java {
 
 dependencies {
     // Android gradle plugin will allow us to access Android specific features
-    implementation "com.squareup:kotlinpoet:1.8.0"
+    api "com.squareup:kotlinpoet:1.8.0"
 }
 
 gradlePlugin {
     plugins {
-        create("TLGenerator") {
-            id = "TLGenerator"
-            implementationClass = "com.tamimattafi.tl.core.TLGenerator"
+        create("MTGenerator") {
+            id = "mtproto-generator"
+            implementationClass = "com.attafitamim.mtproto.core.generator.MTGenerator"
         }
     }
 }

@@ -9,7 +9,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 
-open class TLGenerationTask : DefaultTask() {
+open class MTGenerationTask : DefaultTask() {
 
     @Input
     var outputDir: String = "generated/source/scheme"
@@ -55,7 +55,7 @@ open class TLGenerationTask : DefaultTask() {
                 }
             }
         }
-
+        
         this.generateTypes(sourceCodePath, typesTlObjects)
         this.generateMethods(sourceCodePath, methodTlObjects)
 

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MTProto.Core.iml" filepath="$PROJECT_DIR$/.idea/modules/MTProto.Core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/mtproto.core.iml" filepath="$PROJECT_DIR$/.idea/modules/mtproto.core.iml" />
     </modules>
   </component>
 </project>

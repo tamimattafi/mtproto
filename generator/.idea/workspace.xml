@@ -5,67 +5,48 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3aa09abc-12c0-4d04-9e0b-83f84c3dc9a6" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/../core/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../core/build.gradle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/objects/MTMethod.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/objects/MTObject.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/stream/MTInputStream.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/stream/MTOutputStream.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/kotlinScripting.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__com_squareup_kotlinpoet_1_8_0.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__gradle_api_7_2.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__gradle_installation_beacon_7_2.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__gradle_test_kit_7_2.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_ant_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_astbuilder_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_console_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_datetime_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_dateutil_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_groovydoc_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_json_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_nio_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_sql_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_templates_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_test_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__groovy_xml_3_0_8.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__javaparser_core_3_17_0.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__kotlin_reflect_1_5_21.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__kotlin_stdlib_1_5_21.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__kotlin_stdlib_common_1_5_21.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__kotlin_stdlib_jdk7_1_5_21.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__kotlin_stdlib_jdk8_1_5_21.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__org_jetbrains_annotations_13_0.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_reflect_1_4_31.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_1_6_10.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_common_1_6_10.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_jdk7_1_6_10.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_jdk8_1_6_10.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.jar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradlew" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradlew.bat" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.gradle.kts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/Generator.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/TLGenerationTask.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/TLGenerator.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/classes/Constants.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/classes/TLClassGenerator.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/classes/TLCoreClassGenerator.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/classes/TextUtils.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/parsers/TLObjectParser.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/parsers/TLPropertyParser.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/types/TLObjectSpecs.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/attafitamim/mtproto/generator/types/TLPropertySpecs.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../settings.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/../settings.gradle" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../sample/schemes/schema_107.tl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../sample/src/main/java/com/attafitamim/mtproto/sample/MainActivity.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../sample/src/main/res/layout/activity_main.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/../build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/.name" beforeDir="false" afterPath="$PROJECT_DIR$/../core/.idea/.name" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__com_squareup_kotlinpoet_1_8_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__gradle_api_7_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__gradle_installation_beacon_7_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__gradle_test_kit_7_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_ant_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_astbuilder_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_console_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_datetime_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_dateutil_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_groovydoc_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_json_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_nio_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_sql_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_templates_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_test_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__groovy_xml_3_0_8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__javaparser_core_3_17_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__kotlin_reflect_1_5_21.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__kotlin_stdlib_1_5_21.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__kotlin_stdlib_common_1_5_21.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__kotlin_stdlib_jdk7_1_5_21.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__kotlin_stdlib_jdk8_1_5_21.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__org_jetbrains_annotations_13_0.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_reflect_1_4_31.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_1_6_10.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_common_1_6_10.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_jdk7_1_6_10.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/libraries/Gradle__org_jetbrains_kotlin_kotlin_stdlib_jdk8_1_6_10.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../core/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/../core/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/../core/settings.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/generator/TLGenerationTask.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/generator/MTGenerationTask.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/generator/TLGenerator.kt" beforeDir="false" afterPath="$PROJECT_DIR$/../core/src/main/java/com/attafitamim/mtproto/core/generator/MTGenerator.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../sample/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/../sample/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../sample/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../sample/src/main/AndroidManifest.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
