@@ -1,18 +1,16 @@
 package com.attafitamim.mtproto.core.generator.classes
 
+import com.attafitamim.mtproto.core.exceptions.MTObjectParseException
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.attafitamim.mtproto.core.generator.classes.Constants.BASE_PACKAGE_NAME
-import com.attafitamim.mtproto.core.generator.classes.Constants.BUFFER_PARAMETER_NAME
-import com.attafitamim.mtproto.core.generator.classes.Constants.EXCEPTION_PARAMETER_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.OUTPUT_STREAM_PARAMETER_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.FLAGS_PROPERTY_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.GLOBAL_DATA_TYPES_FOLDER_NAME
+import com.attafitamim.mtproto.core.generator.classes.Constants.INPUT_STREAM_PARAMETER_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.METHODS_FOLDER_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.OBJECT_NAME_SPACE_SEPARATOR
 import com.attafitamim.mtproto.core.generator.classes.Constants.PACKAGE_SEPARATOR
-import com.attafitamim.mtproto.core.generator.classes.Constants.PARSE_METHOD_NAME
-import com.attafitamim.mtproto.core.generator.classes.Constants.PARSE_RESPONSE_METHOD_NAME
-import com.attafitamim.mtproto.core.generator.classes.Constants.SERIALIZE_METHOD_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.TL_VECTOR_TYPE_CONSTRUCTOR
 import com.attafitamim.mtproto.core.generator.classes.Constants.TL_VECTOR_TYPE_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.TYPES_FOLDER_NAME
@@ -52,7 +50,7 @@ internal object TLClassGenerator {
             val className = createDataObjectClassName(name)
 
             val classTypeBuilder = TypeSpec.classBuilder(className)
-                    .addModifiers(KModifier.ABSTRACT)
+                    .addModifiers(KModifier.SEALED)
                     .superclass(MTObject::class)
 
             tlObjectsSpecs.groupBy(TLObjectSpecs::name).forEach { group ->
@@ -61,7 +59,7 @@ internal object TLClassGenerator {
                     classTypeBuilder.addType(objectClass)
                 } else {
                     group.value.forEach { tlObjectSpecs ->
-                        tlObjectSpecs.name = "${tlObjectSpecs.name}_${Integer.toHexString(tlObjectSpecs.constructor)}"
+                        tlObjectSpecs.name = "${tlObjectSpecs.name}_${Integer.toHexString(tlObjectSpecs.hash)}"
                         val objectClass = generateDataObjectClass(tlObjectSpecs)
                         classTypeBuilder.addType(objectClass)
                     }
@@ -120,11 +118,11 @@ internal object TLClassGenerator {
             }
 
             val hashConstant = createConstantPropertySpec(
-                    tlObjectSpecs::constructor.name,
-                    tlObjectSpecs.constructor
+                    tlObjectSpecs::hash.name,
+                    tlObjectSpecs.hash
             )
 
-            val hashPropertySpec = PropertySpec.builder(TLObjectSpecs::constructor.name, Int::class)
+            val hashPropertySpec = PropertySpec.builder(TLObjectSpecs::hash.name, Int::class)
                     .addModifiers(KModifier.OVERRIDE)
                     .initializer("%L", hashConstant.name)
                     .build()
@@ -169,11 +167,11 @@ internal object TLClassGenerator {
             }
 
             val hashConstant = createConstantPropertySpec(
-                    tlObjectSpecs::constructor.name,
-                    tlObjectSpecs.constructor
+                    tlObjectSpecs::hash.name,
+                    tlObjectSpecs.hash
             )
 
-            val hashPropertySpec = PropertySpec.builder(TLObjectSpecs::constructor.name, Int::class)
+            val hashPropertySpec = PropertySpec.builder(TLObjectSpecs::hash.name, Int::class)
                     .addModifiers(KModifier.OVERRIDE)
                     .initializer("%L", hashConstant.name)
                     .build()
@@ -254,17 +252,16 @@ internal object TLClassGenerator {
             val isPremitiveType = localTypes.containsKey(vectorGenericName)
             val vectorClassName = List::class.asClassName().parameterizedBy(itemTypeName)
 
-            val functionBuilder = FunSpec.builder(PARSE_RESPONSE_METHOD_NAME)
-                    .addParameter(BUFFER_PARAMETER_NAME, bufferClassName)
-                    .addParameter(TLObjectSpecs::constructor.name, Int::class)
-                    .addParameter(EXCEPTION_PARAMETER_NAME, Boolean::class)
+            val functionBuilder = FunSpec.builder(MTMethod<*>::parseResponse.name)
+                    .addParameter(INPUT_STREAM_PARAMETER_NAME, bufferClassName)
+                    .addParameter(TLObjectSpecs::hash.name, Int::class)
                     .addModifiers(KModifier.OVERRIDE)
                     .returns(vectorClassName)
 
             val vectorName = "items"
-            val integerReadStatement = "$BUFFER_PARAMETER_NAME.readInt(${EXCEPTION_PARAMETER_NAME})"
+            val integerReadStatement = "$INPUT_STREAM_PARAMETER_NAME.readInt()"
 
-            val hashValidationStatement = "require(${TLObjectSpecs::constructor.name} == $TL_VECTOR_TYPE_CONSTRUCTOR)"
+            val hashValidationStatement = "require(${TLObjectSpecs::hash.name} == $TL_VECTOR_TYPE_CONSTRUCTOR)"
             functionBuilder.addStatement(hashValidationStatement)
 
             val vectorSizeName = "${vectorName}${TL_VECTOR_TYPE_NAME}Size"
@@ -278,14 +275,14 @@ internal object TLClassGenerator {
             val vectorLoopStatement = "for (index in 0 until $vectorSizeName)"
             functionBuilder.beginControlFlow(vectorLoopStatement)
 
-            val itemHashName = "item${TextUtils.camelToTitleCase(TLObjectSpecs::constructor.name)}"
+            val itemHashName = "item${TextUtils.camelToTitleCase(TLObjectSpecs::hash.name)}"
             val itemHashInitializationStatement = "val $itemHashName = $integerReadStatement"
 
             val itemReadStatement = if (isPremitiveType) {
-                "$BUFFER_PARAMETER_NAME.read${itemTypeName.simpleName}($EXCEPTION_PARAMETER_NAME)"
+                "$INPUT_STREAM_PARAMETER_NAME.read${itemTypeName.simpleName}()"
             } else {
                 functionBuilder.addStatement(itemHashInitializationStatement)
-                "${itemTypeName.simpleName}.$PARSE_METHOD_NAME($BUFFER_PARAMETER_NAME, $itemHashName, $EXCEPTION_PARAMETER_NAME)"
+                "${itemTypeName.simpleName}.${MTMethod<*>::parseResponse.name}($INPUT_STREAM_PARAMETER_NAME, $itemHashName)"
             }
 
             val itemName = "item"
@@ -316,12 +313,11 @@ internal object TLClassGenerator {
         try {
             val bufferClassName = MTInputStream::class.asClassName()
 
-            val returnStatement = "return ${returnType.simpleName}.$PARSE_METHOD_NAME($BUFFER_PARAMETER_NAME, ${TLObjectSpecs::constructor.name}, $EXCEPTION_PARAMETER_NAME)"
+            val returnStatement = "return ${returnType.simpleName}.${MTMethod<*>::parseResponse.name}($INPUT_STREAM_PARAMETER_NAME, ${TLObjectSpecs::hash.name})"
 
-            val functionSpec = FunSpec.builder(PARSE_RESPONSE_METHOD_NAME)
-                    .addParameter(BUFFER_PARAMETER_NAME, bufferClassName)
-                    .addParameter(TLObjectSpecs::constructor.name, Int::class)
-                    .addParameter(EXCEPTION_PARAMETER_NAME, Boolean::class)
+            val functionSpec = FunSpec.builder(MTMethod<*>::parseResponse.name)
+                    .addParameter(INPUT_STREAM_PARAMETER_NAME, bufferClassName)
+                    .addParameter(TLObjectSpecs::hash.name, Int::class)
                     .addModifiers(KModifier.OVERRIDE)
                     .returns(returnType)
                     .addStatement(returnStatement)
@@ -343,11 +339,11 @@ internal object TLClassGenerator {
         try {
             val bufferClassName = MTOutputStream::class.asClassName()
 
-            val functionBuilder = FunSpec.builder(SERIALIZE_METHOD_NAME)
-                    .addParameter(BUFFER_PARAMETER_NAME, bufferClassName)
+            val functionBuilder = FunSpec.builder(MTObject::serialize.name)
+                    .addParameter(OUTPUT_STREAM_PARAMETER_NAME, bufferClassName)
                     .addModifiers(KModifier.OVERRIDE)
 
-            val hashSerializationStatement = "$BUFFER_PARAMETER_NAME.writeInt(${TLObjectSpecs::constructor.name})"
+            val hashSerializationStatement = "$OUTPUT_STREAM_PARAMETER_NAME.writeInt(${TLObjectSpecs::hash.name})"
             functionBuilder.addStatement(hashSerializationStatement)
 
             if (tlObjectSpecs.hasFlags) {
@@ -359,7 +355,7 @@ internal object TLClassGenerator {
                     functionBuilder.addPropertyFlaggingStatement(tlPropertySpecs)
                 }
 
-                val flagsSerializationStatement = "$BUFFER_PARAMETER_NAME.writeInt($FLAGS_PROPERTY_NAME)"
+                val flagsSerializationStatement = "$OUTPUT_STREAM_PARAMETER_NAME.writeInt($FLAGS_PROPERTY_NAME)"
                 functionBuilder.addStatement(flagsSerializationStatement)
             }
 
@@ -384,11 +380,10 @@ internal object TLClassGenerator {
         try {
             val bufferClassName = MTInputStream::class.asClassName()
 
-            val hashParameterName = TLObjectSpecs::constructor.name
-            val functionBuilder = FunSpec.builder(PARSE_METHOD_NAME)
-                    .addParameter(BUFFER_PARAMETER_NAME, bufferClassName)
+            val hashParameterName = TLObjectSpecs::hash.name
+            val functionBuilder = FunSpec.builder(MTMethod<*>::parseResponse.name)
+                    .addParameter(INPUT_STREAM_PARAMETER_NAME, bufferClassName)
                     .addParameter(hashParameterName, Int::class)
-                    .addParameter(EXCEPTION_PARAMETER_NAME, Boolean::class)
 
             functionBuilder.beginControlFlow("return when($hashParameterName)")
             tlObjectsSpecs.groupBy(TLObjectSpecs::name).forEach { group ->
@@ -396,24 +391,21 @@ internal object TLClassGenerator {
                 if (group.value.size == 1) {
                     val objectClass = createDataObjectClassName(group.value.first().name, group.value.first().superClassName)
                     functionBuilder.addStatement(
-                            "${objectClass.simpleName}.${TLObjectSpecs::constructor.name.toUpperCase()} -> ${objectClass.simpleName}.$PARSE_METHOD_NAME($BUFFER_PARAMETER_NAME, $hashParameterName, $EXCEPTION_PARAMETER_NAME)"
+                            "${objectClass.simpleName}.${TLObjectSpecs::hash.name.toUpperCase()} -> ${objectClass.simpleName}.${MTMethod<*>::parseResponse.name}($INPUT_STREAM_PARAMETER_NAME, $hashParameterName)"
                     )
                 } else {
                     group.value.forEach { tlObjectSpecs ->
-                        val className = "${tlObjectSpecs.name}_${Integer.toHexString(tlObjectSpecs.constructor)}"
+                        val className = "${tlObjectSpecs.name}_${Integer.toHexString(tlObjectSpecs.hash)}"
                         val objectClass = createDataObjectClassName(className, tlObjectSpecs.superClassName)
                         functionBuilder.addStatement(
-                                "${objectClass.simpleName}.${TLObjectSpecs::constructor.name.toUpperCase()} -> ${objectClass.simpleName}.$PARSE_METHOD_NAME($BUFFER_PARAMETER_NAME, $hashParameterName, $EXCEPTION_PARAMETER_NAME)"
+                                "${objectClass.simpleName}.${TLObjectSpecs::hash.name.toUpperCase()} -> ${objectClass.simpleName}.${MTMethod<*>::parseResponse.name}($INPUT_STREAM_PARAMETER_NAME, $hashParameterName)"
                         )
                     }
                 }
 
             }
 
-            val illegalArgumentExceptionName = IllegalArgumentException::class.simpleName
-            val hashToHexStatement = "Integer.toHexString($hashParameterName)"
-            val parseErrorStatmenet = "\"\"\"\nCan't parse ${returnType.simpleName} with hash \${$hashToHexStatement}\n\"\"\""
-            functionBuilder.addStatement("else -> throw $illegalArgumentExceptionName(\n$parseErrorStatmenet\n)").endControlFlow()
+            functionBuilder.addStatement("else -> throw ${MTObjectParseException::class.qualifiedName}(${returnType.simpleName}::class, $hashParameterName)").endControlFlow()
             val functionSpec = functionBuilder.returns(returnType).build()
             addFunction(functionSpec)
         } catch (exception: Exception) {
@@ -429,11 +421,9 @@ internal object TLClassGenerator {
 
     fun TypeSpec.Builder.addObjectParseFunction(tlObjectSpecs: TLObjectSpecs, returnType: ClassName): TypeSpec.Builder = this.apply {
         try {
-            val bufferClassName = MTInputStream::class.asClassName()
-            val functionBuilder = FunSpec.builder(PARSE_METHOD_NAME)
-                    .addParameter(BUFFER_PARAMETER_NAME, bufferClassName)
-                    .addParameter(TLObjectSpecs::constructor.name, Int::class)
-                    .addParameter(EXCEPTION_PARAMETER_NAME, Boolean::class)
+            val functionBuilder = FunSpec.builder(MTMethod<*>::parseResponse.name)
+                    .addParameter(INPUT_STREAM_PARAMETER_NAME, MTInputStream::class)
+                    .addParameter(TLObjectSpecs::hash.name, Int::class)
                     .addHashValidationMethod()
 
             if (tlObjectSpecs.hasFlags) {
@@ -513,9 +503,9 @@ internal object TLClassGenerator {
             if (objectTypeName == Boolean::class.simpleName) return@apply
 
             val readStatement = if (primitiveType != null) {
-                "$BUFFER_PARAMETER_NAME.write$objectTypeName($formattedPropertyName)"
+                "$OUTPUT_STREAM_PARAMETER_NAME.write$objectTypeName($formattedPropertyName)"
             } else {
-                "$formattedPropertyName.$SERIALIZE_METHOD_NAME($BUFFER_PARAMETER_NAME)"
+                "$formattedPropertyName.${MTObject::serialize.name}($OUTPUT_STREAM_PARAMETER_NAME)"
             }
 
             if (tlPropertySpecs.flag != null) {
@@ -550,11 +540,11 @@ internal object TLClassGenerator {
                 beginControlFlow(flagCheckingStatement)
             }
 
-            val vectorHashSerializingStatement = "$BUFFER_PARAMETER_NAME.writeInt($TL_VECTOR_TYPE_CONSTRUCTOR)"
+            val vectorHashSerializingStatement = "$OUTPUT_STREAM_PARAMETER_NAME.writeInt($TL_VECTOR_TYPE_CONSTRUCTOR)"
             addStatement(vectorHashSerializingStatement)
 
             val vectorSizeName = "${formattedPropertyName}.${List<*>::size.name}"
-            val vectorSizeSerializingStatement = "$BUFFER_PARAMETER_NAME.writeInt($vectorSizeName)"
+            val vectorSizeSerializingStatement = "$OUTPUT_STREAM_PARAMETER_NAME.writeInt($vectorSizeName)"
             addStatement(vectorSizeSerializingStatement)
 
             val vectorItemName = "${formattedPropertyName}Item"
@@ -566,9 +556,9 @@ internal object TLClassGenerator {
             val itemTypeName = getVectorGenericType(tlPropertySpecs.type)
 
             val itemWriteStatement = if (isPrimitiveType) {
-                "$BUFFER_PARAMETER_NAME.write${itemTypeName.simpleName}($vectorItemName)"
+                "$OUTPUT_STREAM_PARAMETER_NAME.write${itemTypeName.simpleName}($vectorItemName)"
             } else {
-                "$vectorItemName.$SERIALIZE_METHOD_NAME($BUFFER_PARAMETER_NAME)"
+                "$vectorItemName.${MTObject::serialize.name}($OUTPUT_STREAM_PARAMETER_NAME)"
             }
 
             addStatement(itemWriteStatement).endControlFlow()
@@ -620,7 +610,7 @@ internal object TLClassGenerator {
                 beginControlFlow(flagCheckingStatement)
             }
 
-            val integerReadStatement = "$BUFFER_PARAMETER_NAME.readInt(${EXCEPTION_PARAMETER_NAME})"
+            val integerReadStatement = "$INPUT_STREAM_PARAMETER_NAME.readInt()"
             val vectorHashName = "${formattedPropertyName}${TL_VECTOR_TYPE_NAME}Hash"
             val vectorHashReadingStatement = "val $vectorHashName = $integerReadStatement"
             addStatement(vectorHashReadingStatement)
@@ -642,10 +632,10 @@ internal object TLClassGenerator {
             val itemHashInitializationStatement = "val $itemHashName = $integerReadStatement"
 
             val itemReadStatement = if (itemPrimitiveType != null) {
-                "$BUFFER_PARAMETER_NAME.read$itemTypeName($EXCEPTION_PARAMETER_NAME)"
+                "$INPUT_STREAM_PARAMETER_NAME.read$itemTypeName()"
             } else {
                 addStatement(itemHashInitializationStatement)
-                "$itemTypeName.$PARSE_METHOD_NAME($BUFFER_PARAMETER_NAME, $itemHashName, $EXCEPTION_PARAMETER_NAME)"
+                "$itemTypeName.${MTMethod<*>::parseResponse.name}($INPUT_STREAM_PARAMETER_NAME, $itemHashName)"
             }
 
             val itemName = "${formattedPropertyName}Item"
@@ -679,9 +669,9 @@ internal object TLClassGenerator {
             val objectHashName = "${formattedPropertyName}Hash"
 
             val readStatement = if (primitiveType != null) {
-                "$BUFFER_PARAMETER_NAME.read$objectTypeName($EXCEPTION_PARAMETER_NAME)"
+                "$INPUT_STREAM_PARAMETER_NAME.read$objectTypeName()"
             } else {
-                "$objectTypeName.$PARSE_METHOD_NAME($BUFFER_PARAMETER_NAME, $objectHashName, $EXCEPTION_PARAMETER_NAME)"
+                "$objectTypeName.${MTMethod<*>::parseResponse.name}($INPUT_STREAM_PARAMETER_NAME, $objectHashName)"
             }
 
             if (tlPropertySpecs.flag != null) {
@@ -700,7 +690,7 @@ internal object TLClassGenerator {
                     beginControlFlow(flagCheckingStatement)
 
                     if (primitiveType == null) {
-                        val hashReadingStatement = "val $objectHashName = $BUFFER_PARAMETER_NAME.readInt($EXCEPTION_PARAMETER_NAME)"
+                        val hashReadingStatement = "val $objectHashName = $INPUT_STREAM_PARAMETER_NAME.readInt()"
                         addStatement(hashReadingStatement)
                     }
 
@@ -709,7 +699,7 @@ internal object TLClassGenerator {
                 }
             } else {
                 if (primitiveType == null) {
-                    val hashReadingStatement = "val $objectHashName = $BUFFER_PARAMETER_NAME.readInt($EXCEPTION_PARAMETER_NAME)"
+                    val hashReadingStatement = "val $objectHashName = $INPUT_STREAM_PARAMETER_NAME.readInt()"
                     addStatement(hashReadingStatement)
                 }
 
@@ -729,7 +719,7 @@ internal object TLClassGenerator {
 
     fun FunSpec.Builder.addFlagReadingStatement(): FunSpec.Builder = this.apply {
         try {
-            val flagReadingStatement = "val $FLAGS_PROPERTY_NAME = $BUFFER_PARAMETER_NAME.readInt($EXCEPTION_PARAMETER_NAME)"
+            val flagReadingStatement = "val $FLAGS_PROPERTY_NAME = $INPUT_STREAM_PARAMETER_NAME.readInt()"
             addStatement(flagReadingStatement)
         }  catch (exception: Exception) {
             throw GradleException(
@@ -743,7 +733,7 @@ internal object TLClassGenerator {
 
     fun FunSpec.Builder.addHashValidationMethod() : FunSpec.Builder = this.apply {
         try {
-            val hashParameterName = TLObjectSpecs::constructor.name
+            val hashParameterName = TLObjectSpecs::hash.name
             val hashValidationStatement = "require($hashParameterName == ${hashParameterName.toUpperCase()})"
             addStatement(hashValidationStatement)
         }  catch (exception: Exception) {

@@ -4,7 +4,7 @@ data class TLObjectSpecs(
         val rawScheme: String,
         var name: String,
         val superClassName: String,
-        val constructor: Int,
+        val hash: Int,
         val hasFlags: Boolean,
         val propertiesSpecs: List<TLPropertySpecs>?
 )

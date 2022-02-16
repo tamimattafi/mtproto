@@ -55,7 +55,7 @@ open class MTGenerationTask : DefaultTask() {
                 }
             }
         }
-        
+
         this.generateTypes(sourceCodePath, typesTlObjects)
         this.generateMethods(sourceCodePath, methodTlObjects)
 

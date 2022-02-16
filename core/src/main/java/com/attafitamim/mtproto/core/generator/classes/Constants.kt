@@ -15,12 +15,8 @@ object Constants {
 
     const val OBJECT_NAME_SPACE_SEPARATOR = "."
 
-    const val PARSE_METHOD_NAME = "parse"
-    const val PARSE_RESPONSE_METHOD_NAME = "parseResponse"
-    const val SERIALIZE_METHOD_NAME = "serialize"
-
-    const val BUFFER_PARAMETER_NAME = "buffer"
-    const val EXCEPTION_PARAMETER_NAME = "exception"
+    const val OUTPUT_STREAM_PARAMETER_NAME = "outputStream"
+    const val INPUT_STREAM_PARAMETER_NAME = "inputStream"
 
     const val FLAGS_PROPERTY_NAME = "flags"
 }
