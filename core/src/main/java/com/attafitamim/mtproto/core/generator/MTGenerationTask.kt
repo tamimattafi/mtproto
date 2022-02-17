@@ -1,8 +1,10 @@
 package com.attafitamim.mtproto.core.generator
 
+import com.attafitamim.mtproto.core.exceptions.MTObjectParseException
 import com.attafitamim.mtproto.core.generator.classes.TLClassGenerator
 import com.attafitamim.mtproto.core.generator.parsers.TLObjectParser
 import com.attafitamim.mtproto.core.generator.types.TLObjectSpecs
+import com.attafitamim.mtproto.core.objects.MTMethod
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Input
@@ -12,10 +14,13 @@ import java.io.File
 open class MTGenerationTask : DefaultTask() {
 
     @Input
-    var outputDir: String = "generated/source/scheme"
+    var outputDir: String = "${project.buildDir}/generated/source/scheme"
 
     @Input
-    var schemeFilesDir: String = ""
+    var schemeFilesDir: String = "/schemes"
+
+    @Input
+    var basePackage: String = "com.attafitamim.mtproto.core.generator"
 
     @TaskAction
     fun generate() {
@@ -24,7 +29,7 @@ open class MTGenerationTask : DefaultTask() {
             throw GradleException("Schemes directory doesn't exist: $schemeFilesDir")
         }
 
-        val sourceCodePath = File(project.buildDir, outputDir)
+        val sourceCodePath = File(outputDir)
         if (sourceCodePath.exists()) sourceCodePath.deleteRecursively()
         sourceCodePath.mkdirs()
 
@@ -67,7 +72,7 @@ open class MTGenerationTask : DefaultTask() {
         val tlTypesSpecs = typesTlObjects.groupBy(TLObjectSpecs::superClassName)
         tlTypesSpecs.forEach { group ->
             try {
-                val typeObjectSpec = TLClassGenerator.generateSuperDataObjectClass(group.key, group.value)
+                val typeObjectSpec = TLClassGenerator(basePackage).generateSuperDataObjectClass(group.key, group.value)
                 typeObjectSpec.writeTo(sourceCodePath)
             } catch (exception: Exception) {
                 throw GradleException(
@@ -85,7 +90,7 @@ open class MTGenerationTask : DefaultTask() {
     private fun generateMethods(sourceCodePath: File, typesTlObjects: ArrayList<TLObjectSpecs>) {
         typesTlObjects.forEach { tlMethodSpecs ->
             try {
-                val methodFileSpec = TLClassGenerator.generateMethodClass(tlMethodSpecs)
+                val methodFileSpec = TLClassGenerator(basePackage).generateMethodClass(tlMethodSpecs)
                 methodFileSpec.writeTo(sourceCodePath)
             } catch (exception: Exception) {
                 throw GradleException(

@@ -24,11 +24,7 @@ android {
         }
     }
 
-    sourceSets {
-        main {
-            java.srcDirs += '${buildDir.path}/${tasks.generateProtoClasses.get().outputDir}'
-        }
-    }
+    sourceSets.main.java.srcDirs += ["${project.buildDir}/generated/source/scheme"]
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -55,6 +51,7 @@ dependencies {
 
 tasks.generateProtoClasses {
     schemeFilesDir = "${projectDir.path}/schemes"
+    basePackage = 'com.attafitamim.mtproto.sample'
 }
 
 gradle.projectsEvaluated {

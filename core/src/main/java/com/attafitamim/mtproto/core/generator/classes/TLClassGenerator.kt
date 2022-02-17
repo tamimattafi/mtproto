@@ -3,7 +3,6 @@ package com.attafitamim.mtproto.core.generator.classes
 import com.attafitamim.mtproto.core.exceptions.MTObjectParseException
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.attafitamim.mtproto.core.generator.classes.Constants.BASE_PACKAGE_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.OUTPUT_STREAM_PARAMETER_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.FLAGS_PROPERTY_NAME
 import com.attafitamim.mtproto.core.generator.classes.Constants.GLOBAL_DATA_TYPES_FOLDER_NAME
@@ -24,7 +23,9 @@ import org.gradle.api.GradleException
 import java.util.*
 import kotlin.math.pow
 
-internal object TLClassGenerator {
+internal class TLClassGenerator(
+    private val basePackage: String
+) {
 
     private val localTypes = mapOf(
             "string" to String::class,
@@ -816,7 +817,7 @@ internal object TLClassGenerator {
         try {
             val formattedNameSpace = name.asNamespace?.let(TextUtils::camelToTitleCase).orEmpty()
             val nameSpace = name.asNamespace ?: GLOBAL_DATA_TYPES_FOLDER_NAME
-            val packageName = StringBuilder(BASE_PACKAGE_NAME)
+            val packageName = StringBuilder(basePackage)
                     .append(PACKAGE_SEPARATOR)
                     .append(METHODS_FOLDER_NAME)
                     .append(PACKAGE_SEPARATOR)
@@ -909,7 +910,7 @@ internal object TLClassGenerator {
                 classNames = listOf(actualClassName)
             }
 
-            val packageName = StringBuilder(BASE_PACKAGE_NAME)
+            val packageName = StringBuilder(basePackage)
                     .append(PACKAGE_SEPARATOR)
                     .append(TYPES_FOLDER_NAME)
                     .append(PACKAGE_SEPARATOR)
