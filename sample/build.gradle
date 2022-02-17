@@ -24,7 +24,7 @@ android {
         }
     }
 
-    sourceSets.main.java.srcDirs += ["${project.buildDir}/generated/source/scheme"]
+    sourceSets.main.java.srcDirs += ["${project.buildDir}/generated/mtproto"]
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

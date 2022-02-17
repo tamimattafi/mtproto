@@ -14,7 +14,7 @@ import java.io.File
 open class MTGenerationTask : DefaultTask() {
 
     @Input
-    var outputDir: String = "${project.buildDir}/generated/source/scheme"
+    var outputDir: String = "${project.buildDir}/generated/mtproto"
 
     @Input
     var schemeFilesDir: String = "/schemes"

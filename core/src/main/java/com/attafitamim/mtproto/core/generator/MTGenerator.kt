@@ -7,7 +7,7 @@ class MTGenerator : Plugin<Project> {
 
     override fun apply(project: Project) {
         project.tasks.register("generateProtoClasses", MTGenerationTask::class.java) {
-            it.group = "proto"
+            it.group = "mtproto"
         }
     }
 
