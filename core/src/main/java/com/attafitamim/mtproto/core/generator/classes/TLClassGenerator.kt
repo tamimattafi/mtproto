@@ -28,12 +28,12 @@ internal class TLClassGenerator(
 ) {
 
     private val localTypes = mapOf(
-            "string" to String::class,
-            "int" to Int::class,
-            "long" to Long::class,
-            "true" to Boolean::class,
-            "double" to Double::class,
-            "bytes" to ByteArray::class
+        "string" to String::class,
+        "int" to Int::class,
+        "long" to Long::class,
+        "true" to Boolean::class,
+        "double" to Double::class,
+        "bytes" to ByteArray::class
     )
 
     private val String.asFormattedClassName: String get()  {
