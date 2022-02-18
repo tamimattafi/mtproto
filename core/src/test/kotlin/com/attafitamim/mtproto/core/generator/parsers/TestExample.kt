@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test
 class TestExample {
     @Test
     fun testMe() {
-        val type = MTTypeParser.parseType(
-            "help.config.Collection<test.List<[money.Stack<T>]>>",
+        val property = MTPropertyParser.parseProperty(
+            "usersList:flags.0?Vector<User>",
             mapOf("T" to MTTypeSpec.Generic.Variable("T", MTTypeSpec.Primitive(Any::class)))
         )
 
@@ -15,7 +15,7 @@ class TestExample {
             """
                 -----------
                 Test result
-                $type
+                $property
                 -----------
             """.trimIndent()
         )

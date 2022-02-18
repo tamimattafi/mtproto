@@ -50,5 +50,4 @@ object TLPropertyParser {
     private const val PROPERTY_FLAG_PREFIX = "flags."
     private const val PROPERTY_FLAG_SEPARATOR = "?"
     private const val PROPERTY_TYPE_SEPARATOR = ":"
-
 }
