@@ -12,16 +12,31 @@ object MTTypeParser {
 
     private const val NAMESPACE_SEPARATOR = "."
 
+    private const val GENERIC_VARIABLE_SEPARATOR = ":"
+
+
     private val primitiveTypes = mapOf(
         "string" to String::class,
         "int" to Int::class,
         "long" to Long::class,
         "true" to Boolean::class,
         "double" to Double::class,
-        "bytes" to ByteArray::class
+        "bytes" to ByteArray::class,
+        "Type" to Any::class
     )
 
-    private fun parseGeneric(
+    fun parseGenericVariable(
+        genericScheme: String,
+        genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
+    ): MTTypeSpec.Generic.Variable {
+        val name = genericScheme.substringBefore(GENERIC_VARIABLE_SEPARATOR)
+        val typeDescription = genericScheme.substringAfter(GENERIC_VARIABLE_SEPARATOR)
+
+        val superTypeSpec = parseType(typeDescription, genericVariables)
+        return MTTypeSpec.Generic.Variable(name, superTypeSpec)
+    }
+
+    fun parseGeneric(
         genericScheme: String,
         genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
     ): MTTypeSpec.Generic {
@@ -44,7 +59,7 @@ object MTTypeParser {
         // is a local primitive type
         primitiveTypes.containsKey(typeScheme) -> {
             val typeClass = primitiveTypes.getValue(typeScheme)
-            MTTypeSpec.Primitive(typeClass)
+            MTTypeSpec.Local(typeClass)
         }
 
         // is a list of types
@@ -54,7 +69,7 @@ object MTTypeParser {
                 .trim()
 
             val genericSpec = parseGeneric(genericName, genericVariables)
-            MTTypeSpec.Local(List::class, genericSpec)
+            MTTypeSpec.Structure(List::class, genericSpec)
         }
 
         // is an MTObject type

@@ -4,11 +4,11 @@ import kotlin.reflect.KClass
 
 sealed interface MTTypeSpec {
 
-    data class Primitive(
+    data class Local(
         val clazz: KClass<out Any>
     ) : MTTypeSpec
 
-    data class Local(
+    data class Structure(
         val clazz: KClass<out Any>,
         val generic: Generic?
     ) : MTTypeSpec

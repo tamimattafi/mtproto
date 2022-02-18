@@ -1,21 +1,16 @@
 package com.attafitamim.mtproto.core.generator.parsers
 
-import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
 import org.junit.jupiter.api.Test
 
 class TestExample {
     @Test
     fun testMe() {
-        val property = MTPropertyParser.parseProperty(
-            "usersList:flags.0?Vector<User>",
-            mapOf("T" to MTTypeSpec.Generic.Variable("T", MTTypeSpec.Primitive(Any::class)))
-        )
-
+        val mtObject = MTObjectParser.parseObject("core.invokeWithLayer#da9b0d0d {X:Type} layer:int query:!X = X;")
         print(
             """
                 -----------
                 Test result
-                $property
+                $mtObject
                 -----------
             """.trimIndent()
         )
