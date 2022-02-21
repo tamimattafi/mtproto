@@ -9,6 +9,11 @@ import com.squareup.kotlinpoet.asTypeName
 
 class TypeNameFactory(private val basePackage: String) {
 
+    private companion object {
+        const val GLOBAL_NAMESPACE = "global"
+        const val TYPES_PREFIX = "MT"
+    }
+
     fun createTypeName(mtTypeSpec: MTTypeSpec): TypeName
         = when(mtTypeSpec) {
             is MTTypeSpec.Generic -> mtTypeSpec.toTypeName()
@@ -17,22 +22,54 @@ class TypeNameFactory(private val basePackage: String) {
             is MTTypeSpec.Structure -> mtTypeSpec.toTypeName()
         }
 
+    fun createClassName(mtObjectSpec: MTTypeSpec.Object): ClassName {
+        val formattedNameSpace = mtObjectSpec.namespace
+            ?.let(TextUtils::snakeToCamelCase)
+            ?.let(TextUtils::camelToTitleCase)
+            .orEmpty()
+
+        val formattedClassName = mtObjectSpec.name
+            .let(TextUtils::snakeToCamelCase)
+            .let(TextUtils::camelToTitleCase)
+
+        val finalClassName = StringBuilder()
+            .append(TYPES_PREFIX)
+            .append(formattedNameSpace)
+            .append(formattedClassName)
+            .toString()
+
+        val namespace = mtObjectSpec.namespace ?: GLOBAL_NAMESPACE
+        val packageName = StringBuilder(basePackage)
+            .append(Constants.PACKAGE_SEPARATOR)
+            .append(Constants.TYPES_FOLDER_NAME)
+            .append(Constants.PACKAGE_SEPARATOR)
+            .append(namespace)
+            .toString()
+
+        return ClassName(packageName, finalClassName)
+    }
+
+    fun createClassName(name: String, superClassName: ClassName): ClassName {
+        val formattedClassName = name
+            .let(TextUtils::snakeToCamelCase)
+            .let(TextUtils::camelToTitleCase)
+
+        val classNames = listOf(superClassName.simpleName, formattedClassName)
+        return ClassName(superClassName.packageName, classNames)
+    }
+
+    fun createClassName(name: String, mtSuperObjectSpec: MTTypeSpec.Object): ClassName {
+        val superClassName = createClassName(mtSuperObjectSpec)
+        return createClassName(name, superClassName)
+    }
+
     private fun MTTypeSpec.Generic.toTypeName(): TypeName = when(this) {
         is MTTypeSpec.Generic.Variable -> toTypeName()
         is MTTypeSpec.Generic.Parameter -> toTypeName()
     }
 
     private fun MTTypeSpec.Object.toTypeName(): TypeName {
-        val packageBuilder = StringBuilder(basePackage)
-            .append(Constants.PACKAGE_SEPARATOR)
-            .append(Constants.TYPES_FOLDER_NAME)
-
-        if (!namespace.isNullOrBlank()) packageBuilder
-            .append(Constants.PACKAGE_SEPARATOR)
-            .append(name)
-
-        val packageName = packageBuilder.toString()
-        val className = ClassName(packageName, name)
+        val className = createClassName(this)
         val genericParameters = generics?.map { genericTypeSpec ->
             genericTypeSpec.toTypeName()
         }

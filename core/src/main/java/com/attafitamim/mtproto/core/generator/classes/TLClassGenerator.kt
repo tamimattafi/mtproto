@@ -157,7 +157,8 @@ internal class TLClassGenerator(
             val superClassName = createDataObjectClassName(tlObjectSpecs.superClassName)
             val className = createDataObjectClassName(tlObjectSpecs.name, tlObjectSpecs.superClassName)
 
-            val classBuilder = TypeSpec.classBuilder(className).superclass(superClassName)
+            val classBuilder = TypeSpec.classBuilder(className)
+                .superclass(superClassName)
 
             val objectProperties = tlObjectSpecs.propertiesSpecs?.map { tlPropertySpec ->
                 createObjectPropertySpec(tlPropertySpec)
@@ -775,15 +776,15 @@ internal class TLClassGenerator(
 
     fun createConstantPropertySpec(name: String, value: Any): PropertySpec {
         try {
-            val constantName = name.toUpperCase(Locale.ROOT)
+            val constantName = name.uppercase(Locale.ROOT)
             return PropertySpec.builder(constantName, value::class)
-                    .mutable(false)
-                    .addModifiers(KModifier.CONST)
-                    .initializer("%L", value)
-                    .build()
+                .mutable(false)
+                .addModifiers(KModifier.CONST)
+                .initializer("%L", value)
+                .build()
         } catch (exception: Exception) {
             throw GradleException(
-                    """
+                """
                         Failed to create constant property spec
                         Name: $name
                         Value: $value
