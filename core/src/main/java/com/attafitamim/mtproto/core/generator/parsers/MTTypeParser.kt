@@ -7,13 +7,12 @@ object MTTypeParser {
     private const val LIST_OPENING_BRACKET = "["
     private const val LIST_CLOSING_BRACKET = "]"
 
-    private const val GENERIC_OPENING_BRACKET = "<"
-    private const val GENERIC_CLOSING_BRACKET = ">"
-
     private const val NAMESPACE_SEPARATOR = "."
 
-    private const val GENERIC_VARIABLE_SEPARATOR = ":"
-
+    private const val GENERIC_OPENING_BRACKET = "<"
+    private const val GENERIC_CLOSING_BRACKET = ">"
+    private const val GENERIC_TYPE_INDICATOR = ":"
+    private const val GENERIC_SEPARATOR = ","
 
     private val primitiveTypes = mapOf(
         "string" to String::class,
@@ -29,22 +28,11 @@ object MTTypeParser {
         genericScheme: String,
         genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
     ): MTTypeSpec.Generic.Variable {
-        val name = genericScheme.substringBefore(GENERIC_VARIABLE_SEPARATOR)
-        val typeDescription = genericScheme.substringAfter(GENERIC_VARIABLE_SEPARATOR)
+        val name = genericScheme.substringBefore(GENERIC_TYPE_INDICATOR)
+        val typeDescription = genericScheme.substringAfter(GENERIC_TYPE_INDICATOR)
 
         val superTypeSpec = parseType(typeDescription, genericVariables)
         return MTTypeSpec.Generic.Variable(name, superTypeSpec)
-    }
-
-    fun parseGeneric(
-        genericScheme: String,
-        genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
-    ): MTTypeSpec.Generic {
-        val genericVariable = genericVariables?.get(genericScheme)
-        if (genericVariable != null) return genericVariable
-
-        val typeSpec = parseType(genericScheme, genericVariables)
-        return MTTypeSpec.Generic.Parameter(typeSpec)
     }
 
     fun parseType(
@@ -69,7 +57,7 @@ object MTTypeParser {
                 .trim()
 
             val genericSpec = parseGeneric(genericName, genericVariables)
-            MTTypeSpec.Structure(List::class, genericSpec)
+            MTTypeSpec.Structure.Collection(List::class, genericSpec)
         }
 
         // is an MTObject type
@@ -77,14 +65,16 @@ object MTTypeParser {
             var namespace: String? = null
             var name: String = typeScheme
 
-            var generic: MTTypeSpec.Generic? = null
+            var generics: List<MTTypeSpec.Generic>? = null
             if (name.contains(GENERIC_OPENING_BRACKET) && name.endsWith(GENERIC_CLOSING_BRACKET)) {
-                val genericName = name.substringAfter(GENERIC_OPENING_BRACKET)
+                generics = name.substringAfter(GENERIC_OPENING_BRACKET)
                     .removeSuffix(GENERIC_CLOSING_BRACKET)
-                    .trim()
+                    .split(GENERIC_SEPARATOR)
+                    .map { genericScheme ->
+                        parseGeneric(genericScheme, genericVariables)
+                    }
 
                 name = name.substringBefore(GENERIC_OPENING_BRACKET)
-                generic = parseGeneric(genericName, genericVariables)
             }
 
             if (name.contains(NAMESPACE_SEPARATOR)) {
@@ -92,7 +82,19 @@ object MTTypeParser {
                 name = name.substringAfterLast(NAMESPACE_SEPARATOR)
             }
 
-            MTTypeSpec.Object(namespace, name, generic)
+            MTTypeSpec.Object(namespace, name, generics)
         }
+    }
+
+
+    private fun parseGeneric(
+        genericScheme: String,
+        genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
+    ): MTTypeSpec.Generic {
+        val genericVariable = genericVariables?.get(genericScheme)
+        if (genericVariable != null) return genericVariable
+
+        val typeSpec = parseType(genericScheme, genericVariables)
+        return MTTypeSpec.Generic.Parameter(typeSpec)
     }
 }

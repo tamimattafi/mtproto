@@ -2,16 +2,17 @@ package com.attafitamim.mtproto.core.generator.classes
 
 import com.attafitamim.mtproto.core.exceptions.MTObjectParseException
 import com.attafitamim.mtproto.core.generator.specs.MTObjectSpec
+import com.attafitamim.mtproto.core.generator.specs.MTPropertySpec
 import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
 import com.attafitamim.mtproto.core.generator.types.TLObjectSpecs
 import com.attafitamim.mtproto.core.generator.types.TLPropertySpecs
 import com.attafitamim.mtproto.core.generator.utils.addPrimaryConstructor
 import com.attafitamim.mtproto.core.generator.utils.createConstantPropertySpec
+import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 import com.attafitamim.mtproto.core.objects.MTMethod
 import com.attafitamim.mtproto.core.objects.MTObject
 import com.attafitamim.mtproto.core.stream.MTInputStream
 import com.squareup.kotlinpoet.*
-import org.gradle.api.GradleException
 import org.gradle.internal.impldep.org.apache.commons.lang.text.StrBuilder
 import kotlin.math.pow
 
@@ -23,6 +24,7 @@ class TypeSpecFactory(
     private companion object {
         const val IDENTICAL_OBJECTS_SEPARATOR = "_"
     }
+
     fun createObjectSpec(
         mtSuperObjectSpec: MTTypeSpec.Object,
         mtVariantObjectSpecs: List<MTObjectSpec>
@@ -146,21 +148,24 @@ class TypeSpecFactory(
         addFunction(functionSpec)
     }
 
-    fun TypeSpec.Builder.addObjectParseFunction(tlObjectSpecs: TLObjectSpecs, returnType: ClassName): TypeSpec.Builder = this.apply {
+    fun TypeSpec.Builder.addObjectParseFunction(
+        mtObjectSpec: MTObjectSpec,
+        returnType: ClassName
+    ): TypeSpec.Builder = this.apply {
         val functionBuilder = FunSpec.builder(MTMethod<*>::parseResponse.name)
             .addParameter(Constants.INPUT_STREAM_PARAMETER_NAME, MTInputStream::class)
             .addParameter(TLObjectSpecs::hash.name, Int::class)
             .addHashValidationMethod()
 
-        if (tlObjectSpecs.hasFlags) {
+        if (mtObjectSpec.hasFlags) {
             functionBuilder.addFlagReadingStatement()
         }
 
-        tlObjectSpecs.propertiesSpecs?.forEach { tlPropertySpecs ->
-            functionBuilder.addPropertyParsingStatement(tlPropertySpecs)
+        mtObjectSpec.propertiesSpecs?.forEach { mtPropertySpec ->
+            functionBuilder.addPropertyParsingStatement(mtPropertySpec)
         }
 
-        functionBuilder.addObjectReturnStatement(tlObjectSpecs, returnType).returns(returnType)
+        functionBuilder.addObjectReturnStatement(mtObjectSpec, returnType).returns(returnType)
         val functionSpec = functionBuilder.build()
 
         addFunction(functionSpec)
@@ -177,16 +182,16 @@ class TypeSpecFactory(
         addStatement(flagReadingStatement)
     }
 
-    fun FunSpec.Builder.addPropertyParsingStatement(tlPropertySpecs: TLPropertySpecs): FunSpec.Builder = this.apply {
-        if (tlPropertySpecs.type.startsWith(Constants.TL_VECTOR_TYPE_NAME, true)) addVectorParsingStatement(tlPropertySpecs)
-        else addTypeParsingStatement(tlPropertySpecs)
+    fun FunSpec.Builder.addPropertyParsingStatement(mtPropertySpecs: MTPropertySpec): FunSpec.Builder = this.apply {
+        if (mtPropertySpecs.type.startsWith(Constants.TL_VECTOR_TYPE_NAME, true)) addVectorParsingStatement(mtPropertySpecs)
+        else addTypeParsingStatement(mtPropertySpecs)
     }
 
     fun FunSpec.Builder.addVectorParsingStatement(tlPropertySpecs: TLPropertySpecs): FunSpec.Builder = this.apply {
         if (!tlPropertySpecs.type.startsWith(Constants.TL_VECTOR_TYPE_NAME, true)) return@apply
         addStatement("")
 
-        val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+        val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
         val vectorGenericType = getVectorGenericType(tlPropertySpecs.type)
         val arrayInitializationStatement = "val $formattedPropertyName = ArrayList<$vectorGenericType>()"
         addStatement(arrayInitializationStatement)
@@ -239,7 +244,7 @@ class TypeSpecFactory(
     }
 
     fun FunSpec.Builder.addTypeParsingStatement(tlPropertySpecs: TLPropertySpecs): FunSpec.Builder = this.apply {
-        val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+        val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
 
         val primitiveType = localTypes[tlPropertySpecs.type]
         val objectTypeName = primitiveType?.simpleName ?: createDataObjectClassName(tlPropertySpecs.type).simpleName

@@ -1,6 +1,9 @@
 package com.attafitamim.mtproto.core.generator.classes
 
 import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
+import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
+import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
@@ -24,13 +27,10 @@ class TypeNameFactory(private val basePackage: String) {
 
     fun createClassName(mtObjectSpec: MTTypeSpec.Object): ClassName {
         val formattedNameSpace = mtObjectSpec.namespace
-            ?.let(TextUtils::snakeToCamelCase)
-            ?.let(TextUtils::camelToTitleCase)
+            ?.let(::snakeToTitleCase)
             .orEmpty()
 
-        val formattedClassName = mtObjectSpec.name
-            .let(TextUtils::snakeToCamelCase)
-            .let(TextUtils::camelToTitleCase)
+        val formattedClassName = snakeToTitleCase(mtObjectSpec.name)
 
         val finalClassName = StringBuilder()
             .append(TYPES_PREFIX)
@@ -51,8 +51,8 @@ class TypeNameFactory(private val basePackage: String) {
 
     fun createClassName(name: String, superClassName: ClassName): ClassName {
         val formattedClassName = name
-            .let(TextUtils::snakeToCamelCase)
-            .let(TextUtils::camelToTitleCase)
+            .let(::snakeToCamelCase)
+            .let(::camelToTitleCase)
 
         val classNames = listOf(superClassName.simpleName, formattedClassName)
         return ClassName(superClassName.packageName, classNames)
@@ -63,9 +63,16 @@ class TypeNameFactory(private val basePackage: String) {
         return createClassName(name, superClassName)
     }
 
-    private fun MTTypeSpec.Generic.toTypeName(): TypeName = when(this) {
-        is MTTypeSpec.Generic.Variable -> toTypeName()
-        is MTTypeSpec.Generic.Parameter -> toTypeName()
+    private fun MTTypeSpec.Structure.toTypeName(): TypeName = when(this) {
+        is MTTypeSpec.Structure.Collection -> toTypeName()
+    }
+
+    private fun MTTypeSpec.Structure.Collection.toTypeName(): TypeName {
+        val className = clazz.asTypeName()
+        return if (elementGeneric != null) {
+            val genericParameter = elementGeneric.toTypeName()
+            className.parameterizedBy(genericParameter)
+        } else className
     }
 
     private fun MTTypeSpec.Object.toTypeName(): TypeName {
@@ -79,15 +86,9 @@ class TypeNameFactory(private val basePackage: String) {
         } else className
     }
 
-    private fun MTTypeSpec.Structure.toTypeName(): TypeName {
-        val className = clazz.asTypeName()
-        val genericParameters = generics?.map { genericTypeSpec ->
-            genericTypeSpec.toTypeName()
-        }
-
-        return if (!genericParameters.isNullOrEmpty()) {
-            className.parameterizedBy(genericParameters)
-        } else className
+    private fun MTTypeSpec.Generic.toTypeName(): TypeName = when(this) {
+        is MTTypeSpec.Generic.Variable -> toTypeName()
+        is MTTypeSpec.Generic.Parameter -> toTypeName()
     }
 
     private fun MTTypeSpec.Generic.Variable.toTypeName(): TypeName {

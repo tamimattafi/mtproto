@@ -15,6 +15,8 @@ import com.attafitamim.mtproto.core.generator.classes.Constants.TL_VECTOR_TYPE_N
 import com.attafitamim.mtproto.core.generator.classes.Constants.TYPES_FOLDER_NAME
 import com.attafitamim.mtproto.core.generator.types.TLObjectSpecs
 import com.attafitamim.mtproto.core.generator.types.TLPropertySpecs
+import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
+import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 import com.attafitamim.mtproto.core.objects.MTMethod
 import com.attafitamim.mtproto.core.objects.MTObject
 import com.attafitamim.mtproto.core.stream.MTInputStream
@@ -38,7 +40,7 @@ internal class TLClassGenerator(
 
     private val String.asFormattedClassName: String get()  {
         val className = this.substringAfterLast(OBJECT_NAME_SPACE_SEPARATOR)
-        return TextUtils.camelToTitleCase(className)
+        return camelToTitleCase(className)
     }
 
     private val String.asNamespace: String? get() {
@@ -230,7 +232,7 @@ internal class TLClassGenerator(
     fun createObjectPropertySpec(tlPropertySpecs: TLPropertySpecs): PropertySpec {
         try {
             val propertyType = createPropertyClassName(tlPropertySpecs)
-            val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
             return PropertySpec.builder(formattedPropertyName, propertyType).build()
         } catch (exception: Exception) {
             throw GradleException(
@@ -277,7 +279,7 @@ internal class TLClassGenerator(
             val vectorLoopStatement = "for (index in 0 until $vectorSizeName)"
             functionBuilder.beginControlFlow(vectorLoopStatement)
 
-            val itemHashName = "item${TextUtils.camelToTitleCase(TLObjectSpecs::hash.name)}"
+            val itemHashName = "item${camelToTitleCase(TLObjectSpecs::hash.name)}"
             val itemHashInitializationStatement = "val $itemHashName = $integerReadStatement"
 
             val itemReadStatement = if (isPremitiveType) {
@@ -456,7 +458,7 @@ internal class TLClassGenerator(
         try {
             if (tlPropertySpecs.flag == null) return@apply
 
-            val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
 
             val primitiveType = localTypes[tlPropertySpecs.type]
             val objectTypeName = primitiveType?.simpleName ?: createDataObjectClassName(tlPropertySpecs.type).simpleName
@@ -498,7 +500,7 @@ internal class TLClassGenerator(
 
     fun FunSpec.Builder.addTypeSerializingStatement(tlPropertySpecs: TLPropertySpecs): FunSpec.Builder = this.apply {
         try {
-            val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
 
             val primitiveType = localTypes[tlPropertySpecs.type]
             val objectTypeName = primitiveType?.simpleName ?: createDataObjectClassName(tlPropertySpecs.type).simpleName
@@ -534,7 +536,7 @@ internal class TLClassGenerator(
             if (!tlPropertySpecs.type.startsWith(TL_VECTOR_TYPE_NAME, true)) return@apply
             addStatement("")
 
-            val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
 
             if (tlPropertySpecs.flag != null) {
                 val nullabilityCheckStatement = "$formattedPropertyName != null"
@@ -600,7 +602,7 @@ internal class TLClassGenerator(
             if (!tlPropertySpecs.type.startsWith(TL_VECTOR_TYPE_NAME, true)) return@apply
             addStatement("")
 
-            val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
             val vectorGenericType = getVectorGenericType(tlPropertySpecs.type)
             val arrayInitializationStatement = "val $formattedPropertyName = ArrayList<$vectorGenericType>()"
             addStatement(arrayInitializationStatement)
@@ -664,7 +666,7 @@ internal class TLClassGenerator(
 
     fun FunSpec.Builder.addTypeParsingStatement(tlPropertySpecs: TLPropertySpecs): FunSpec.Builder = this.apply {
         try {
-            val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
 
             val primitiveType = localTypes[tlPropertySpecs.type]
             val objectTypeName = primitiveType?.simpleName ?: createDataObjectClassName(tlPropertySpecs.type).simpleName
@@ -757,7 +759,7 @@ internal class TLClassGenerator(
             addStatement("return ${returnType.simpleName}(")
 
             tlObjectSpecs.propertiesSpecs?.forEach { tlPropertySpecs ->
-                val formattedPropertyName = TextUtils.snakeToCamelCase(tlPropertySpecs.name)
+                val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
                 addStatement("$formattedPropertyName,")
             }
 
@@ -816,7 +818,7 @@ internal class TLClassGenerator(
 
     fun createMethodClassName(name: String): ClassName {
         try {
-            val formattedNameSpace = name.asNamespace?.let(TextUtils::camelToTitleCase).orEmpty()
+            val formattedNameSpace = name.asNamespace?.let(::camelToTitleCase).orEmpty()
             val nameSpace = name.asNamespace ?: GLOBAL_DATA_TYPES_FOLDER_NAME
             val packageName = StringBuilder(basePackage)
                     .append(PACKAGE_SEPARATOR)
@@ -895,7 +897,7 @@ internal class TLClassGenerator(
             val classNames: List<String>
             val namespace: String
             if (!superClassName.isNullOrBlank()) {
-                val formattedNameSpace = superClassName.asNamespace?.let(TextUtils::camelToTitleCase).orEmpty()
+                val formattedNameSpace = superClassName.asNamespace?.let(::camelToTitleCase).orEmpty()
                 val actualSuperClassName = "${Constants.TYPES_PREFIX}${formattedNameSpace}${superClassName.asFormattedClassName}"
 
                 namespace = superClassName.asNamespace ?: GLOBAL_DATA_TYPES_FOLDER_NAME
@@ -904,7 +906,7 @@ internal class TLClassGenerator(
                         name.asFormattedClassName
                 )
             } else {
-                val formattedNameSpace = name.asNamespace?.let(TextUtils::camelToTitleCase).orEmpty()
+                val formattedNameSpace = name.asNamespace?.let(::camelToTitleCase).orEmpty()
                 val actualClassName = "${Constants.TYPES_PREFIX}$formattedNameSpace${name.asFormattedClassName}"
 
                 namespace = name.asNamespace ?: GLOBAL_DATA_TYPES_FOLDER_NAME

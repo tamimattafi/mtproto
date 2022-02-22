@@ -8,10 +8,13 @@ sealed interface MTTypeSpec {
         val clazz: KClass<out Any>
     ) : MTTypeSpec
 
-    data class Structure(
-        val clazz: KClass<out Any>,
-        val generics: List<Generic>?
-    ) : MTTypeSpec
+    sealed interface Structure : MTTypeSpec {
+
+        data class Collection(
+            val clazz: KClass<out Any>,
+            val elementGeneric: Generic?
+        ) : Structure
+    }
 
     data class Object(
         val namespace: String?,
@@ -19,15 +22,15 @@ sealed interface MTTypeSpec {
         val generics: List<Generic>?
     ) : MTTypeSpec
 
-    sealed class Generic : MTTypeSpec {
+    sealed interface Generic : MTTypeSpec {
 
         data class Variable(
             val name: String,
             val superType: MTTypeSpec,
-        ) : Generic()
+        ) : Generic
 
         data class Parameter(
             val type: MTTypeSpec
-        ) : Generic()
+        ) : Generic
     }
 }
