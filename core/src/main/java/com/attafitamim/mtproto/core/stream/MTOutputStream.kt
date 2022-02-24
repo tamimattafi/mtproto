@@ -8,5 +8,5 @@ interface MTOutputStream {
     fun writeBoolean(value: Boolean)
     fun writeString(value: String)
     fun writeByteArray(value: ByteArray)
-    fun writeInputBuffer(value: MTInputStream)
+    fun writeInputStream(value: MTInputStream)
 }

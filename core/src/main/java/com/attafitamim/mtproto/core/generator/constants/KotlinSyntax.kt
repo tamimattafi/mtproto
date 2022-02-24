@@ -15,6 +15,8 @@ const val WHEN_RESULT_ARROW = " -> "
 const val INITIALIZATION_SIGN = " = "
 const val EQUAL_SIGN = " == "
 const val NOT_EQUAL_SIGN = " != "
+const val TYPE_SIGN = ":"
+const val NULLABLE_SIGN = "?"
 
 // Keywords
 const val RETURN_KEYWORD = "return"
@@ -31,3 +33,4 @@ const val AND_KEYWORD = " and "
 const val OR_KEYWORD = " or "
 
 const val INVERT_METHOD = "inv()"
+const val REQUIRE_METHOD = "require"
