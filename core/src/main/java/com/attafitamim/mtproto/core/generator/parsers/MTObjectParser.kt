@@ -1,23 +1,12 @@
 package com.attafitamim.mtproto.core.generator.parsers
 
+import com.attafitamim.mtproto.core.generator.constants.*
 import com.attafitamim.mtproto.core.generator.specs.MTObjectSpec
 import com.attafitamim.mtproto.core.generator.specs.MTPropertySpec
 import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
-import com.attafitamim.mtproto.core.generator.types.TLObjectSpecs
 import org.gradle.api.GradleException
 
 object MTObjectParser {
-
-    private const val FLAGS_KEY_WORD = "flags:#"
-    private const val CONSTRUCTOR_PREFIX = "#"
-    private const val PROPERTIES_SEPARATOR = " "
-    private const val SUPER_TYPE_PREFIX = "="
-    private const val LINE_END = ";"
-
-    private const val GENERIC_OPENING_BRACKET = "{"
-    private const val GENERIC_CLOSING_BRACKET = "}"
-
-    private const val NAMESPACE_SEPARATOR = "."
 
     fun parseObject(objectScheme: String): MTObjectSpec {
         if (!isValidObjectScheme(objectScheme)) {

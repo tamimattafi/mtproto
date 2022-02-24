@@ -7,8 +7,6 @@ interface MTInputStream {
     fun readDouble(): Double
     fun readBoolean(): Boolean
     fun readString(): String
-    fun readBytes(output: ByteArray)
-    fun readBytes(count: Int): ByteArray
     fun readByteArray(): ByteArray
     fun readOutputBuffer(): MTInputStream
 }

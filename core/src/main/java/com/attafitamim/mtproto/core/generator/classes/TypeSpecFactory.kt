@@ -1,29 +1,25 @@
 package com.attafitamim.mtproto.core.generator.classes
 
 import com.attafitamim.mtproto.core.exceptions.MTObjectParseException
+import com.attafitamim.mtproto.core.generator.constants.*
 import com.attafitamim.mtproto.core.generator.specs.MTObjectSpec
 import com.attafitamim.mtproto.core.generator.specs.MTPropertySpec
 import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
-import com.attafitamim.mtproto.core.generator.types.TLObjectSpecs
-import com.attafitamim.mtproto.core.generator.types.TLPropertySpecs
-import com.attafitamim.mtproto.core.generator.utils.addPrimaryConstructor
-import com.attafitamim.mtproto.core.generator.utils.createConstantPropertySpec
-import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
+import com.attafitamim.mtproto.core.generator.utils.*
 import com.attafitamim.mtproto.core.objects.MTMethod
 import com.attafitamim.mtproto.core.objects.MTObject
 import com.attafitamim.mtproto.core.stream.MTInputStream
+import com.attafitamim.mtproto.core.stream.MTOutputStream
 import com.squareup.kotlinpoet.*
-import org.gradle.internal.impldep.org.apache.commons.lang.text.StrBuilder
+import java.lang.Exception
+import java.lang.StringBuilder
 import kotlin.math.pow
+import kotlin.reflect.KClass
 
 class TypeSpecFactory(
     private val typeNameFactory: TypeNameFactory,
     private val propertySpecFactory: PropertySpecFactory
 ) {
-
-    private companion object {
-        const val IDENTICAL_OBJECTS_SEPARATOR = "_"
-    }
 
     fun createObjectSpec(
         mtSuperObjectSpec: MTTypeSpec.Object,
@@ -34,25 +30,10 @@ class TypeSpecFactory(
             .addModifiers(KModifier.SEALED)
             .superclass(MTObject::class)
 
-        mtVariantObjectSpecs
-            .groupBy(MTObjectSpec::name)
-            .forEach { group ->
-                if (group.value.size == 1) {
-                    val objectClass = createObjectSpec(superClassName, group.value.first())
-                    classTypeBuilder.addType(objectClass)
-                } else {
-                    group.value.forEach { tlObjectSpecs ->
-                        tlObjectSpecs.name = StrBuilder()
-                            .append(tlObjectSpecs.name)
-                            .append(IDENTICAL_OBJECTS_SEPARATOR)
-                            .append(Integer.toHexString(tlObjectSpecs.hash))
-                            .toString()
-
-                        val objectClass = createObjectSpec(superClassName, tlObjectSpecs)
-                        classTypeBuilder.addType(objectClass)
-                    }
-                }
-            }
+        mtVariantObjectSpecs.forEach { mtObjectSpec ->
+            val objectClass = createObjectSpec(superClassName, mtObjectSpec)
+            classTypeBuilder.addType(objectClass)
+        }
 
         val companionObjectBuilder = TypeSpec.companionObjectBuilder()
             .addBaseObjectParseFunction(superClassName, mtVariantObjectSpecs)
@@ -63,7 +44,7 @@ class TypeSpecFactory(
             .build()
     }
 
-    fun createObjectSpec(
+    private fun createObjectSpec(
         superClassName: ClassName,
         mtVariantObjectSpec: MTObjectSpec
     ): TypeSpec {
@@ -94,199 +75,277 @@ class TypeSpecFactory(
             .addObjectParseFunction(mtVariantObjectSpec, className)
             .build()
 
+        val objectSerializeFunction = createObjectSerializeFunctionSpec(mtVariantObjectSpec)
         return classBuilder.addType(companionObjectBuilder)
             .addProperty(hashPropertySpec)
-            .addObjectSerializeFunction(mtVariantObjectSpec)
+            .addFunction(objectSerializeFunction)
             .addKdoc("Scheme: ${mtVariantObjectSpec.rawScheme}")
             .build()
     }
 
-    fun createMethodSpec(mtObjectSpec: MTObjectSpec): TypeSpec {
-
-    }
-
-    fun TypeSpec.Builder.addBaseObjectParseFunction(
+    private fun TypeSpec.Builder.addBaseObjectParseFunction(
         superClassName: ClassName,
         mtVariantObjectSpecs: List<MTObjectSpec>
     ): TypeSpec.Builder = this.apply {
-        val bufferClassName = MTInputStream::class.asClassName()
+        val inputStreamClass = MTInputStream::class
+        val hashParameterName = MTObject::hash.name
+        val hashConstantName = hashParameterName.uppercase()
 
-        val hashParameterName = TLObjectSpecs::hash.name
         val functionBuilder = FunSpec.builder(MTMethod<*>::parseResponse.name)
-            .addParameter(Constants.INPUT_STREAM_PARAMETER_NAME, bufferClassName)
+            .addParameter(inputStreamClass.asParamterName, inputStreamClass)
             .addParameter(hashParameterName, Int::class)
+            .addHashValidationMethod()
+            .returns(superClassName)
 
-        functionBuilder.beginControlFlow("return when($hashParameterName)")
+        val whenStatement = StringBuilder()
+            .append(RETURN_KEYWORD)
+            .append(KEYWORD_SEPARATOR)
+            .append(WHEN_KEYWORD)
+            .append(PARAMETER_OPEN_PARENTHESIS)
+            .append(hashParameterName)
+            .append(PARAMETER_CLOSE_PARENTHESIS)
+            .toString()
 
-        mtVariantObjectSpecs
-            .groupBy(MTObjectSpec::name)
-            .forEach { group ->
-                if (group.value.size == 1) {
+        functionBuilder.beginControlFlow(whenStatement)
+        mtVariantObjectSpecs.forEach { mtObjectSpec ->
+            val objectClass = typeNameFactory.createClassName(mtObjectSpec.name, superClassName)
+            val checkStatement = StringBuilder().append(
+                objectClass.simpleName,
+                INSTANCE_ACCESS_KEY,
+                hashConstantName,
+                WHEN_RESULT_ARROW,
+                objectClass.simpleName,
+                INSTANCE_ACCESS_KEY,
+                MTMethod<*>::parseResponse.name,
+                PARAMETER_OPEN_PARENTHESIS,
+                inputStreamClass,
+                PARAMETER_SEPARATOR,
+                hashParameterName,
+                PARAMETER_CLOSE_PARENTHESIS
+            ).toString()
 
-                    val objectClass = typeNameFactory.createClassName(group.value.first().name, superClassName)
-                    functionBuilder.addStatement(
-                        "${objectClass.simpleName}.${TLObjectSpecs::hash.name.toUpperCase()} -> ${objectClass.simpleName}.${MTMethod<*>::parseResponse.name}(${Constants.INPUT_STREAM_PARAMETER_NAME}, $hashParameterName)"
-                    )
-                } else {
-                    group.value.forEach { mtObjectSpec ->
-                        mtObjectSpec.name = StrBuilder()
-                            .append(mtObjectSpec.name)
-                            .append(IDENTICAL_OBJECTS_SEPARATOR)
-                            .append(Integer.toHexString(mtObjectSpec.hash))
-                            .toString()
+            functionBuilder.addStatement(checkStatement)
+        }
 
-                        val objectClass = typeNameFactory.createClassName(mtObjectSpec.name, superClassName)
-                        functionBuilder.addStatement(
-                            "${objectClass.simpleName}.${TLObjectSpecs::hash.name.toUpperCase()} -> ${objectClass.simpleName}.${MTMethod<*>::parseResponse.name}(${Constants.INPUT_STREAM_PARAMETER_NAME}, $hashParameterName)"
-                        )
-                    }
-                }
-            }
+        val throwStatement = StringBuilder().append(
+            ELSE_KEYWORD,
+            WHEN_RESULT_ARROW,
+            THROW_KEYWORD,
+            KEYWORD_SEPARATOR,
+            MTObjectParseException::class.qualifiedName,
+            PARAMETER_OPEN_PARENTHESIS,
+            superClassName.simpleName,
+            CLASS_ACCESS_KEY,
+            CLASS_KEYWORD,
+            PARAMETER_SEPARATOR,
+            hashParameterName,
+            PARAMETER_CLOSE_PARENTHESIS
+        ).toString()
 
-        functionBuilder.addStatement("else -> throw ${MTObjectParseException::class.qualifiedName}(${superClassName.simpleName}::class, $hashParameterName)").endControlFlow()
-        val functionSpec = functionBuilder.returns(superClassName).build()
+        functionBuilder.addStatement(throwStatement)
+        val functionSpec = functionBuilder.endControlFlow().build()
         addFunction(functionSpec)
     }
 
-    fun TypeSpec.Builder.addObjectParseFunction(
+    private fun TypeSpec.Builder.addObjectParseFunction(
         mtObjectSpec: MTObjectSpec,
         returnType: ClassName
     ): TypeSpec.Builder = this.apply {
+        val inputStreamClass = MTInputStream::class
         val functionBuilder = FunSpec.builder(MTMethod<*>::parseResponse.name)
-            .addParameter(Constants.INPUT_STREAM_PARAMETER_NAME, MTInputStream::class)
-            .addParameter(TLObjectSpecs::hash.name, Int::class)
+            .addParameter(inputStreamClass.asParamterName, inputStreamClass)
+            .addParameter(MTObject::hash.name, Int::class)
             .addHashValidationMethod()
+            .returns(returnType)
 
         if (mtObjectSpec.hasFlags) {
             functionBuilder.addFlagReadingStatement()
         }
 
         mtObjectSpec.propertiesSpecs?.forEach { mtPropertySpec ->
-            functionBuilder.addPropertyParsingStatement(mtPropertySpec)
+            functionBuilder.addTypeParsingStatement(mtPropertySpec)
         }
 
-        functionBuilder.addObjectReturnStatement(mtObjectSpec, returnType).returns(returnType)
+        functionBuilder.addObjectReturnStatement(mtObjectSpec, returnType)
         val functionSpec = functionBuilder.build()
 
         addFunction(functionSpec)
     }
 
+    fun createObjectSerializeFunctionSpec(
+        mtVariantObjectSpec: MTObjectSpec
+    ): FunSpec {
+        val bufferClassName = MTOutputStream::class.asClassName()
+        val bufferParameterName = titleToCamelCase(bufferClassName.simpleName)
+
+        val functionBuilder = FunSpec.builder(MTObject::serialize.name)
+            .addParameter(bufferParameterName, bufferClassName)
+            .addModifiers(KModifier.OVERRIDE)
+
+        val hashSerializationStatement = createPropertySerializeStatement(
+            MTObject::hash.name,
+            Int::class
+        )
+
+        functionBuilder.addStatement(hashSerializationStatement)
+        if (mtVariantObjectSpec.hasFlags) {
+            functionBuilder.addStatement("")
+
+            val flagsInitializationStatement = StringBuilder().append(
+                VARIABLE_KEYWORD,
+                KEYWORD_SEPARATOR,
+                FLAGS_PROPERTY_NAME,
+                INITIALIZATION_SIGN,
+                FLAGS_DEFAULT_VALUE
+            ).toString()
+
+            functionBuilder.addStatement(flagsInitializationStatement)
+            mtVariantObjectSpec.propertiesSpecs?.forEach { mtPropertySpec ->
+                if (mtPropertySpec.flag != null) {
+                    val flaggingStatement = createFlaggingStatement(
+                        mtPropertySpec,
+                        mtPropertySpec.flag
+                    )
+
+                    functionBuilder.addStatement(flaggingStatement)
+                }
+            }
+
+            val flagsSerializationStatement = createPropertySerializeStatement(
+                FLAGS_PROPERTY_NAME,
+                Int::class
+            )
+
+            functionBuilder.addStatement(flagsSerializationStatement)
+        }
+
+        mtVariantObjectSpec.propertiesSpecs?.forEach { tlPropertySpecs ->
+            functionBuilder.createPropertySerializeStatement(tlPropertySpecs)
+        }
+
+        return functionBuilder.build()
+    }
+
+    fun createPropertySerializeStatement(mtPropertySpec: MTPropertySpec) {
+
+    }
+
+    private fun createFlaggingStatement(mtPropertySpec: MTPropertySpec, flag: Int): String {
+        val isBooleanProperty = mtPropertySpec.typeSpec is MTTypeSpec.Local &&
+                mtPropertySpec.typeSpec.clazz == Boolean::class
+
+        val flagCheckStatement = if (isBooleanProperty) mtPropertySpec.name
+        else StringBuilder().append(
+            mtPropertySpec.name,
+            NOT_EQUAL_SIGN,
+            NULL_KEYWORD
+        ).toString()
+
+        val flagPosition = 2.0.pow(flag).toInt()
+        return StringBuilder().append(
+            FLAGS_PROPERTY_NAME,
+            INITIALIZATION_SIGN,
+            IF_KEYWORD,
+            KEYWORD_SEPARATOR,
+            PARAMETER_OPEN_PARENTHESIS,
+            flagCheckStatement,
+            PARAMETER_CLOSE_PARENTHESIS,
+            KEYWORD_SEPARATOR,
+            PARAMETER_OPEN_PARENTHESIS,
+            FLAGS_PROPERTY_NAME,
+            OR_KEYWORD,
+            flagPosition,
+            PARAMETER_CLOSE_PARENTHESIS,
+            KEYWORD_SEPARATOR,
+            ELSE_KEYWORD,
+            KEYWORD_SEPARATOR,
+            PARAMETER_OPEN_PARENTHESIS,
+            AND_KEYWORD,
+            flagPosition,
+            INSTANCE_ACCESS_KEY,
+            INVERT_METHOD,
+            PARAMETER_CLOSE_PARENTHESIS
+        ).toString()
+    }
+
     fun FunSpec.Builder.addHashValidationMethod() : FunSpec.Builder = this.apply {
-        val hashParameterName = TLObjectSpecs::hash.name
-        val hashValidationStatement = "require($hashParameterName == ${hashParameterName.toUpperCase()})"
-        addStatement(hashValidationStatement)
+
     }
 
     fun FunSpec.Builder.addFlagReadingStatement(): FunSpec.Builder = this.apply {
-        val flagReadingStatement = "val ${Constants.FLAGS_PROPERTY_NAME} = ${Constants.INPUT_STREAM_PARAMETER_NAME}.readInt()"
-        addStatement(flagReadingStatement)
+
     }
 
-    fun FunSpec.Builder.addPropertyParsingStatement(mtPropertySpecs: MTPropertySpec): FunSpec.Builder = this.apply {
-        if (mtPropertySpecs.type.startsWith(Constants.TL_VECTOR_TYPE_NAME, true)) addVectorParsingStatement(mtPropertySpecs)
-        else addTypeParsingStatement(mtPropertySpecs)
+    fun FunSpec.Builder.addTypeParsingStatement(mtPropertySpec: MTPropertySpec) = this.apply {
+
     }
 
-    fun FunSpec.Builder.addVectorParsingStatement(tlPropertySpecs: TLPropertySpecs): FunSpec.Builder = this.apply {
-        if (!tlPropertySpecs.type.startsWith(Constants.TL_VECTOR_TYPE_NAME, true)) return@apply
+    fun FunSpec.Builder.addObjectReturnStatement(
+        tlObjectSpecs: MTObjectSpec,
+        returnType: ClassName
+    ) : FunSpec.Builder = this.apply {
         addStatement("")
+        addStatement("return ${returnType.simpleName}(")
 
-        val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
-        val vectorGenericType = getVectorGenericType(tlPropertySpecs.type)
-        val arrayInitializationStatement = "val $formattedPropertyName = ArrayList<$vectorGenericType>()"
-        addStatement(arrayInitializationStatement)
-
-        if (tlPropertySpecs.flag != null) {
-            val flagPosition = 2.0.pow(tlPropertySpecs.flag).toInt()
-            val flagBooleanStatement = "(${Constants.FLAGS_PROPERTY_NAME} and $flagPosition) != 0"
-            val flagCheckingStatement = "if ($flagBooleanStatement)"
-            beginControlFlow(flagCheckingStatement)
+        tlObjectSpecs.propertiesSpecs?.forEach { tlPropertySpecs ->
+            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
+            addStatement("$formattedPropertyName,")
         }
 
-        val integerReadStatement = "${Constants.INPUT_STREAM_PARAMETER_NAME}.readInt()"
-        val vectorHashName = "${formattedPropertyName}${Constants.TL_VECTOR_TYPE_NAME}Hash"
-        val vectorHashReadingStatement = "val $vectorHashName = $integerReadStatement"
-        addStatement(vectorHashReadingStatement)
-
-        val hashValidationStatement = "require($vectorHashName == ${Constants.TL_VECTOR_TYPE_CONSTRUCTOR})"
-        addStatement(hashValidationStatement)
-
-        val vectorSizeName = "${formattedPropertyName}${Constants.TL_VECTOR_TYPE_NAME}Size"
-        val vectorSizeReadingStatement = "val $vectorSizeName = $integerReadStatement"
-        addStatement(vectorSizeReadingStatement)
-
-        val vectorLoopStatement = "for (index in 0 until $vectorSizeName)"
-        beginControlFlow(vectorLoopStatement)
-
-        val vectorGenericName = getVectorGenericName(tlPropertySpecs.type)
-        val itemPrimitiveType = localTypes[vectorGenericName]
-        val itemTypeName = itemPrimitiveType?.simpleName ?: getVectorGenericType(tlPropertySpecs.type).simpleName
-        val itemHashName = "${formattedPropertyName}ItemHash"
-        val itemHashInitializationStatement = "val $itemHashName = $integerReadStatement"
-
-        val itemReadStatement = if (itemPrimitiveType != null) {
-            "${Constants.INPUT_STREAM_PARAMETER_NAME}.read$itemTypeName()"
-        } else {
-            addStatement(itemHashInitializationStatement)
-            "$itemTypeName.${MTMethod<*>::parseResponse.name}(${Constants.INPUT_STREAM_PARAMETER_NAME}, $itemHashName)"
-        }
-
-        val itemName = "${formattedPropertyName}Item"
-        val itemInitializationStatement = "val $itemName = $itemReadStatement"
-        addStatement(itemInitializationStatement)
-
-        val itemInsertionStatement = "${formattedPropertyName}.add($itemName)"
-        addStatement(itemInsertionStatement).endControlFlow()
-
-        if (tlPropertySpecs.flag != null) {
-            endControlFlow()
-        }
+        addStatement(")")
     }
 
-    fun FunSpec.Builder.addTypeParsingStatement(tlPropertySpecs: TLPropertySpecs): FunSpec.Builder = this.apply {
-        val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
+    private fun createPropertySerializeStatement(
+        name: String,
+        typeSpec: MTTypeSpec
+    ): String = when(typeSpec) {
+        is MTTypeSpec.Object -> createObjectSerializeStatement(name)
+        is MTTypeSpec.Generic.Parameter -> createPropertySerializeStatement(name, typeSpec.type)
+        is MTTypeSpec.Generic.Variable -> createPropertySerializeStatement(name, typeSpec.superType)
+        is MTTypeSpec.Local -> createPropertySerializeStatement(name, typeSpec.clazz)
+        is MTTypeSpec.Structure.Collection -> createCollectionSerializeStatement(name, typeSpec.elementGeneric)
+    }
 
-        val primitiveType = localTypes[tlPropertySpecs.type]
-        val objectTypeName = primitiveType?.simpleName ?: createDataObjectClassName(tlPropertySpecs.type).simpleName
-        val objectHashName = "${formattedPropertyName}Hash"
+    private fun createObjectSerializeStatement(name: String): String
+        = StringBuilder().append(
+            name,
+            INSTANCE_ACCESS_KEY,
+            MTObject::serialize.name,
+            PARAMETER_OPEN_PARENTHESIS,
+            OUTPUT_STREAM_NAME,
+            PARAMETER_CLOSE_PARENTHESIS
+        ).toString()
 
-        val readStatement = if (primitiveType != null) {
-            "${Constants.INPUT_STREAM_PARAMETER_NAME}.read$objectTypeName()"
-        } else {
-            "$objectTypeName.${MTMethod<*>::parseResponse.name}(${Constants.INPUT_STREAM_PARAMETER_NAME}, $objectHashName)"
+    private fun createCollectionSerializeStatement(
+        name: String,
+        elementGeneric: MTTypeSpec.Generic
+    ): String {
+
+    }
+
+    private fun createPropertySerializeStatement(
+        name: String,
+        type: KClass<*>
+    ): String {
+        val serializeMethod = when(type) {
+            Boolean::class -> MTOutputStream::writeBoolean
+            Byte::class -> MTOutputStream::writeByte
+            Int::class -> MTOutputStream::writeInt
+            Long::class -> MTOutputStream::writeLong
+            Double::class -> MTOutputStream::writeDouble
+            String::class -> MTOutputStream::writeString
+            ByteArray::class -> MTOutputStream::writeByteArray
+            MTInputStream::class -> MTOutputStream::writeInputBuffer
+            else -> throw Exception()
         }
 
-        if (tlPropertySpecs.flag != null) {
-            val flagPosition = 2.0.pow(tlPropertySpecs.flag).toInt()
-            val flagBooleanStatement = "(${Constants.FLAGS_PROPERTY_NAME} and $flagPosition) != 0"
-
-            if (objectTypeName == Boolean::class.simpleName) {
-                val propertyDeclarationStatement = "val $formattedPropertyName: $objectTypeName = $flagBooleanStatement"
-                addStatement(propertyDeclarationStatement)
-            } else {
-                addStatement("")
-                val propertyDeclarationStatement = "var $formattedPropertyName: $objectTypeName? = null"
-                addStatement(propertyDeclarationStatement)
-
-                val flagCheckingStatement = "if ($flagBooleanStatement)"
-                beginControlFlow(flagCheckingStatement)
-
-                if (primitiveType == null) {
-                    val hashReadingStatement = "val $objectHashName = ${Constants.INPUT_STREAM_PARAMETER_NAME}.readInt()"
-                    addStatement(hashReadingStatement)
-                }
-
-                val readNullableValueStatement = "$formattedPropertyName = $readStatement"
-                addStatement(readNullableValueStatement).endControlFlow()
-            }
-        } else {
-            if (primitiveType == null) {
-                val hashReadingStatement = "val $objectHashName = ${Constants.INPUT_STREAM_PARAMETER_NAME}.readInt()"
-                addStatement(hashReadingStatement)
-            }
-
-            val propertyDeclarationStatement = "val $formattedPropertyName: $objectTypeName = $readStatement"
-            addStatement(propertyDeclarationStatement)
-        }
+        return StringBuilder().append(
+            INPUT_STREAM_NAME,
+            INSTANCE_ACCESS_KEY,
+            serializeMethod.name,
+            PARAMETER_OPEN_PARENTHESIS,
+            name,
+            PARAMETER_CLOSE_PARENTHESIS
+        ).toString()
     }
 }

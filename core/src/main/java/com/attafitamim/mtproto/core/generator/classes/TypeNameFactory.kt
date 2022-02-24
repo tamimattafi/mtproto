@@ -1,5 +1,9 @@
 package com.attafitamim.mtproto.core.generator.classes
 
+import com.attafitamim.mtproto.core.generator.constants.GLOBAL_NAMESPACE
+import com.attafitamim.mtproto.core.generator.constants.PACKAGE_SEPARATOR
+import com.attafitamim.mtproto.core.generator.constants.TYPES_FOLDER_NAME
+import com.attafitamim.mtproto.core.generator.constants.TYPES_PREFIX
 import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
@@ -11,11 +15,6 @@ import com.squareup.kotlinpoet.TypeVariableName
 import com.squareup.kotlinpoet.asTypeName
 
 class TypeNameFactory(private val basePackage: String) {
-
-    private companion object {
-        const val GLOBAL_NAMESPACE = "global"
-        const val TYPES_PREFIX = "MT"
-    }
 
     fun createTypeName(mtTypeSpec: MTTypeSpec): TypeName
         = when(mtTypeSpec) {
@@ -40,9 +39,9 @@ class TypeNameFactory(private val basePackage: String) {
 
         val namespace = mtObjectSpec.namespace ?: GLOBAL_NAMESPACE
         val packageName = StringBuilder(basePackage)
-            .append(Constants.PACKAGE_SEPARATOR)
-            .append(Constants.TYPES_FOLDER_NAME)
-            .append(Constants.PACKAGE_SEPARATOR)
+            .append(PACKAGE_SEPARATOR)
+            .append(TYPES_FOLDER_NAME)
+            .append(PACKAGE_SEPARATOR)
             .append(namespace)
             .toString()
 

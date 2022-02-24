@@ -12,7 +12,7 @@ sealed interface MTTypeSpec {
 
         data class Collection(
             val clazz: KClass<out Any>,
-            val elementGeneric: Generic?
+            val elementGeneric: Generic
         ) : Structure
     }
 

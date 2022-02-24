@@ -25,7 +25,15 @@ fun camelToTitleCase(string: String): String {
     require(string.isNotBlank())
 
     val builder = StringBuilder(string)
-    builder[0] = builder[0].toUpperCase()
+    builder[0] = builder[0].uppercaseChar()
+    return builder.toString()
+}
+
+fun titleToCamelCase(string: String): String {
+    require(string.isNotBlank())
+
+    val builder = StringBuilder(string)
+    builder[0] = builder[0].lowercaseChar()
     return builder.toString()
 }
 
