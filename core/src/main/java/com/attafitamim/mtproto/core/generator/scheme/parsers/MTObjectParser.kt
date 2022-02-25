@@ -1,9 +1,9 @@
-package com.attafitamim.mtproto.core.generator.parsers
+package com.attafitamim.mtproto.core.generator.scheme.parsers
 
-import com.attafitamim.mtproto.core.generator.constants.*
-import com.attafitamim.mtproto.core.generator.specs.MTObjectSpec
-import com.attafitamim.mtproto.core.generator.specs.MTPropertySpec
-import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.syntax.*
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
 import org.gradle.api.GradleException
 
 object MTObjectParser {
@@ -26,13 +26,13 @@ object MTObjectParser {
         val hash = constructorHex.toLong(16).toInt()
 
         var genericVariables: HashMap<String, MTTypeSpec.Generic.Variable>? = null
-        val hasGenerics = objectScheme.contains(GENERIC_OPENING_BRACKET) &&
-                objectScheme.contains(GENERIC_CLOSING_BRACKET)
+        val hasGenerics = objectScheme.contains(GENERIC_VARIABLE_OPENING_BRACKET) &&
+                objectScheme.contains(GENERIC_VARIABLE_CLOSING_BRACKET)
 
         if (hasGenerics) {
             genericVariables = HashMap()
-            objectScheme.substringAfter(GENERIC_OPENING_BRACKET)
-                .substringBefore(GENERIC_CLOSING_BRACKET)
+            objectScheme.substringAfter(GENERIC_VARIABLE_OPENING_BRACKET)
+                .substringBefore(GENERIC_VARIABLE_CLOSING_BRACKET)
                 .split(",")
                 .forEach { genericScheme ->
                     val variable = MTTypeParser.parseGenericVariable(
@@ -48,7 +48,7 @@ object MTObjectParser {
 
         val propertiesStringPrefix = when {
             hasFlags -> FLAGS_KEY_WORD
-            hasGenerics -> GENERIC_CLOSING_BRACKET
+            hasGenerics -> GENERIC_VARIABLE_CLOSING_BRACKET
             else -> PROPERTIES_SEPARATOR
         }
 
@@ -68,7 +68,7 @@ object MTObjectParser {
             .substringBefore(LINE_END)
             .trim()
 
-        val superTypeSpec = MTTypeParser.parseType(superType, genericVariables)
+        val superTypeSpec = MTTypeParser.parseMTObject(superType, genericVariables)
 
         return MTObjectSpec(
             objectScheme,

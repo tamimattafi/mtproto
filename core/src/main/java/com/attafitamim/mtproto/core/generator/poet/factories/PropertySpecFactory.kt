@@ -1,6 +1,6 @@
-package com.attafitamim.mtproto.core.generator.classes
+package com.attafitamim.mtproto.core.generator.poet.factories
 
-import com.attafitamim.mtproto.core.generator.specs.MTPropertySpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
 import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 import com.squareup.kotlinpoet.PropertySpec
 

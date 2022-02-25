@@ -1,11 +1,19 @@
-package com.attafitamim.mtproto.core.generator.specs
+package com.attafitamim.mtproto.core.generator.scheme.specs
 
 import kotlin.reflect.KClass
 
 sealed interface MTTypeSpec {
 
-    data class Local(
+    object Type : MTTypeSpec
+
+    data class Primitive(
         val clazz: KClass<out Any>
+    ) : MTTypeSpec
+
+    data class Object(
+        val namespace: String?,
+        val name: String,
+        val generics: List<Generic>?
     ) : MTTypeSpec
 
     sealed interface Structure : MTTypeSpec {
@@ -15,12 +23,6 @@ sealed interface MTTypeSpec {
             val elementGeneric: Generic
         ) : Structure
     }
-
-    data class Object(
-        val namespace: String?,
-        val name: String,
-        val generics: List<Generic>?
-    ) : MTTypeSpec
 
     sealed interface Generic : MTTypeSpec {
 

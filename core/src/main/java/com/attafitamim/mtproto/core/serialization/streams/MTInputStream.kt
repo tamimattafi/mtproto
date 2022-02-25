@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.core.stream
+package com.attafitamim.mtproto.core.serialization.streams
 
 interface MTInputStream {
     fun readByte(): Byte

@@ -4,9 +4,6 @@ import com.squareup.kotlinpoet.*
 import java.util.*
 import kotlin.reflect.KClass
 
-val KClass<*>.asParamterName: String
-    get() = titleToCamelCase(simpleName ?: java.simpleName)
-
 fun TypeSpec.Builder.addPrimaryConstructor(properties: List<PropertySpec>): TypeSpec.Builder {
     val propertySpecs = properties.map { property ->
         property.toBuilder().initializer(property.name).build()

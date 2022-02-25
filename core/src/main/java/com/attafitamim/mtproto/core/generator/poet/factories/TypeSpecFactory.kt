@@ -1,15 +1,15 @@
-package com.attafitamim.mtproto.core.generator.classes
+package com.attafitamim.mtproto.core.generator.poet.factories
 
 import com.attafitamim.mtproto.core.exceptions.MTObjectParseException
-import com.attafitamim.mtproto.core.generator.constants.*
-import com.attafitamim.mtproto.core.generator.specs.MTObjectSpec
-import com.attafitamim.mtproto.core.generator.specs.MTPropertySpec
-import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.syntax.*
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.*
-import com.attafitamim.mtproto.core.objects.MTMethod
-import com.attafitamim.mtproto.core.objects.MTObject
-import com.attafitamim.mtproto.core.stream.MTInputStream
-import com.attafitamim.mtproto.core.stream.MTOutputStream
+import com.attafitamim.mtproto.core.types.MTMethod
+import com.attafitamim.mtproto.core.types.MTObject
+import com.attafitamim.mtproto.core.serialization.streams.MTInputStream
+import com.attafitamim.mtproto.core.serialization.streams.MTOutputStream
 import com.squareup.kotlinpoet.*
 import java.lang.Exception
 import java.lang.StringBuilder
@@ -22,13 +22,12 @@ class TypeSpecFactory(
 ) {
 
     fun createObjectSpec(
-        mtSuperObjectSpec: MTTypeSpec.Object,
+        superClassName: ClassName,
         mtVariantObjectSpecs: List<MTObjectSpec>
     ): TypeSpec {
-        val superClassName = typeNameFactory.createClassName(mtSuperObjectSpec)
-        val classTypeBuilder = TypeSpec.classBuilder(superClassName)
+        val classTypeBuilder = TypeSpec.interfaceBuilder(superClassName)
             .addModifiers(KModifier.SEALED)
-            .superclass(MTObject::class)
+            .addSuperinterface(MTObject::class)
 
         mtVariantObjectSpecs.forEach { mtObjectSpec ->
             val objectClass = createObjectSpec(superClassName, mtObjectSpec)
@@ -50,7 +49,7 @@ class TypeSpecFactory(
     ): TypeSpec {
         val className = typeNameFactory.createClassName(mtVariantObjectSpec.name, superClassName)
         val classBuilder = TypeSpec.classBuilder(className)
-            .superclass(superClassName)
+            .addSuperinterface(superClassName)
 
         val objectProperties = mtVariantObjectSpec.propertiesSpecs?.map { mtPropertySpec ->
             propertySpecFactory.createPropertySpec(mtPropertySpec)
@@ -92,7 +91,7 @@ class TypeSpecFactory(
         val hashConstantName = hashParameterName.uppercase()
 
         val functionBuilder = FunSpec.builder(MTMethod<*>::parse.name)
-            .addParameter(inputStreamClass.asParamterName, inputStreamClass)
+            .addParameter(INPUT_STREAM_NAME, inputStreamClass)
             .addParameter(hashParameterName, Int::class)
             .returns(superClassName)
 
@@ -160,11 +159,11 @@ class TypeSpecFactory(
             hashParameterName,
             EQUAL_SIGN,
             hashConstantName,
-            PACKAGE_SEPARATOR
+            PARAMETER_CLOSE_PARENTHESIS
         ).toString()
 
         val functionBuilder = FunSpec.builder(MTMethod<*>::parse.name)
-            .addParameter(inputStreamClass.asParamterName, inputStreamClass)
+            .addParameter(INPUT_STREAM_NAME, inputStreamClass)
             .addParameter(MTObject::hash.name, Int::class)
             .addStatement(hashValidationStatement)
             .returns(returnType)
@@ -186,11 +185,8 @@ class TypeSpecFactory(
     private fun createObjectSerializeFunctionSpec(
         mtVariantObjectSpec: MTObjectSpec
     ): FunSpec {
-        val bufferClassName = MTOutputStream::class.asClassName()
-        val bufferParameterName = titleToCamelCase(bufferClassName.simpleName)
-
         val functionBuilder = FunSpec.builder(MTObject::serialize.name)
-            .addParameter(bufferParameterName, bufferClassName)
+            .addParameter(OUTPUT_STREAM_NAME, MTOutputStream::class)
             .addModifiers(KModifier.OVERRIDE)
             .addLocalPropertySerializeStatement(MTObject::hash.name, Int::class)
 
@@ -230,7 +226,7 @@ class TypeSpecFactory(
         mtPropertySpec: MTPropertySpec,
         flag: Int
     ): FunSpec.Builder = this.apply {
-        val isBooleanProperty = mtPropertySpec.typeSpec is MTTypeSpec.Local &&
+        val isBooleanProperty = mtPropertySpec.typeSpec is MTTypeSpec.Primitive &&
                 mtPropertySpec.typeSpec.clazz == Boolean::class
 
         val flagCheckStatement = if (isBooleanProperty) mtPropertySpec.name
@@ -301,7 +297,7 @@ class TypeSpecFactory(
             is MTTypeSpec.Object -> addObjectSerializeStatement(name)
             is MTTypeSpec.Generic.Parameter -> addPropertySerializeStatement(name, typeSpec.type, isOptional)
             is MTTypeSpec.Generic.Variable -> addPropertySerializeStatement(name, typeSpec.superType, isOptional)
-            is MTTypeSpec.Local -> addLocalPropertySerializeStatement(name, typeSpec.clazz)
+            is MTTypeSpec.Primitive -> addLocalPropertySerializeStatement(name, typeSpec.clazz)
             is MTTypeSpec.Structure.Collection -> addCollectionSerializeStatement(name, typeSpec.elementGeneric)
         }
     }
@@ -326,10 +322,6 @@ class TypeSpecFactory(
         objectClassName: ClassName,
         flag: Int?
     ): FunSpec.Builder = this.apply {
-        if (flag != null) {
-
-        }
-
         val objectHashName = StringBuilder().append(
             name,
             camelToTitleCase(MTObject::hash.name)
@@ -472,7 +464,6 @@ class TypeSpecFactory(
             ).toString()
 
             addStatement(definitionStatement)
-
             val flagPosition = 2.0.pow(flag).toInt()
             val flagCheckStatement = StringBuilder().append(
                 IF_KEYWORD,
@@ -487,7 +478,6 @@ class TypeSpecFactory(
             ).toString()
 
             beginControlFlow(flagCheckStatement)
-
             val assignStatement = StringBuilder().append(
                 name,
                 INITIALIZATION_SIGN,

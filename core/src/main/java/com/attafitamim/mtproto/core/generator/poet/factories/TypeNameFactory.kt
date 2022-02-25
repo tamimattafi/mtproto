@@ -1,10 +1,10 @@
-package com.attafitamim.mtproto.core.generator.classes
+package com.attafitamim.mtproto.core.generator.poet.factories
 
-import com.attafitamim.mtproto.core.generator.constants.GLOBAL_NAMESPACE
-import com.attafitamim.mtproto.core.generator.constants.PACKAGE_SEPARATOR
-import com.attafitamim.mtproto.core.generator.constants.TYPES_FOLDER_NAME
-import com.attafitamim.mtproto.core.generator.constants.TYPES_PREFIX
-import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.syntax.GLOBAL_NAMESPACE
+import com.attafitamim.mtproto.core.generator.syntax.PACKAGE_SEPARATOR
+import com.attafitamim.mtproto.core.generator.syntax.TYPES_FOLDER_NAME
+import com.attafitamim.mtproto.core.generator.syntax.TYPES_PREFIX
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
@@ -19,9 +19,10 @@ class TypeNameFactory(private val basePackage: String) {
     fun createTypeName(mtTypeSpec: MTTypeSpec): TypeName
         = when(mtTypeSpec) {
             is MTTypeSpec.Generic -> mtTypeSpec.toTypeName()
-            is MTTypeSpec.Local -> mtTypeSpec.clazz.asTypeName()
+            is MTTypeSpec.Primitive -> mtTypeSpec.clazz.asTypeName()
             is MTTypeSpec.Object -> mtTypeSpec.toTypeName()
             is MTTypeSpec.Structure -> mtTypeSpec.toTypeName()
+            MTTypeSpec.Type -> Any::class.asTypeName()
         }
 
     fun createClassName(mtObjectSpec: MTTypeSpec.Object): ClassName {
@@ -67,11 +68,8 @@ class TypeNameFactory(private val basePackage: String) {
     }
 
     private fun MTTypeSpec.Structure.Collection.toTypeName(): TypeName {
-        val className = clazz.asTypeName()
-        return if (elementGeneric != null) {
-            val genericParameter = elementGeneric.toTypeName()
-            className.parameterizedBy(genericParameter)
-        } else className
+        val genericParameter = elementGeneric.toTypeName()
+        return clazz.asTypeName().parameterizedBy(genericParameter)
     }
 
     private fun MTTypeSpec.Object.toTypeName(): TypeName {

@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.core.generator.constants
+package com.attafitamim.mtproto.core.generator.syntax
 
 // Separators
 const val KEYWORD_SEPARATOR = " "

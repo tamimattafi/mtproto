@@ -1,20 +1,17 @@
-package com.attafitamim.mtproto.core.generator.parsers
+package com.attafitamim.mtproto.core.generator.scheme.parsers
 
-import com.attafitamim.mtproto.core.generator.specs.MTPropertySpec
-import com.attafitamim.mtproto.core.generator.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.syntax.*
 
 object MTPropertyParser {
-
-    private const val PROPERTY_FLAG_PREFIX = "flags."
-    private const val PROPERTY_FLAG_SEPARATOR = "?"
-    private const val PROPERTY_TYPE_SEPARATOR = ":"
 
     fun parseProperty(
         propertyScheme: String,
         genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
     ): MTPropertySpec {
-        val name = propertyScheme.substringBefore(PROPERTY_TYPE_SEPARATOR)
-        val typeDescription = propertyScheme.substringAfter(PROPERTY_TYPE_SEPARATOR)
+        val name = propertyScheme.substringBefore(TYPE_INDICATOR)
+        val typeDescription = propertyScheme.substringAfter(TYPE_INDICATOR)
 
         var flag: Int? = null
         val type: String
@@ -30,9 +27,9 @@ object MTPropertyParser {
     }
 
     private fun parseTypeFlag(typeString: String): Int {
-        val flagString = typeString.substringAfter(PROPERTY_FLAG_PREFIX).substringBefore(
-            PROPERTY_FLAG_SEPARATOR
-        )
+        val flagString = typeString.substringAfter(PROPERTY_FLAG_PREFIX)
+            .substringBefore(PROPERTY_FLAG_SEPARATOR)
+
         return flagString.toInt()
     }
 }
