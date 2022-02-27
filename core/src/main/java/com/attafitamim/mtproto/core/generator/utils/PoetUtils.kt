@@ -2,7 +2,6 @@ package com.attafitamim.mtproto.core.generator.utils
 
 import com.squareup.kotlinpoet.*
 import java.util.*
-import kotlin.reflect.KClass
 
 fun TypeSpec.Builder.addPrimaryConstructor(properties: List<PropertySpec>): TypeSpec.Builder {
     val propertySpecs = properties.map { property ->

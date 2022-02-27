@@ -4,6 +4,8 @@ import com.attafitamim.mtproto.core.generator.syntax.*
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
+import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 import org.gradle.api.GradleException
 
 object MTObjectParser {
@@ -33,7 +35,7 @@ object MTObjectParser {
             genericVariables = HashMap()
             objectScheme.substringAfter(GENERIC_VARIABLE_OPENING_BRACKET)
                 .substringBefore(GENERIC_VARIABLE_CLOSING_BRACKET)
-                .split(",")
+                .split(GENERIC_SEPARATOR)
                 .forEach { genericScheme ->
                     val variable = MTTypeParser.parseGenericVariable(
                         genericScheme,
@@ -69,10 +71,11 @@ object MTObjectParser {
             .trim()
 
         val superTypeSpec = MTTypeParser.parseMTObject(superType, genericVariables)
+        val formattedName = snakeToTitleCase(name)
 
         return MTObjectSpec(
             objectScheme,
-            name,
+            formattedName,
             namespace,
             superTypeSpec,
             hash,

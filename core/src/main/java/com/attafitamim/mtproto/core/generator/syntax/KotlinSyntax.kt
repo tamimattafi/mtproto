@@ -21,7 +21,7 @@ const val NULLABLE_SIGN = "?"
 // Keywords
 const val RETURN_KEYWORD = "return"
 const val WHEN_KEYWORD = "when"
-const val IF_KEYWORD = "when"
+const val IF_KEYWORD = "if"
 const val ELSE_KEYWORD = "else"
 const val THROW_KEYWORD = "throw"
 const val CLASS_KEYWORD = "class"

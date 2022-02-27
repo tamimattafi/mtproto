@@ -14,7 +14,7 @@ fun snakeToCamelCase(string: String): String {
         } else if (!Character.isLetter(c) && !Character.isDigit(c)) {
             hadWhiteSpace = true
         } else {
-            builder.append(Character.toLowerCase(c))
+            builder.append(c)
         }
     }
 

@@ -6,6 +6,8 @@ import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.*
+import com.attafitamim.mtproto.core.serialization.helpers.getTypeParseMethod
+import com.attafitamim.mtproto.core.serialization.helpers.getTypeSerializeMethod
 import com.attafitamim.mtproto.core.types.MTMethod
 import com.attafitamim.mtproto.core.types.MTObject
 import com.attafitamim.mtproto.core.serialization.streams.MTInputStream
@@ -86,12 +88,11 @@ class TypeSpecFactory(
         superClassName: ClassName,
         mtVariantObjectSpecs: List<MTObjectSpec>
     ): TypeSpec.Builder = this.apply {
-        val inputStreamClass = MTInputStream::class
         val hashParameterName = MTObject::hash.name
         val hashConstantName = hashParameterName.uppercase()
 
         val functionBuilder = FunSpec.builder(MTMethod<*>::parse.name)
-            .addParameter(INPUT_STREAM_NAME, inputStreamClass)
+            .addParameter(INPUT_STREAM_NAME, MTInputStream::class)
             .addParameter(hashParameterName, Int::class)
             .returns(superClassName)
 
@@ -116,7 +117,7 @@ class TypeSpecFactory(
                 INSTANCE_ACCESS_KEY,
                 MTMethod<*>::parse.name,
                 PARAMETER_OPEN_PARENTHESIS,
-                inputStreamClass,
+                INPUT_STREAM_NAME,
                 PARAMETER_SEPARATOR,
                 hashParameterName,
                 PARAMETER_CLOSE_PARENTHESIS
@@ -226,15 +227,15 @@ class TypeSpecFactory(
         mtPropertySpec: MTPropertySpec,
         flag: Int
     ): FunSpec.Builder = this.apply {
-        val isBooleanProperty = mtPropertySpec.typeSpec is MTTypeSpec.Primitive &&
-                mtPropertySpec.typeSpec.clazz == Boolean::class
-
-        val flagCheckStatement = if (isBooleanProperty) mtPropertySpec.name
-        else StringBuilder().append(
-            mtPropertySpec.name,
-            NOT_EQUAL_SIGN,
-            NULL_KEYWORD
-        ).toString()
+        val flagCheckStatement = if (mtPropertySpec.typeSpec == MTTypeSpec.Flag) {
+            mtPropertySpec.name
+        } else {
+            StringBuilder().append(
+                mtPropertySpec.name,
+                NOT_EQUAL_SIGN,
+                NULL_KEYWORD
+            ).toString()
+        }
 
         val flagPosition = 2.0.pow(flag).toInt()
         val flaggingStatement = StringBuilder().append(
@@ -255,6 +256,7 @@ class TypeSpecFactory(
             ELSE_KEYWORD,
             KEYWORD_SEPARATOR,
             PARAMETER_OPEN_PARENTHESIS,
+            FLAGS_PROPERTY_NAME,
             AND_KEYWORD,
             flagPosition,
             INSTANCE_ACCESS_KEY,
@@ -299,6 +301,8 @@ class TypeSpecFactory(
             is MTTypeSpec.Generic.Variable -> addPropertySerializeStatement(name, typeSpec.superType, isOptional)
             is MTTypeSpec.Primitive -> addLocalPropertySerializeStatement(name, typeSpec.clazz)
             is MTTypeSpec.Structure.Collection -> addCollectionSerializeStatement(name, typeSpec.elementGeneric)
+            is MTTypeSpec.Flag -> { /* Do not serialize to stream */}
+            is MTTypeSpec.Type -> { /* TODO: use generic serializer */ }
         }
     }
 
@@ -361,23 +365,14 @@ class TypeSpecFactory(
         type: KClass<*>,
         flag: Int? = null
     ): FunSpec.Builder = this.apply {
-        val serializeMethod = when(type) {
-            Boolean::class -> MTOutputStream::writeBoolean
-            Byte::class -> MTOutputStream::writeByte
-            Int::class -> MTOutputStream::writeInt
-            Long::class -> MTOutputStream::writeLong
-            Double::class -> MTOutputStream::writeDouble
-            String::class -> MTOutputStream::writeString
-            ByteArray::class -> MTOutputStream::writeByteArray
-            MTInputStream::class -> MTOutputStream::writeInputStream
-            else -> throw Exception()
-        }
+        val serializeMethod = getTypeSerializeMethod(type)
 
         val serializeStatement = StringBuilder().append(
-            INPUT_STREAM_NAME,
+            OUTPUT_STREAM_NAME,
             INSTANCE_ACCESS_KEY,
             serializeMethod.name,
             PARAMETER_OPEN_PARENTHESIS,
+            name,
             PARAMETER_CLOSE_PARENTHESIS
         ).toString()
 
@@ -416,17 +411,7 @@ class TypeSpecFactory(
         type: KClass<*>,
         flag: Int? = null
     ): FunSpec.Builder = this.apply {
-        val parseMethod = when(type) {
-            Boolean::class -> MTInputStream::readBoolean
-            Byte::class -> MTInputStream::readByte
-            Int::class -> MTInputStream::readInt
-            Long::class -> MTInputStream::readLong
-            Double::class -> MTInputStream::readDouble
-            String::class -> MTInputStream::readString
-            ByteArray::class -> MTInputStream::readByteArray
-            MTInputStream::class -> MTInputStream::readInputStream
-            else -> throw Exception()
-        }
+        val parseMethod = getTypeParseMethod(type)
 
         val parseStatement = StringBuilder().append(
             INPUT_STREAM_NAME,

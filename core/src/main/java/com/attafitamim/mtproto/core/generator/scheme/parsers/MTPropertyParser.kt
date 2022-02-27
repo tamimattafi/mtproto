@@ -3,6 +3,7 @@ package com.attafitamim.mtproto.core.generator.scheme.parsers
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
 import com.attafitamim.mtproto.core.generator.syntax.*
+import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 
 object MTPropertyParser {
 
@@ -23,7 +24,8 @@ object MTPropertyParser {
         }
 
         val propertyTypeSpec = MTTypeParser.parseType(type, genericVariables)
-        return MTPropertySpec(propertyScheme, name, flag, propertyTypeSpec)
+        val formattedName = snakeToCamelCase(name)
+        return MTPropertySpec(propertyScheme, formattedName, flag, propertyTypeSpec)
     }
 
     private fun parseTypeFlag(typeString: String): Int {

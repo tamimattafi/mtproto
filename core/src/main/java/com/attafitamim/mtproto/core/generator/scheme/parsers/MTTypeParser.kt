@@ -2,6 +2,8 @@ package com.attafitamim.mtproto.core.generator.scheme.parsers
 
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
 import com.attafitamim.mtproto.core.generator.syntax.*
+import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
+import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 
 object MTTypeParser {
 
@@ -13,7 +15,8 @@ object MTTypeParser {
         val typeDescription = genericScheme.substringAfter(TYPE_INDICATOR)
 
         val superTypeSpec = parseType(typeDescription, genericVariables)
-        return MTTypeSpec.Generic.Variable(name, superTypeSpec)
+        val formattedName = name.uppercase()
+        return MTTypeSpec.Generic.Variable(formattedName, superTypeSpec)
     }
 
     fun parseMTObject(
@@ -40,7 +43,8 @@ object MTTypeParser {
             name = name.substringAfterLast(NAMESPACE_SEPARATOR)
         }
 
-        return MTTypeSpec.Object(namespace, name, generics)
+        val formattedName = snakeToTitleCase(name)
+        return MTTypeSpec.Object(namespace, formattedName, generics)
     }
 
     fun parseType(
@@ -60,6 +64,9 @@ object MTTypeParser {
 
         // is a Type (Any)
         typeScheme == ANY_TYPE_SIGNATURE -> MTTypeSpec.Type
+
+        // is a true-flag (boolean)
+        typeScheme == FLAG_SIGNATURE -> MTTypeSpec.Flag
 
         // is a list of types
         typeScheme.startsWith(LIST_OPENING_BRACKET) && typeScheme.endsWith(LIST_CLOSING_BRACKET) -> {

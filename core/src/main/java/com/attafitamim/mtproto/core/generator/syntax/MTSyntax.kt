@@ -37,12 +37,12 @@ const val INPUT_STREAM_NAME = "inputStream"
 const val OUTPUT_STREAM_NAME = "outputStream"
 
 const val ANY_TYPE_SIGNATURE = "Type"
+const val FLAG_SIGNATURE = "true"
 
 val primitiveTypes = mapOf(
     "string" to String::class,
     "int" to Int::class,
     "long" to Long::class,
-    "true" to Boolean::class,
     "boolean" to Boolean::class,
     "bool" to Boolean::class,
     "double" to Double::class,

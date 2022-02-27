@@ -6,6 +6,8 @@ sealed interface MTTypeSpec {
 
     object Type : MTTypeSpec
 
+    object Flag : MTTypeSpec
+
     data class Primitive(
         val clazz: KClass<out Any>
     ) : MTTypeSpec

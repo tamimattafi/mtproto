@@ -23,6 +23,7 @@ class TypeNameFactory(private val basePackage: String) {
             is MTTypeSpec.Object -> mtTypeSpec.toTypeName()
             is MTTypeSpec.Structure -> mtTypeSpec.toTypeName()
             MTTypeSpec.Type -> Any::class.asTypeName()
+            MTTypeSpec.Flag -> Boolean::class.asTypeName()
         }
 
     fun createClassName(mtObjectSpec: MTTypeSpec.Object): ClassName {
