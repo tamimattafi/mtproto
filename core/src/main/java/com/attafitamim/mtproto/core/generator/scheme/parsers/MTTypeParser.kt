@@ -86,7 +86,8 @@ object MTTypeParser {
         genericScheme: String,
         genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
     ): MTTypeSpec.Generic {
-        val genericVariable = genericVariables?.get(genericScheme)
+        val genericName = genericScheme.uppercase()
+        val genericVariable = genericVariables?.get(genericName)
         if (genericVariable != null) return genericVariable
 
         val typeSpec = parseType(genericScheme, genericVariables)

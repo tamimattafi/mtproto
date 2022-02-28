@@ -64,6 +64,11 @@ class TypeNameFactory(private val basePackage: String) {
         return createClassName(name, superClassName)
     }
 
+    fun createTypeVariableName(genericVariable: MTTypeSpec.Generic.Variable): TypeVariableName {
+        val typeBound = createTypeName(genericVariable.superType)
+        return TypeVariableName.invoke(genericVariable.name, typeBound)
+    }
+
     private fun MTTypeSpec.Structure.toTypeName(): TypeName = when(this) {
         is MTTypeSpec.Structure.Collection -> toTypeName()
     }
@@ -85,13 +90,8 @@ class TypeNameFactory(private val basePackage: String) {
     }
 
     private fun MTTypeSpec.Generic.toTypeName(): TypeName = when(this) {
-        is MTTypeSpec.Generic.Variable -> toTypeName()
+        is MTTypeSpec.Generic.Variable -> createTypeVariableName(this)
         is MTTypeSpec.Generic.Parameter -> toTypeName()
-    }
-
-    private fun MTTypeSpec.Generic.Variable.toTypeName(): TypeName {
-        val typeBound = createTypeName(superType)
-        return TypeVariableName.invoke(name, typeBound)
     }
 
     private fun MTTypeSpec.Generic.Parameter.toTypeName(): TypeName {

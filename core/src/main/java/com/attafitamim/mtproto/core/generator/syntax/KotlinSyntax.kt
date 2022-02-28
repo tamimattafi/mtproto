@@ -28,9 +28,11 @@ const val CLASS_KEYWORD = "class"
 const val VARIABLE_KEYWORD = "var"
 const val CONSTANT_KEYWORD = "val"
 const val NULL_KEYWORD = "null"
+const val IT_KEYWORD = "it"
 
 const val AND_KEYWORD = " and "
 const val OR_KEYWORD = " or "
 
 const val INVERT_METHOD = "inv()"
 const val REQUIRE_METHOD = "require"
+const val FOR_EACH_METHOD = "forEach"
