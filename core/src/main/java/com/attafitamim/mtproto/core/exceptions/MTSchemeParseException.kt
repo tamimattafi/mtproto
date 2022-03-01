@@ -1,0 +1,15 @@
+package com.attafitamim.mtproto.core.exceptions
+
+import org.gradle.api.GradleException
+
+internal class MTSchemeParseException(
+    private val rawScheme: String,
+    private val reason: String
+) : GradleException() {
+    override val message: String
+        get() = """
+            Error parsing scheme
+            Scheme: $rawScheme 
+            Reason: $reason
+        """.trimIndent()
+}

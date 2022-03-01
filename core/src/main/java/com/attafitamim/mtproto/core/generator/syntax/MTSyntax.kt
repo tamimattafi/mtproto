@@ -39,6 +39,9 @@ const val OUTPUT_STREAM_NAME = "outputStream"
 const val ANY_TYPE_SIGNATURE = "Type"
 const val FLAG_SIGNATURE = "true"
 
+const val DEFAULT_FLAG_VALUE = 0
+const val DEFAULT_FLAG_BASE = 2.0
+
 val primitiveTypes = mapOf(
     "string" to String::class,
     "int" to Int::class,

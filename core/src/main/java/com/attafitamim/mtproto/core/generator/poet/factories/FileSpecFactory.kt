@@ -14,7 +14,17 @@ class FileSpecFactory(
         mtVariantObjectSpecs: List<MTObjectSpec>
     ): FileSpec {
         val className = typeNameFactory.createClassName(superClassName)
-        val classTypeSpec = typeSpecFactory.createObjectSpec(className, mtVariantObjectSpecs)
+        val typeVariables = superClassName.generics?.mapNotNull { generic ->
+            if (generic is MTTypeSpec.Generic.Variable) typeNameFactory.createTypeVariableName(generic)
+            else null
+        }
+
+        val classTypeSpec = typeSpecFactory.createObjectSpec(
+            className,
+            typeVariables,
+            mtVariantObjectSpecs
+        )
+
         return FileSpec.builder(className.packageName, className.simpleName)
             .addType(classTypeSpec)
             .build()

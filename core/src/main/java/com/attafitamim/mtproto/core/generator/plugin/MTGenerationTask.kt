@@ -8,16 +8,16 @@ import org.gradle.api.tasks.TaskAction
 open class MTGenerationTask : DefaultTask() {
 
     @Input
-    var outputDir: String = "${project.buildDir}/generated/mtproto"
+    lateinit var outputDir: String
 
     @Input
-    var schemeFilesDir: String = "/schemes"
+    lateinit var schemeFilesDir: String
 
     @Input
-    var basePackage: String = "com.attafitamim.mtproto.core.generator"
+    lateinit var basePackage: String
 
     @TaskAction
     fun generate() {
-        MTGenerator(schemeFilesDir, basePackage, basePackage).startGeneration()
+        MTGenerator(schemeFilesDir, outputDir, basePackage).startGeneration()
     }
 }

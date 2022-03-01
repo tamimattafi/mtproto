@@ -33,7 +33,7 @@ gradlePlugin {
     plugins {
         create("MTGenerator") {
             id = "mtproto-generator"
-            implementationClass = "com.attafitamim.mtproto.core.generator.MTGenerator"
+            implementationClass = "com.attafitamim.mtproto.core.generator.plugin.MTGeneratorPlugin"
         }
     }
 }

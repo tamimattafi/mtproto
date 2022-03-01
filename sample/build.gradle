@@ -52,6 +52,7 @@ dependencies {
 tasks.generateProtoClasses {
     schemeFilesDir = "${projectDir.path}/schemes"
     basePackage = 'com.attafitamim.mtproto.sample'
+    outputDir = "${project.buildDir}/generated/mtproto"
 }
 
 gradle.projectsEvaluated {

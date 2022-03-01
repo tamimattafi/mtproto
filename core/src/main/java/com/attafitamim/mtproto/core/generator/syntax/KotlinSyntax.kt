@@ -17,6 +17,8 @@ const val EQUAL_SIGN = " == "
 const val NOT_EQUAL_SIGN = " != "
 const val TYPE_SIGN = ":"
 const val NULLABLE_SIGN = "?"
+const val GENERIC_OPEN_QUOTATION = "<"
+const val GENERIC_CLOSE_QUOTATION = ">"
 
 // Keywords
 const val RETURN_KEYWORD = "return"

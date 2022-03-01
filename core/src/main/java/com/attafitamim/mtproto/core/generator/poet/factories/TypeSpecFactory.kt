@@ -10,10 +10,9 @@ import com.attafitamim.mtproto.core.serialization.helpers.getTypeParseMethod
 import com.attafitamim.mtproto.core.serialization.helpers.getTypeSerializeMethod
 import com.attafitamim.mtproto.core.types.MTMethod
 import com.attafitamim.mtproto.core.types.MTObject
-import com.attafitamim.mtproto.core.serialization.streams.MTInputStream
 import com.attafitamim.mtproto.core.serialization.streams.MTOutputStream
 import com.squareup.kotlinpoet.*
-import java.lang.Exception
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import java.lang.StringBuilder
 import kotlin.math.pow
 import kotlin.reflect.KClass
@@ -25,19 +24,24 @@ class TypeSpecFactory(
 
     fun createObjectSpec(
         superClassName: ClassName,
+        superTypeVariables: List<TypeVariableName>?,
         mtVariantObjectSpecs: List<MTObjectSpec>
     ): TypeSpec {
         val classTypeBuilder = TypeSpec.interfaceBuilder(superClassName)
             .addModifiers(KModifier.SEALED)
             .addSuperinterface(MTObject::class)
 
+        if (superTypeVariables != null) {
+            classTypeBuilder.addTypeVariables(superTypeVariables)
+        }
+
         mtVariantObjectSpecs.forEach { mtObjectSpec ->
-            val objectClass = createObjectSpec(superClassName, mtObjectSpec)
+            val objectClass = createObjectSpec(superClassName, superTypeVariables, mtObjectSpec)
             classTypeBuilder.addType(objectClass)
         }
 
         val companionObjectBuilder = TypeSpec.companionObjectBuilder()
-            .addBaseObjectParseFunction(superClassName, mtVariantObjectSpecs)
+            .addBaseObjectParseFunction(superClassName, superTypeVariables, mtVariantObjectSpecs)
             .build()
 
         return classTypeBuilder
@@ -47,17 +51,22 @@ class TypeSpecFactory(
 
     private fun createObjectSpec(
         superClassName: ClassName,
+        superTypeVariables: List<TypeVariableName>?,
         mtVariantObjectSpec: MTObjectSpec
     ): TypeSpec {
+        val superInterfaceName = if (!superTypeVariables.isNullOrEmpty()) {
+            superClassName.parameterizedBy(superTypeVariables)
+        } else superClassName
+
         val className = typeNameFactory.createClassName(mtVariantObjectSpec.name, superClassName)
         val classBuilder = TypeSpec.classBuilder(className)
-            .addSuperinterface(superClassName)
+            .addSuperinterface(superInterfaceName)
 
-        if (!mtVariantObjectSpec.genericVariables.isNullOrEmpty()) {
-            val typeVariables = mtVariantObjectSpec.genericVariables
-                .values
-                .map(typeNameFactory::createTypeVariableName)
+        val typeVariables = mtVariantObjectSpec.genericVariables
+            ?.values
+            ?.map(typeNameFactory::createTypeVariableName)
 
+        if (!typeVariables.isNullOrEmpty()) {
             classBuilder.addTypeVariables(typeVariables)
         }
 
@@ -81,8 +90,12 @@ class TypeSpecFactory(
 
         val companionObjectBuilder = TypeSpec.companionObjectBuilder()
             .addProperty(hashConstant)
-            .addObjectParseFunction(mtVariantObjectSpec, className)
-            .build()
+            .addObjectParseFunction(
+                mtVariantObjectSpec,
+                objectProperties,
+                typeVariables,
+                className
+            ).build()
 
         val objectSerializeFunction = createObjectSerializeFunctionSpec(mtVariantObjectSpec)
         return classBuilder.addType(companionObjectBuilder)
@@ -94,15 +107,16 @@ class TypeSpecFactory(
 
     private fun TypeSpec.Builder.addBaseObjectParseFunction(
         superClassName: ClassName,
+        superTypeVariables: List<TypeVariableName>?,
         mtVariantObjectSpecs: List<MTObjectSpec>
     ): TypeSpec.Builder = this.apply {
         val hashParameterName = MTObject::hash.name
         val hashConstantName = hashParameterName.uppercase()
 
-        val functionBuilder = FunSpec.builder(MTMethod<*>::parse.name)
-            .addParameter(INPUT_STREAM_NAME, MTInputStream::class)
-            .addParameter(hashParameterName, Int::class)
-            .returns(superClassName)
+        val functionBuilder = MTMethod<*>::parse.asFun3Builder(
+            superTypeVariables,
+            superClassName
+        )
 
         val whenStatement = StringBuilder()
             .append(RETURN_KEYWORD)
@@ -156,9 +170,10 @@ class TypeSpecFactory(
 
     private fun TypeSpec.Builder.addObjectParseFunction(
         mtObjectSpec: MTObjectSpec,
+        propertySpecs: List<PropertySpec>?,
+        typeVariables: List<TypeVariableName>?,
         returnType: ClassName
     ): TypeSpec.Builder = this.apply {
-        val inputStreamClass = MTInputStream::class
         val hashParameterName = MTObject::hash.name
         val hashConstantName = hashParameterName.uppercase()
 
@@ -171,14 +186,11 @@ class TypeSpecFactory(
             PARAMETER_CLOSE_PARENTHESIS
         ).toString()
 
-        val functionBuilder = FunSpec.builder(MTMethod<*>::parse.name)
-            .addParameter(INPUT_STREAM_NAME, inputStreamClass)
-            .addParameter(MTObject::hash.name, Int::class)
+        val functionBuilder = MTMethod<*>::parse.asFun3Builder(typeVariables, returnType)
             .addStatement(hashValidationStatement)
-            .returns(returnType)
 
         if (mtObjectSpec.hasFlags) {
-            functionBuilder.addFlagReadingStatement()
+            functionBuilder.addLocalPropertyParseStatement(FLAGS_PROPERTY_NAME, Int::class)
         }
 
         mtObjectSpec.propertiesSpecs?.forEach { mtPropertySpec ->
@@ -189,8 +201,11 @@ class TypeSpecFactory(
             )
         }
 
-        functionBuilder.addObjectReturnStatement(mtObjectSpec, returnType)
-        val functionSpec = functionBuilder.build()
+        val functionSpec = functionBuilder.addReturnConstructorStatement(
+            returnType,
+            propertySpecs,
+            typeVariables
+        ).build()
 
         addFunction(functionSpec)
     }
@@ -248,7 +263,7 @@ class TypeSpecFactory(
             ).toString()
         }
 
-        val flagPosition = 2.0.pow(flag).toInt()
+        val flagPosition = DEFAULT_FLAG_BASE.pow(flag).toInt()
         val flaggingStatement = StringBuilder().append(
             FLAGS_PROPERTY_NAME,
             INITIALIZATION_SIGN,
@@ -278,25 +293,6 @@ class TypeSpecFactory(
         addStatement(flaggingStatement)
     }
 
-    fun FunSpec.Builder.addFlagReadingStatement(): FunSpec.Builder = this.apply {
-
-    }
-
-    fun FunSpec.Builder.addObjectReturnStatement(
-        tlObjectSpecs: MTObjectSpec,
-        returnType: ClassName
-    ) : FunSpec.Builder = this.apply {
-        addStatement("")
-        addStatement("return ${returnType.simpleName}(")
-
-        tlObjectSpecs.propertiesSpecs?.forEach { tlPropertySpecs ->
-            val formattedPropertyName = snakeToCamelCase(tlPropertySpecs.name)
-            addStatement("$formattedPropertyName,")
-        }
-
-        addStatement(")")
-    }
-
     private fun FunSpec.Builder.addPropertySerializeStatement(
         name: String,
         typeSpec: MTTypeSpec,
@@ -308,8 +304,8 @@ class TypeSpecFactory(
             is MTTypeSpec.Generic.Variable -> addPropertySerializeStatement(name, typeSpec.superType, flag)
             is MTTypeSpec.Primitive -> addLocalPropertySerializeStatement(name, typeSpec.clazz, flag)
             is MTTypeSpec.Structure.Collection -> addCollectionSerializeStatement(name, typeSpec.elementGeneric, flag)
-            is MTTypeSpec.Flag -> { /* Do not serialize to stream */}
-            is MTTypeSpec.Type -> { /* TODO: use generic serializer */ }
+            MTTypeSpec.Flag -> { /* Do not serialize to stream */}
+            MTTypeSpec.Type -> { /* TODO: use generic serializer */ }
         }
     }
 
@@ -324,9 +320,38 @@ class TypeSpecFactory(
             is MTTypeSpec.Generic.Variable -> addPropertyParseStatement(name, typeSpec.superType, flag)
             is MTTypeSpec.Primitive -> addLocalPropertyParseStatement(name, typeSpec.clazz, flag)
             is MTTypeSpec.Structure.Collection -> addCollectionParseStatement(name, typeSpec.elementGeneric, flag)
-            is MTTypeSpec.Flag -> { /* Do not serialize to stream */}
-            is MTTypeSpec.Type -> { /* TODO: use generic serializer */ }
+            MTTypeSpec.Flag -> addFlagParseStatement(name, requireNotNull(flag))
+            MTTypeSpec.Type -> { /* TODO: use generic parser */ }
         }
+    }
+
+    private fun FunSpec.Builder.addFlagParseStatement(
+        name: String,
+        position: Int
+    ): FunSpec.Builder = this.apply {
+        val flagPosition = DEFAULT_FLAG_BASE.pow(position).toInt()
+        val flagCheckStatement = StringBuilder().append(
+            PARAMETER_OPEN_PARENTHESIS,
+            FLAGS_PROPERTY_NAME,
+            AND_KEYWORD,
+            flagPosition,
+            PARAMETER_CLOSE_PARENTHESIS,
+            NOT_EQUAL_SIGN,
+            DEFAULT_FLAG_VALUE
+        ).toString()
+
+        val initializationStatement = StringBuilder().append(
+            CONSTANT_KEYWORD,
+            KEYWORD_SEPARATOR,
+            name,
+            TYPE_SIGN,
+            KEYWORD_SEPARATOR,
+            TYPE_CONCAT_INDICATOR,
+            INITIALIZATION_SIGN,
+            flagCheckStatement
+        ).toString()
+
+        addStatement(initializationStatement, Boolean::class)
     }
 
     private fun FunSpec.Builder.addObjectSerializeStatement(
@@ -350,27 +375,35 @@ class TypeSpecFactory(
         typeSpec: MTTypeSpec.Object,
         flag: Int?
     ): FunSpec.Builder = this.apply {
-        val objectClassName = typeNameFactory.createClassName(typeSpec)
-        addParseFlagCheckStatement(name, objectClassName, flag) {
-            val objectHashName = StringBuilder().append(
-                name,
-                camelToTitleCase(MTObject::hash.name)
-            ).toString()
-
-            addLocalPropertyParseStatement(objectHashName, Int::class)
-            val objectParseStatement = StringBuilder().append(
-                objectClassName.simpleName,
-                INSTANCE_ACCESS_KEY,
-                MTMethod<*>::parse.name,
-                PARAMETER_OPEN_PARENTHESIS,
-                OUTPUT_STREAM_NAME,
-                PARAMETER_SEPARATOR,
-                objectHashName,
-                PARAMETER_CLOSE_PARENTHESIS
-            ).toString()
-
-            addStatement(objectParseStatement)
+        val genericTypes = typeSpec.generics?.map { generic ->
+            typeNameFactory.createTypeName(generic)
         }
+
+        val objectClassName = typeNameFactory.createClassName(typeSpec)
+        val hashParseStatement = getParseStatement(Int::class)
+
+        val functionSpec = MTMethod<*>::parse.asFun3Builder(
+            genericTypes,
+            objectClassName
+        ).build()
+
+        val objectParseStatement = createFunctionCallStatement(
+            TYPE_CONCAT_INDICATOR,
+            INPUT_STREAM_NAME,
+            hashParseStatement
+        )
+
+        val objectTypeName = if (!genericTypes.isNullOrEmpty()) {
+            objectClassName.parameterizedBy(genericTypes)
+        } else objectClassName
+
+        addPropertyParseStatement(
+            name,
+            objectTypeName,
+            objectParseStatement,
+            functionSpec,
+            flag
+        )
     }
 
     private fun FunSpec.Builder.addCollectionSerializeStatement(
@@ -455,75 +488,40 @@ class TypeSpecFactory(
         }
     }
 
-    private fun FunSpec.Builder.addParseFlagCheckStatement(
-        name: String,
-        className: ClassName,
-        flag: Int?,
-        action: FunSpec.Builder.() -> FunSpec.Builder
-    ): FunSpec.Builder = this.apply {
-        if (flag != null) {
-            val definitionStatement = StringBuilder().append(
-                VARIABLE_KEYWORD,
-                KEYWORD_SEPARATOR,
-                name,
-                TYPE_SIGN,
-                KEYWORD_SEPARATOR,
-                className.simpleName,
-                NULLABLE_SIGN,
-                INITIALIZATION_SIGN,
-                NULL_KEYWORD
-            ).toString()
-
-            addStatement(definitionStatement)
-            val flagPosition = 2.0.pow(flag).toInt()
-            val flagCheckStatement = StringBuilder().append(
-                IF_KEYWORD,
-                PARAMETER_OPEN_PARENTHESIS,
-                PARAMETER_OPEN_PARENTHESIS,
-                FLAGS_PROPERTY_NAME,
-                AND_KEYWORD,
-                flagPosition,
-                PARAMETER_CLOSE_PARENTHESIS,
-                NOT_EQUAL_SIGN,
-                0,
-                PARAMETER_CLOSE_PARENTHESIS
-            ).toString()
-
-            beginControlFlow(flagCheckStatement)
-            action()
-            endControlFlow()
-        } else {
-            action()
-        }
-    }
-
     private fun FunSpec.Builder.addLocalPropertyParseStatement(
         name: String,
         type: KClass<*>,
         flag: Int? = null
     ): FunSpec.Builder = this.apply {
+        val parseStatement = createFunctionCallStatement(INPUT_STREAM_NAME)
+        val functionSpec = getTypeParseMethod(type).asFun1Builder().build()
+
+        addPropertyParseStatement(
+            name,
+            type.asClassName(),
+            parseStatement,
+            functionSpec,
+            flag
+        )
+    }
+
+    private fun getParseStatement(type: KClass<*>): String {
         val parseMethod = getTypeParseMethod(type)
 
-        val parseStatement = StringBuilder().append(
+        return StringBuilder().append(
             INPUT_STREAM_NAME,
             INSTANCE_ACCESS_KEY,
             parseMethod.name,
             PARAMETER_OPEN_PARENTHESIS,
             PARAMETER_CLOSE_PARENTHESIS
         ).toString()
-
-        addPropertyParseStatement(
-            name,
-            type.asClassName(),
-            parseStatement,
-            flag
-        )
     }
 
     private fun FunSpec.Builder.addPropertyParseStatement(
         name: String,
-        className: ClassName,
+        typeName: TypeName,
         parseStatement: String,
+        parseFunSpec: FunSpec,
         flag: Int? = null
     ): FunSpec.Builder = this.apply {
         if (flag != null) {
@@ -533,14 +531,15 @@ class TypeSpecFactory(
                 name,
                 TYPE_SIGN,
                 KEYWORD_SEPARATOR,
-                className.simpleName,
+                TYPE_CONCAT_INDICATOR,
                 NULLABLE_SIGN,
                 INITIALIZATION_SIGN,
                 NULL_KEYWORD
             ).toString()
 
-            addStatement(definitionStatement)
-            val flagPosition = 2.0.pow(flag).toInt()
+            addStatement(definitionStatement, typeName)
+
+            val flagPosition = DEFAULT_FLAG_BASE.pow(flag).toInt()
             val flagCheckStatement = StringBuilder().append(
                 IF_KEYWORD,
                 PARAMETER_OPEN_PARENTHESIS,
@@ -550,7 +549,7 @@ class TypeSpecFactory(
                 flagPosition,
                 PARAMETER_CLOSE_PARENTHESIS,
                 NOT_EQUAL_SIGN,
-                0,
+                DEFAULT_FLAG_VALUE,
                 PARAMETER_CLOSE_PARENTHESIS
             ).toString()
 
@@ -561,7 +560,7 @@ class TypeSpecFactory(
                 parseStatement
             ).toString()
 
-            addStatement(assignStatement)
+            addStatement(assignStatement, typeName, parseFunSpec)
             endControlFlow()
         } else {
             val initializationStatement = StringBuilder().append(
@@ -570,12 +569,12 @@ class TypeSpecFactory(
                 name,
                 TYPE_SIGN,
                 KEYWORD_SEPARATOR,
-                className.simpleName,
+                TYPE_CONCAT_INDICATOR,
                 INITIALIZATION_SIGN,
                 parseStatement
             ).toString()
 
-            addStatement(initializationStatement)
+            addStatement(initializationStatement, typeName, parseFunSpec)
         }
     }
 }
