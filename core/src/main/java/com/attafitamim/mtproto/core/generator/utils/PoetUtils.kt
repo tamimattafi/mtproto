@@ -1,8 +1,6 @@
 package com.attafitamim.mtproto.core.generator.utils
 
 import com.attafitamim.mtproto.core.generator.syntax.*
-import com.attafitamim.mtproto.core.serialization.streams.MTInputStream
-import com.attafitamim.mtproto.core.types.MTMethod
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import java.util.*
@@ -30,7 +28,7 @@ fun TypeSpec.Builder.addPrimaryConstructor(properties: List<PropertySpec>): Type
 }
 
 fun createConstantPropertySpec(name: String, value: Any): PropertySpec {
-    val constantName = name.uppercase(Locale.ROOT)
+    val constantName = camelToSnakeCase(name).uppercase(Locale.ROOT)
     return PropertySpec.builder(constantName, value::class)
         .mutable(false)
         .addModifiers(KModifier.CONST)
@@ -74,13 +72,14 @@ fun KFunction1<*, *>.asFun1Builder(): FunSpec.Builder
 
 fun createFunctionCallStatement(
     parentName: String,
+    functionName: String,
     vararg parameters: String
 ): String {
     val builder = StringBuilder()
         .append(
             parentName,
             INSTANCE_ACCESS_KEY,
-            FUNCTION_CONCAT_INDICATOR,
+            functionName,
             PARAMETER_OPEN_PARENTHESIS
         )
 
@@ -97,7 +96,7 @@ fun createFunctionCallStatement(
         .toString()
 }
 
-fun createCostructorCallStatement(vararg properties: List<String>?): String {
+fun createCostructorCallStatement(properties: List<String>?): String {
     val builder = StringBuilder()
         .append(TYPE_CONCAT_INDICATOR, PARAMETER_OPEN_PARENTHESIS)
 

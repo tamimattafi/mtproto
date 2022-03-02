@@ -79,11 +79,11 @@ class TypeSpecFactory(
             .addModifiers(KModifier.DATA)
 
         val hashConstant = createConstantPropertySpec(
-            mtVariantObjectSpec::hash.name,
-            mtVariantObjectSpec.hash
+            mtVariantObjectSpec::constructorHash.name,
+            mtVariantObjectSpec.constructorHash
         )
 
-        val hashPropertySpec = PropertySpec.builder(MTObjectSpec::hash.name, Int::class)
+        val hashPropertySpec = PropertySpec.builder(MTObjectSpec::constructorHash.name, Int::class)
             .addModifiers(KModifier.OVERRIDE)
             .initializer("%L", hashConstant.name)
             .build()
@@ -110,8 +110,8 @@ class TypeSpecFactory(
         superTypeVariables: List<TypeVariableName>?,
         mtVariantObjectSpecs: List<MTObjectSpec>
     ): TypeSpec.Builder = this.apply {
-        val hashParameterName = MTObject::hash.name
-        val hashConstantName = hashParameterName.uppercase()
+        val hashParameterName = MTObject::constructorHash.name
+        val hashConstantName = camelToSnakeCase(hashParameterName).uppercase()
 
         val functionBuilder = MTMethod<*>::parse.asFun3Builder(
             superTypeVariables,
@@ -174,8 +174,8 @@ class TypeSpecFactory(
         typeVariables: List<TypeVariableName>?,
         returnType: ClassName
     ): TypeSpec.Builder = this.apply {
-        val hashParameterName = MTObject::hash.name
-        val hashConstantName = hashParameterName.uppercase()
+        val hashParameterName = MTObject::constructorHash.name
+        val hashConstantName = camelToSnakeCase(hashParameterName).uppercase()
 
         val hashValidationStatement = StringBuilder().append(
             REQUIRE_METHOD,
@@ -216,7 +216,7 @@ class TypeSpecFactory(
         val functionBuilder = FunSpec.builder(MTObject::serialize.name)
             .addParameter(OUTPUT_STREAM_NAME, MTOutputStream::class)
             .addModifiers(KModifier.OVERRIDE)
-            .addLocalPropertySerializeStatement(MTObject::hash.name, Int::class)
+            .addLocalPropertySerializeStatement(MTObject::constructorHash.name, Int::class)
 
         if (mtVariantObjectSpec.hasFlags) {
             val flagsInitializationStatement = StringBuilder().append(
@@ -382,13 +382,9 @@ class TypeSpecFactory(
         val objectClassName = typeNameFactory.createClassName(typeSpec)
         val hashParseStatement = getParseStatement(Int::class)
 
-        val functionSpec = MTMethod<*>::parse.asFun3Builder(
-            genericTypes,
-            objectClassName
-        ).build()
-
         val objectParseStatement = createFunctionCallStatement(
-            TYPE_CONCAT_INDICATOR,
+            objectClassName.simpleName,
+            MTMethod<*>::parse.name,
             INPUT_STREAM_NAME,
             hashParseStatement
         )
@@ -401,7 +397,6 @@ class TypeSpecFactory(
             name,
             objectTypeName,
             objectParseStatement,
-            functionSpec,
             flag
         )
     }
@@ -493,14 +488,13 @@ class TypeSpecFactory(
         type: KClass<*>,
         flag: Int? = null
     ): FunSpec.Builder = this.apply {
-        val parseStatement = createFunctionCallStatement(INPUT_STREAM_NAME)
-        val functionSpec = getTypeParseMethod(type).asFun1Builder().build()
+        val parseMethod = getTypeParseMethod(type)
+        val parseStatement = createFunctionCallStatement(INPUT_STREAM_NAME, parseMethod.name)
 
         addPropertyParseStatement(
             name,
             type.asClassName(),
             parseStatement,
-            functionSpec,
             flag
         )
     }
@@ -521,7 +515,6 @@ class TypeSpecFactory(
         name: String,
         typeName: TypeName,
         parseStatement: String,
-        parseFunSpec: FunSpec,
         flag: Int? = null
     ): FunSpec.Builder = this.apply {
         if (flag != null) {
@@ -560,7 +553,7 @@ class TypeSpecFactory(
                 parseStatement
             ).toString()
 
-            addStatement(assignStatement, typeName, parseFunSpec)
+            addStatement(assignStatement, typeName)
             endControlFlow()
         } else {
             val initializationStatement = StringBuilder().append(
@@ -574,7 +567,7 @@ class TypeSpecFactory(
                 parseStatement
             ).toString()
 
-            addStatement(initializationStatement, typeName, parseFunSpec)
+            addStatement(initializationStatement, typeName)
         }
     }
 }

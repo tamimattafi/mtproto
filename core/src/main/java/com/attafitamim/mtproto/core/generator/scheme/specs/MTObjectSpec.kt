@@ -5,7 +5,7 @@ data class MTObjectSpec(
     var name: String,
     var namespace: String?,
     val superType: MTTypeSpec.Object,
-    val hash: Int,
+    val constructorHash: Int,
     val hasFlags: Boolean,
     val propertiesSpecs: List<MTPropertySpec>?,
     val genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
