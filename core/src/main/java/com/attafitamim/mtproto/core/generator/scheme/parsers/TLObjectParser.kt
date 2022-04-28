@@ -1,21 +1,19 @@
 package com.attafitamim.mtproto.core.generator.scheme.parsers
 
-import com.attafitamim.mtproto.core.exceptions.MTSchemeParseException
+import com.attafitamim.mtproto.core.exceptions.TLSchemeParseException
 import com.attafitamim.mtproto.core.generator.syntax.*
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTPropertySpec
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
-import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLObjectSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLPropertySpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
-import org.gradle.api.GradleException
 import java.lang.Exception
 
-object MTObjectParser {
+object TLObjectParser {
 
-    fun parseObject(objectScheme: String): MTObjectSpec {
+    fun parseObject(objectScheme: String): TLObjectSpec {
 
         if (!isValidObjectScheme(objectScheme)) {
-            throw MTSchemeParseException(
+            throw TLSchemeParseException(
                 objectScheme,
                 "Invalid object scheme"
             )
@@ -34,7 +32,7 @@ object MTObjectParser {
 
             val hash = constructorHex.toLong(16).toInt()
 
-            var genericVariables: HashMap<String, MTTypeSpec.Generic.Variable>? = null
+            var genericVariables: HashMap<String, TLTypeSpec.Generic.Variable>? = null
             val hasGenerics = objectScheme.contains(GENERIC_VARIABLE_OPENING_BRACKET) &&
                     objectScheme.contains(GENERIC_VARIABLE_CLOSING_BRACKET)
 
@@ -44,7 +42,7 @@ object MTObjectParser {
                     .substringBefore(GENERIC_VARIABLE_CLOSING_BRACKET)
                     .split(GENERIC_SEPARATOR)
                     .forEach { genericScheme ->
-                        val variable = MTTypeParser.parseGenericVariable(
+                        val variable = TLTypeParser.parseGenericVariable(
                             genericScheme,
                             genericVariables
                         )
@@ -65,11 +63,11 @@ object MTObjectParser {
                 .substringBefore(SUPER_TYPE_PREFIX)
                 .trim()
 
-            var tlPropertySpecs: List<MTPropertySpec>? = null
+            var tlPropertySpecs: List<TLPropertySpec>? = null
             if (propertiesString.isNotBlank()) {
                 tlPropertySpecs = propertiesString.split(PROPERTIES_SEPARATOR)
                     .map { propertyScheme ->
-                        MTPropertyParser.parseProperty(propertyScheme, genericVariables)
+                        TLPropertyParser.parseProperty(propertyScheme, genericVariables)
                     }
             }
 
@@ -77,10 +75,10 @@ object MTObjectParser {
                 .substringBefore(LINE_END)
                 .trim()
 
-            val superTypeSpec = MTTypeParser.parseMTObject(superType, genericVariables)
+            val superTypeSpec = TLTypeParser.parseMTObject(superType, genericVariables)
             val formattedName = snakeToTitleCase(name)
 
-            return MTObjectSpec(
+            return TLObjectSpec(
                 objectScheme,
                 formattedName,
                 namespace,
@@ -91,7 +89,7 @@ object MTObjectParser {
                 genericVariables
             )
         } catch (e: Exception) {
-            throw MTSchemeParseException(
+            throw TLSchemeParseException(
                 objectScheme,
                 e.toString()
             )

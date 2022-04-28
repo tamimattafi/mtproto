@@ -1,11 +1,11 @@
 package com.attafitamim.mtproto.core.exceptions
 
-import com.attafitamim.mtproto.core.types.MTObject
+import com.attafitamim.mtproto.core.types.TLObject
 import java.lang.Exception
 import kotlin.reflect.KClass
 
-class MTObjectParseException(
-    private val superClass: KClass<out MTObject>,
+class TLObjectParseException(
+    private val superClass: KClass<out TLObject>,
     private val hash: Int
 ) : Exception() {
     override val message: String

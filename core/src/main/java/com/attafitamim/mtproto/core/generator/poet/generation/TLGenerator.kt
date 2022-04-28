@@ -1,7 +1,7 @@
 package com.attafitamim.mtproto.core.generator.poet.generation
 
-import com.attafitamim.mtproto.core.generator.scheme.parsers.MTObjectParser
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
+import com.attafitamim.mtproto.core.generator.scheme.parsers.TLObjectParser
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLObjectSpec
 import com.attafitamim.mtproto.core.generator.poet.factories.FileSpecFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.PropertySpecFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.TypeNameFactory
@@ -9,7 +9,7 @@ import com.attafitamim.mtproto.core.generator.poet.factories.TypeSpecFactory
 import org.gradle.api.GradleException
 import java.io.File
 
-class MTGenerator(
+class TLGenerator(
     private val schemeFilesDir: String,
     private val outputDir: String,
     private val outputPackage: String
@@ -35,17 +35,17 @@ class MTGenerator(
         println("TL: Parsing types from ${schemeFile.name}")
 
         var generatingTypes = true
-        val methodTlObjects = ArrayList<MTObjectSpec>()
-        val typesTlObjects = ArrayList<MTObjectSpec>()
+        val methodTlObjects = ArrayList<TLObjectSpec>()
+        val typesTlObjects = ArrayList<TLObjectSpec>()
 
         schemeFile.forEachLine { schemeLine ->
             when {
                 schemeLine == "---types---" -> generatingTypes = true
                 schemeLine.contains("---functions---", true) -> generatingTypes = false
                 else -> {
-                    val isValidTlObject = MTObjectParser.isValidObjectScheme(schemeLine)
+                    val isValidTlObject = TLObjectParser.isValidObjectScheme(schemeLine)
                     if (isValidTlObject) {
-                        val tlObject = MTObjectParser.parseObject(schemeLine)
+                        val tlObject = TLObjectParser.parseObject(schemeLine)
                         if (generatingTypes) typesTlObjects.add(tlObject)
                         else methodTlObjects.add(tlObject)
                     }

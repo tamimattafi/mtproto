@@ -1,32 +1,31 @@
 package com.attafitamim.mtproto.core.generator.scheme.parsers
 
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.syntax.*
-import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 
-object MTTypeParser {
+object TLTypeParser {
 
     fun parseGenericVariable(
         genericScheme: String,
-        genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
-    ): MTTypeSpec.Generic.Variable {
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+    ): TLTypeSpec.Generic.Variable {
         val name = genericScheme.substringBefore(TYPE_INDICATOR)
         val typeDescription = genericScheme.substringAfter(TYPE_INDICATOR)
 
         val superTypeSpec = parseType(typeDescription, genericVariables)
         val formattedName = name.uppercase()
-        return MTTypeSpec.Generic.Variable(formattedName, superTypeSpec)
+        return TLTypeSpec.Generic.Variable(formattedName, superTypeSpec)
     }
 
     fun parseMTObject(
         typeScheme: String,
-        genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
-    ): MTTypeSpec.Object {
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+    ): TLTypeSpec.Object {
         var namespace: String? = null
         var name: String = typeScheme
 
-        var generics: List<MTTypeSpec.Generic>? = null
+        var generics: List<TLTypeSpec.Generic>? = null
         if (name.contains(GENERIC_PARAMETER_OPENING_QUOTATION) && name.endsWith(GENERIC_PARAMETER_CLOSING_QUOTATION)) {
             generics = name.substringAfter(GENERIC_PARAMETER_OPENING_QUOTATION)
                 .removeSuffix(GENERIC_PARAMETER_CLOSING_QUOTATION)
@@ -44,17 +43,17 @@ object MTTypeParser {
         }
 
         val formattedName = snakeToTitleCase(name)
-        return MTTypeSpec.Object(namespace, formattedName, generics)
+        return TLTypeSpec.Object(namespace, formattedName, generics)
     }
 
     fun parseType(
         typeScheme: String,
-        genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
-    ): MTTypeSpec = when {
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+    ): TLTypeSpec = when {
         // is a primitive type
         primitiveTypes.containsKey(typeScheme) -> {
             val typeClass = primitiveTypes.getValue(typeScheme)
-            MTTypeSpec.Primitive(typeClass)
+            TLTypeSpec.Primitive(typeClass)
         }
 
         // is a generic variable
@@ -63,10 +62,10 @@ object MTTypeParser {
         }
 
         // is a Type (Any)
-        typeScheme == ANY_TYPE_SIGNATURE -> MTTypeSpec.Type
+        typeScheme == ANY_TYPE_SIGNATURE -> TLTypeSpec.Type
 
         // is a true-flag (boolean)
-        typeScheme == FLAG_SIGNATURE -> MTTypeSpec.Flag
+        typeScheme == FLAG_SIGNATURE -> TLTypeSpec.Flag
 
         // is a list of types
         typeScheme.startsWith(LIST_OPENING_BRACKET) && typeScheme.endsWith(LIST_CLOSING_BRACKET) -> {
@@ -75,7 +74,7 @@ object MTTypeParser {
                 .trim()
 
             val genericSpec = parseGeneric(genericName, genericVariables)
-            MTTypeSpec.Structure.Collection(List::class, genericSpec)
+            TLTypeSpec.Structure.Collection(List::class, genericSpec)
         }
 
         // is an MTObject type
@@ -84,13 +83,13 @@ object MTTypeParser {
 
     private fun parseGeneric(
         genericScheme: String,
-        genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
-    ): MTTypeSpec.Generic {
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+    ): TLTypeSpec.Generic {
         val genericName = genericScheme.uppercase()
         val genericVariable = genericVariables?.get(genericName)
         if (genericVariable != null) return genericVariable
 
         val typeSpec = parseType(genericScheme, genericVariables)
-        return MTTypeSpec.Generic.Parameter(typeSpec)
+        return TLTypeSpec.Generic.Parameter(typeSpec)
     }
 }

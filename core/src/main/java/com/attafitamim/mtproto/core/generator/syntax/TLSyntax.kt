@@ -7,7 +7,7 @@ const val METHODS_FOLDER_NAME = "methods"
 
 const val GLOBAL_NAMESPACE = "global"
 
-const val TYPES_PREFIX = "MT"
+const val TYPES_PREFIX = "TL"
 
 const val CONSTRUCTOR_PREFIX = "#"
 const val PROPERTIES_SEPARATOR = " "

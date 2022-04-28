@@ -1,6 +1,6 @@
 package com.attafitamim.mtproto.core.serialization.streams
 
-interface MTInputStream {
+interface TLInputStream {
     fun readByte(): Byte
     fun readInt(): Int
     fun readLong(): Long
@@ -8,5 +8,5 @@ interface MTInputStream {
     fun readBoolean(): Boolean
     fun readString(): String
     fun readByteArray(): ByteArray
-    fun readInputStream(): MTInputStream
+    fun readInputStream(): TLInputStream
 }

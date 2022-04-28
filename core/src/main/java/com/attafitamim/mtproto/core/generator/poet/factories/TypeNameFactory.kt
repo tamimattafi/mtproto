@@ -4,7 +4,7 @@ import com.attafitamim.mtproto.core.generator.syntax.GLOBAL_NAMESPACE
 import com.attafitamim.mtproto.core.generator.syntax.PACKAGE_SEPARATOR
 import com.attafitamim.mtproto.core.generator.syntax.TYPES_FOLDER_NAME
 import com.attafitamim.mtproto.core.generator.syntax.TYPES_PREFIX
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
@@ -16,17 +16,17 @@ import com.squareup.kotlinpoet.asTypeName
 
 class TypeNameFactory(private val basePackage: String) {
 
-    fun createTypeName(mtTypeSpec: MTTypeSpec): TypeName
+    fun createTypeName(mtTypeSpec: TLTypeSpec): TypeName
         = when(mtTypeSpec) {
-            is MTTypeSpec.Generic -> mtTypeSpec.toTypeName()
-            is MTTypeSpec.Primitive -> mtTypeSpec.clazz.asTypeName()
-            is MTTypeSpec.Object -> mtTypeSpec.toTypeName()
-            is MTTypeSpec.Structure -> mtTypeSpec.toTypeName()
-            MTTypeSpec.Type -> Any::class.asTypeName()
-            MTTypeSpec.Flag -> Boolean::class.asTypeName()
+            is TLTypeSpec.Generic -> mtTypeSpec.toTypeName()
+            is TLTypeSpec.Primitive -> mtTypeSpec.clazz.asTypeName()
+            is TLTypeSpec.Object -> mtTypeSpec.toTypeName()
+            is TLTypeSpec.Structure -> mtTypeSpec.toTypeName()
+            TLTypeSpec.Type -> Any::class.asTypeName()
+            TLTypeSpec.Flag -> Boolean::class.asTypeName()
         }
 
-    fun createClassName(mtObjectSpec: MTTypeSpec.Object): ClassName {
+    fun createClassName(mtObjectSpec: TLTypeSpec.Object): ClassName {
         val formattedNameSpace = mtObjectSpec.namespace
             ?.let(::snakeToTitleCase)
             .orEmpty()
@@ -59,26 +59,26 @@ class TypeNameFactory(private val basePackage: String) {
         return ClassName(superClassName.packageName, classNames)
     }
 
-    fun createClassName(name: String, mtSuperObjectSpec: MTTypeSpec.Object): ClassName {
+    fun createClassName(name: String, mtSuperObjectSpec: TLTypeSpec.Object): ClassName {
         val superClassName = createClassName(mtSuperObjectSpec)
         return createClassName(name, superClassName)
     }
 
-    fun createTypeVariableName(genericVariable: MTTypeSpec.Generic.Variable): TypeVariableName {
+    fun createTypeVariableName(genericVariable: TLTypeSpec.Generic.Variable): TypeVariableName {
         val typeBound = createTypeName(genericVariable.superType)
         return TypeVariableName.invoke(genericVariable.name, typeBound)
     }
 
-    private fun MTTypeSpec.Structure.toTypeName(): TypeName = when(this) {
-        is MTTypeSpec.Structure.Collection -> toTypeName()
+    private fun TLTypeSpec.Structure.toTypeName(): TypeName = when(this) {
+        is TLTypeSpec.Structure.Collection -> toTypeName()
     }
 
-    private fun MTTypeSpec.Structure.Collection.toTypeName(): TypeName {
+    private fun TLTypeSpec.Structure.Collection.toTypeName(): TypeName {
         val genericParameter = elementGeneric.toTypeName()
         return clazz.asTypeName().parameterizedBy(genericParameter)
     }
 
-    private fun MTTypeSpec.Object.toTypeName(): TypeName {
+    private fun TLTypeSpec.Object.toTypeName(): TypeName {
         val className = createClassName(this)
         val genericParameters = generics?.map { genericTypeSpec ->
             genericTypeSpec.toTypeName()
@@ -89,12 +89,12 @@ class TypeNameFactory(private val basePackage: String) {
         } else className
     }
 
-    private fun MTTypeSpec.Generic.toTypeName(): TypeName = when(this) {
-        is MTTypeSpec.Generic.Variable -> createTypeVariableName(this)
-        is MTTypeSpec.Generic.Parameter -> toTypeName()
+    private fun TLTypeSpec.Generic.toTypeName(): TypeName = when(this) {
+        is TLTypeSpec.Generic.Variable -> createTypeVariableName(this)
+        is TLTypeSpec.Generic.Parameter -> toTypeName()
     }
 
-    private fun MTTypeSpec.Generic.Parameter.toTypeName(): TypeName {
+    private fun TLTypeSpec.Generic.Parameter.toTypeName(): TypeName {
         return createTypeName(type)
     }
 }

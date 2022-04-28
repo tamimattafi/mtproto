@@ -1,13 +1,12 @@
 package com.attafitamim.mtproto.core.serialization.helpers
 
-import com.attafitamim.mtproto.core.serialization.streams.MTInputStream
-import com.attafitamim.mtproto.core.serialization.streams.MTOutputStream
-import com.attafitamim.mtproto.core.types.MTObject
-import java.io.InputStream
+import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
+import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
+import com.attafitamim.mtproto.core.types.TLObject
 import kotlin.reflect.KClass
 
 object SerializationHelper {
-    fun <T : Any> serialize(stream: MTOutputStream, value: T) = stream.run {
+    fun <T : Any> serialize(stream: TLOutputStream, value: T) = stream.run {
         when(value) {
             is Boolean -> writeBoolean(value)
             is Byte -> writeByte(value)
@@ -16,13 +15,13 @@ object SerializationHelper {
             is Double -> writeDouble(value)
             is String -> writeString(value)
             is ByteArray -> writeByteArray(value)
-            is MTInputStream -> writeInputStream(value)
-            is MTObject -> value.serialize(this)
-            else -> throw IllegalArgumentException("Unable to write value of type ${value::class.simpleName} to ${MTOutputStream::class.simpleName}")
+            is TLInputStream -> writeInputStream(value)
+            is TLObject -> value.serialize(this)
+            else -> throw IllegalArgumentException("Unable to write value of type ${value::class.simpleName} to ${TLOutputStream::class.simpleName}")
         }
     }
 
-    inline fun <reified T : Any> parse(stream: MTInputStream): T = stream.run {
+    inline fun <reified T : Any> parse(stream: TLInputStream): T = stream.run {
         when(T::class) {
             Boolean::class -> readBoolean()
             Byte::class -> readByte()
@@ -31,12 +30,12 @@ object SerializationHelper {
             Double::class -> readDouble()
             String::class -> readString()
             ByteArray::class -> readByteArray()
-            MTInputStream::class -> readInputStream()
-            MTObject::class -> object : MTObject {
+            TLInputStream::class -> readInputStream()
+            TLObject::class -> object : TLObject {
                 override val constructorHash: Int
                     get() = TODO("Not yet implemented")
 
-                override fun serialize(outputStream: MTOutputStream) {
+                override fun serialize(outputStream: TLOutputStream) {
                     TODO("Not yet implemented")
                 }
             }
@@ -46,25 +45,25 @@ object SerializationHelper {
 }
 
 fun getTypeParseMethod(type: KClass<out Any>) = when(type) {
-    Boolean::class -> MTInputStream::readBoolean
-    Byte::class -> MTInputStream::readByte
-    Int::class -> MTInputStream::readInt
-    Long::class -> MTInputStream::readLong
-    Double::class -> MTInputStream::readDouble
-    String::class -> MTInputStream::readString
-    ByteArray::class -> MTInputStream::readByteArray
-    MTInputStream::class -> MTInputStream::readInputStream
+    Boolean::class -> TLInputStream::readBoolean
+    Byte::class -> TLInputStream::readByte
+    Int::class -> TLInputStream::readInt
+    Long::class -> TLInputStream::readLong
+    Double::class -> TLInputStream::readDouble
+    String::class -> TLInputStream::readString
+    ByteArray::class -> TLInputStream::readByteArray
+    TLInputStream::class -> TLInputStream::readInputStream
     else -> throw Exception()
 }
 
 fun getTypeSerializeMethod(type: KClass<out Any>) = when(type) {
-    Boolean::class -> MTOutputStream::writeBoolean
-    Byte::class -> MTOutputStream::writeByte
-    Int::class -> MTOutputStream::writeInt
-    Long::class -> MTOutputStream::writeLong
-    Double::class -> MTOutputStream::writeDouble
-    String::class -> MTOutputStream::writeString
-    ByteArray::class -> MTOutputStream::writeByteArray
-    MTInputStream::class -> MTOutputStream::writeInputStream
+    Boolean::class -> TLOutputStream::writeBoolean
+    Byte::class -> TLOutputStream::writeByte
+    Int::class -> TLOutputStream::writeInt
+    Long::class -> TLOutputStream::writeLong
+    Double::class -> TLOutputStream::writeDouble
+    String::class -> TLOutputStream::writeString
+    ByteArray::class -> TLOutputStream::writeByteArray
+    TLInputStream::class -> TLOutputStream::writeInputStream
     else -> throw Exception()
 }

@@ -1,6 +1,6 @@
 package com.attafitamim.mtproto.core.serialization.streams
 
-interface MTOutputStream {
+interface TLOutputStream {
     fun writeByte(value: Byte)
     fun writeInt(value: Int)
     fun writeLong(value: Long)
@@ -8,5 +8,5 @@ interface MTOutputStream {
     fun writeBoolean(value: Boolean)
     fun writeString(value: String)
     fun writeByteArray(value: ByteArray)
-    fun writeInputStream(value: MTInputStream)
+    fun writeInputStream(value: TLInputStream)
 }

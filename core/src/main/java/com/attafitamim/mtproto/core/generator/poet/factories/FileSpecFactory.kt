@@ -1,7 +1,7 @@
 package com.attafitamim.mtproto.core.generator.poet.factories
 
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
-import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLObjectSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.squareup.kotlinpoet.FileSpec
 
 class FileSpecFactory(
@@ -10,14 +10,14 @@ class FileSpecFactory(
 ) {
 
     fun createFileSpec(
-        superClassName: MTTypeSpec.Object,
-        mtVariantObjectSpecs: List<MTObjectSpec>
+        superClassName: TLTypeSpec.Object,
+        mtVariantObjectSpecs: List<TLObjectSpec>
     ): FileSpec {
         val className = typeNameFactory.createClassName(superClassName)
         val typeVariables = superClassName.generics?.mapNotNull { generic ->
             when(generic) {
-                is MTTypeSpec.Generic.Variable -> typeNameFactory.createTypeVariableName(generic)
-                is MTTypeSpec.Generic.Parameter -> null
+                is TLTypeSpec.Generic.Variable -> typeNameFactory.createTypeVariableName(generic)
+                is TLTypeSpec.Generic.Parameter -> null
             }
         }
 

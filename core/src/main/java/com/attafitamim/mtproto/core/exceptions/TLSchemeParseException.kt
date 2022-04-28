@@ -2,7 +2,7 @@ package com.attafitamim.mtproto.core.exceptions
 
 import org.gradle.api.GradleException
 
-internal class MTSchemeParseException(
+internal class TLSchemeParseException(
     private val rawScheme: String,
     private val reason: String
 ) : GradleException() {

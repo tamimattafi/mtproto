@@ -1,12 +1,12 @@
 package com.attafitamim.mtproto.core.generator.scheme.specs
 
-data class MTObjectSpec(
+data class TLObjectSpec(
     val rawScheme: String,
     var name: String,
     var namespace: String?,
-    val superType: MTTypeSpec.Object,
+    val superType: TLTypeSpec.Object,
     val constructorHash: Int,
     val hasFlags: Boolean,
-    val propertiesSpecs: List<MTPropertySpec>?,
-    val genericVariables: Map<String, MTTypeSpec.Generic.Variable>?
+    val propertiesSpecs: List<TLPropertySpec>?,
+    val genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
 )

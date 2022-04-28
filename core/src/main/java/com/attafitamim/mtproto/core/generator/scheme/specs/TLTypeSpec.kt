@@ -2,23 +2,23 @@ package com.attafitamim.mtproto.core.generator.scheme.specs
 
 import kotlin.reflect.KClass
 
-sealed interface MTTypeSpec {
+sealed interface TLTypeSpec {
 
-    object Type : MTTypeSpec
+    object Type : TLTypeSpec
 
-    object Flag : MTTypeSpec
+    object Flag : TLTypeSpec
 
     data class Primitive(
         val clazz: KClass<out Any>
-    ) : MTTypeSpec
+    ) : TLTypeSpec
 
     data class Object(
         val namespace: String?,
         val name: String,
         val generics: List<Generic>?
-    ) : MTTypeSpec
+    ) : TLTypeSpec
 
-    sealed interface Structure : MTTypeSpec {
+    sealed interface Structure : TLTypeSpec {
 
         data class Collection(
             val clazz: KClass<out Any>,
@@ -26,15 +26,15 @@ sealed interface MTTypeSpec {
         ) : Structure
     }
 
-    sealed interface Generic : MTTypeSpec {
+    sealed interface Generic : TLTypeSpec {
 
         data class Variable(
             val name: String,
-            val superType: MTTypeSpec,
+            val superType: TLTypeSpec,
         ) : Generic
 
         data class Parameter(
-            val type: MTTypeSpec
+            val type: TLTypeSpec
         ) : Generic
     }
 }
