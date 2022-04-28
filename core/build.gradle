@@ -18,6 +18,10 @@ java {
     targetCompatibility = JavaVersion.VERSION_1_8
 }
 
+sourceSets {
+    main.java.srcDirs += ["${project.buildDir}/generated/mtproto"]
+}
+
 test {
     useJUnitPlatform()
 }

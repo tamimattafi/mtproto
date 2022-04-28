@@ -2,7 +2,7 @@ package com.attafitamim.mtproto.core.generator.poet.factories
 
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTObjectSpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.MTTypeSpec
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.FileSpec
 
 class FileSpecFactory(
     private val typeNameFactory: TypeNameFactory,
@@ -15,8 +15,10 @@ class FileSpecFactory(
     ): FileSpec {
         val className = typeNameFactory.createClassName(superClassName)
         val typeVariables = superClassName.generics?.mapNotNull { generic ->
-            if (generic is MTTypeSpec.Generic.Variable) typeNameFactory.createTypeVariableName(generic)
-            else null
+            when(generic) {
+                is MTTypeSpec.Generic.Variable -> typeNameFactory.createTypeVariableName(generic)
+                is MTTypeSpec.Generic.Parameter -> null
+            }
         }
 
         val classTypeSpec = typeSpecFactory.createObjectSpec(

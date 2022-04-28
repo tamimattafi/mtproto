@@ -53,9 +53,12 @@ fun KFunction3<*, *, *, *>.asFun3Builder(
        .addParameters(valueParameters.asParameterSpecs())
 
     val actualReturnType = if (!superTypeVariables.isNullOrEmpty()) {
+        builder.addModifiers(KModifier.INLINE)
+
         superTypeVariables.forEach { typeName ->
             if (typeName is TypeVariableName) {
-                builder.addTypeVariable(typeName)
+                val reifiedTypeName = typeName.copy(reified = true)
+                builder.addTypeVariable(reifiedTypeName)
             }
         }
 

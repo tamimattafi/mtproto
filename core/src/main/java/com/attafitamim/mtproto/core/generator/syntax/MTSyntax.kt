@@ -35,6 +35,7 @@ const val PROPERTY_FLAG_SEPARATOR = "?"
 
 const val INPUT_STREAM_NAME = "inputStream"
 const val OUTPUT_STREAM_NAME = "outputStream"
+const val ARRAY_ELEMENT_NAME = "element"
 
 const val ANY_TYPE_SIGNATURE = "Type"
 const val FLAG_SIGNATURE = "true"
