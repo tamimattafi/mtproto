@@ -1,5 +1,6 @@
 package com.attafitamim.mtproto.core.generator.scheme.parsers
 
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.syntax.*
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
@@ -8,20 +9,22 @@ object TLTypeParser {
 
     fun parseGenericVariable(
         genericScheme: String,
-        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?,
+        tlContainers: List<TLContainerSpec>
     ): TLTypeSpec.Generic.Variable {
         val name = genericScheme.substringBefore(TYPE_INDICATOR)
         val typeDescription = genericScheme.substringAfter(TYPE_INDICATOR)
 
-        val superTypeSpec = parseType(typeDescription, genericVariables)
+        val superTypeSpec = parseType(typeDescription, genericVariables, tlContainers)
         val formattedName = name.uppercase()
         return TLTypeSpec.Generic.Variable(formattedName, superTypeSpec)
     }
 
-    fun parseMTObject(
+    fun parseTLObject(
         typeScheme: String,
-        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
-    ): TLTypeSpec.Object {
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?,
+        tlContainers: List<TLContainerSpec>
+    ): TLTypeSpec.TLType.Object {
         var namespace: String? = null
         var name: String = typeScheme
 
@@ -31,7 +34,7 @@ object TLTypeParser {
                 .removeSuffix(GENERIC_PARAMETER_CLOSING_QUOTATION)
                 .split(GENERIC_SEPARATOR)
                 .map { genericScheme ->
-                    parseGeneric(genericScheme, genericVariables)
+                    parseGeneric(genericScheme, genericVariables, tlContainers)
                 }
 
             name = name.substringBefore(GENERIC_PARAMETER_OPENING_QUOTATION)
@@ -43,12 +46,42 @@ object TLTypeParser {
         }
 
         val formattedName = snakeToTitleCase(name)
-        return TLTypeSpec.Object(namespace, formattedName, generics)
+        return TLTypeSpec.TLType.Object(namespace, formattedName, generics)
+    }
+
+    fun parseTLContainer(
+        typeScheme: String,
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?,
+        tlContainers: List<TLContainerSpec>
+    ): TLTypeSpec.TLType.Container {
+        var namespace: String? = null
+        var name: String = typeScheme
+
+        var generics: List<TLTypeSpec.Generic>? = null
+        if (name.contains(GENERIC_PARAMETER_OPENING_QUOTATION) && name.endsWith(GENERIC_PARAMETER_CLOSING_QUOTATION)) {
+            generics = name.substringAfter(GENERIC_PARAMETER_OPENING_QUOTATION)
+                .removeSuffix(GENERIC_PARAMETER_CLOSING_QUOTATION)
+                .split(GENERIC_SEPARATOR)
+                .map { genericScheme ->
+                    parseGeneric(genericScheme, genericVariables, tlContainers)
+                }
+
+            name = name.substringBefore(GENERIC_PARAMETER_OPENING_QUOTATION)
+        }
+
+        if (name.contains(NAMESPACE_SEPARATOR)) {
+            namespace = name.substringBeforeLast(NAMESPACE_SEPARATOR)
+            name = name.substringAfterLast(NAMESPACE_SEPARATOR)
+        }
+
+        val formattedName = snakeToTitleCase(name)
+        return TLTypeSpec.TLType.Container(namespace, formattedName, generics)
     }
 
     fun parseType(
         typeScheme: String,
-        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?,
+        tlContainers: List<TLContainerSpec>
     ): TLTypeSpec = when {
         // is a primitive type
         primitiveTypes.containsKey(typeScheme) -> {
@@ -89,23 +122,26 @@ object TLTypeParser {
                 .removeSuffix(LIST_CLOSING_BRACKET)
                 .trim()
 
-            val genericSpec = parseGeneric(genericName, genericVariables)
+            val genericSpec = parseGeneric(genericName, genericVariables, tlContainers)
             TLTypeSpec.Structure.Collection(List::class, genericSpec)
         }
-
-        // is an MTObject type
-        else -> parseMTObject(typeScheme, genericVariables)
+        
+        // is TLType
+        else -> {
+            parseTLObject(typeScheme, genericVariables, tlContainers)
+        }
     }
 
     private fun parseGeneric(
         genericScheme: String,
-        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?,
+        tlContainers: List<TLContainerSpec>
     ): TLTypeSpec.Generic {
         val genericName = genericScheme.uppercase()
         val genericVariable = genericVariables?.get(genericName)
         if (genericVariable != null) return genericVariable
 
-        val typeSpec = parseType(genericScheme, genericVariables)
+        val typeSpec = parseType(genericScheme, genericVariables, tlContainers)
         return TLTypeSpec.Generic.Parameter(typeSpec)
     }
 }

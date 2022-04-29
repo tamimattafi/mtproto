@@ -20,6 +20,7 @@ const val TYPE_SIGN = ":"
 const val NULLABLE_SIGN = "?"
 const val GENERIC_OPEN_QUOTATION = "<"
 const val GENERIC_CLOSE_QUOTATION = ">"
+const val CONSTANT_NAME_SEPARATOR = "_"
 
 // Keywords
 const val RETURN_KEYWORD = "return"

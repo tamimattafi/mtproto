@@ -12,11 +12,21 @@ sealed interface TLTypeSpec {
         val clazz: KClass<out Any>
     ) : TLTypeSpec
 
-    data class Object(
-        val namespace: String?,
-        val name: String,
-        val generics: List<Generic>?
-    ) : TLTypeSpec
+    sealed interface TLType : TLTypeSpec {
+
+        data class Object(
+            val namespace: String?,
+            val name: String,
+            val generics: List<Generic>?
+        ) : TLType
+
+        data class Container(
+            val namespace: String?,
+            val name: String,
+            val generics: List<Generic>?
+        ) : TLType
+    }
+
 
     sealed interface Structure : TLTypeSpec {
 

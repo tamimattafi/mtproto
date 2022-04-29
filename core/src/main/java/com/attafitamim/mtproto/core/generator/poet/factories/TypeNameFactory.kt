@@ -1,12 +1,11 @@
 package com.attafitamim.mtproto.core.generator.poet.factories
 
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.syntax.GLOBAL_NAMESPACE
 import com.attafitamim.mtproto.core.generator.syntax.PACKAGE_SEPARATOR
 import com.attafitamim.mtproto.core.generator.syntax.TYPES_FOLDER_NAME
 import com.attafitamim.mtproto.core.generator.syntax.TYPES_PREFIX
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
-import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -20,13 +19,38 @@ class TypeNameFactory(private val basePackage: String) {
         = when(mtTypeSpec) {
             is TLTypeSpec.Generic -> mtTypeSpec.toTypeName()
             is TLTypeSpec.Primitive -> mtTypeSpec.clazz.asTypeName()
-            is TLTypeSpec.Object -> mtTypeSpec.toTypeName()
+            is TLTypeSpec.TLType.Object -> mtTypeSpec.toTypeName()
+            is TLTypeSpec.TLType.Container -> mtTypeSpec.toTypeName()
             is TLTypeSpec.Structure -> mtTypeSpec.toTypeName()
             TLTypeSpec.Type -> Any::class.asTypeName()
             TLTypeSpec.Flag -> Boolean::class.asTypeName()
-        }
+    }
 
-    fun createClassName(mtObjectSpec: TLTypeSpec.Object): ClassName {
+    fun createClassName(mtObjectSpec: TLTypeSpec.TLType.Object): ClassName {
+        val formattedNameSpace = mtObjectSpec.namespace
+            ?.let(::snakeToTitleCase)
+            .orEmpty()
+
+        val formattedClassName = snakeToTitleCase(mtObjectSpec.name)
+
+        val finalClassName = StringBuilder()
+            .append(TYPES_PREFIX)
+            .append(formattedNameSpace)
+            .append(formattedClassName)
+            .toString()
+
+        val namespace = mtObjectSpec.namespace ?: GLOBAL_NAMESPACE
+        val packageName = StringBuilder(basePackage)
+            .append(PACKAGE_SEPARATOR)
+            .append(TYPES_FOLDER_NAME)
+            .append(PACKAGE_SEPARATOR)
+            .append(namespace)
+            .toString()
+
+        return ClassName(packageName, finalClassName)
+    }
+
+    fun createClassName(mtObjectSpec: TLTypeSpec.TLType.Container): ClassName {
         val formattedNameSpace = mtObjectSpec.namespace
             ?.let(::snakeToTitleCase)
             .orEmpty()
@@ -52,14 +76,13 @@ class TypeNameFactory(private val basePackage: String) {
 
     fun createClassName(name: String, superClassName: ClassName): ClassName {
         val formattedClassName = name
-            .let(::snakeToCamelCase)
             .let(::camelToTitleCase)
 
         val classNames = listOf(superClassName.simpleName, formattedClassName)
         return ClassName(superClassName.packageName, classNames)
     }
 
-    fun createClassName(name: String, mtSuperObjectSpec: TLTypeSpec.Object): ClassName {
+    fun createClassName(name: String, mtSuperObjectSpec: TLTypeSpec.TLType.Object): ClassName {
         val superClassName = createClassName(mtSuperObjectSpec)
         return createClassName(name, superClassName)
     }
@@ -79,7 +102,18 @@ class TypeNameFactory(private val basePackage: String) {
         return clazz.asTypeName().parameterizedBy(genericParameter)
     }
 
-    private fun TLTypeSpec.Object.toTypeName(): TypeName {
+    private fun TLTypeSpec.TLType.Object.toTypeName(): TypeName {
+        val className = createClassName(this)
+        val genericParameters = generics?.map { genericTypeSpec ->
+            genericTypeSpec.toTypeName()
+        }
+
+        return if (!genericParameters.isNullOrEmpty()) {
+            className.parameterizedBy(genericParameters)
+        } else className
+    }
+
+    private fun TLTypeSpec.TLType.Container.toTypeName(): TypeName {
         val className = createClassName(this)
         val genericParameters = generics?.map { genericTypeSpec ->
             genericTypeSpec.toTypeName()

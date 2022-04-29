@@ -1,15 +1,18 @@
 package com.attafitamim.mtproto.core.generator.scheme.parsers
 
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLPropertySpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.syntax.*
 import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
+import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 
 object TLPropertyParser {
 
     fun parseProperty(
         propertyScheme: String,
-        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
+        genericVariables: Map<String, TLTypeSpec.Generic.Variable>?,
+        tlContainers: List<TLContainerSpec>
     ): TLPropertySpec {
         val name = propertyScheme.substringBefore(TYPE_INDICATOR)
         val typeDescription = propertyScheme.substringAfter(TYPE_INDICATOR)
@@ -23,9 +26,14 @@ object TLPropertyParser {
             type = typeDescription
         }
 
-        val propertyTypeSpec = TLTypeParser.parseType(type, genericVariables)
-        val formattedName = snakeToCamelCase(name)
-        return TLPropertySpec(propertyScheme, formattedName, flag, propertyTypeSpec)
+        val formattedType = snakeToTitleCase(type)
+        val propertyTypeSpec = TLTypeParser.parseType(
+            formattedType,
+            genericVariables,
+            tlContainers
+        )
+
+        return TLPropertySpec(propertyScheme, name, flag, propertyTypeSpec)
     }
 
     private fun parseTypeFlag(typeString: String): Int {

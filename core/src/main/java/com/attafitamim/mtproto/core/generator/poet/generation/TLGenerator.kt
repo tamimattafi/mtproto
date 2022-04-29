@@ -6,6 +6,9 @@ import com.attafitamim.mtproto.core.generator.poet.factories.FileSpecFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.PropertySpecFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.TypeNameFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.TypeSpecFactory
+import com.attafitamim.mtproto.core.generator.scheme.parsers.TLContainerParser
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
+import com.attafitamim.mtproto.core.generator.syntax.CONSTANT_NAME_SEPARATOR
 import org.gradle.api.GradleException
 import java.io.File
 
@@ -35,37 +38,73 @@ class TLGenerator(
         println("TL: Parsing types from ${schemeFile.name}")
 
         var generatingTypes = true
-        val methodTlObjects = ArrayList<TLObjectSpec>()
-        val typesTlObjects = ArrayList<TLObjectSpec>()
+        val methodSpecs = ArrayList<TLObjectSpec>()
+        val objectSpecs = ArrayList<TLObjectSpec>()
+        val containerSpecs = ArrayList<TLContainerSpec>()
 
         schemeFile.forEachLine { schemeLine ->
             when {
                 schemeLine == "---types---" -> generatingTypes = true
                 schemeLine.contains("---functions---", true) -> generatingTypes = false
                 else -> {
-                    val isValidTlObject = TLObjectParser.isValidObjectScheme(schemeLine)
-                    if (isValidTlObject) {
-                        val tlObject = TLObjectParser.parseObject(schemeLine)
-                        if (generatingTypes) typesTlObjects.add(tlObject)
-                        else methodTlObjects.add(tlObject)
+                    when {
+                        TLObjectParser.isValidObjectScheme(schemeLine) -> {
+                            val tlObjectSpecs = TLObjectParser.parseObject(
+                                schemeLine,
+                                containerSpecs
+                            )
+
+                            if (generatingTypes) objectSpecs.add(tlObjectSpecs)
+                            else methodSpecs.add(tlObjectSpecs)
+                        }
+
+                        TLContainerParser.isValidContainerScheme(schemeLine) -> {
+                            val tlContainer = TLContainerParser.parseContainer(
+                                schemeLine,
+                                containerSpecs
+                            )
+
+                            containerSpecs.add(tlContainer)
+                        }
                     }
                 }
             }
         }
 
-        println("TL: Successfully parse ${methodTlObjects.size} methods and ${typesTlObjects.size} types")
+        println("TL: Successfully parse ${methodSpecs.size} methods and ${objectSpecs.size} types")
 
         val typeNameFactory = TypeNameFactory(outputPackage)
         val propertySpecFactory = PropertySpecFactory(typeNameFactory)
         val typeSpecFactory = TypeSpecFactory(typeNameFactory, propertySpecFactory)
         val fileSpecFactory = FileSpecFactory(typeNameFactory, typeSpecFactory)
 
-        val objectsGroup = typesTlObjects.groupBy { mtObjectSpec ->
+        containerSpecs.values.forEach { tlContainerSpec ->
+            val fileSpec = fileSpecFactory.createFileSpec(tlContainerSpec)
+            fileSpec.writeTo(sourceCodePath)
+        }
+
+        val objectsGroup = objectSpecs.groupBy { mtObjectSpec ->
             mtObjectSpec.superType
         }
 
         objectsGroup.forEach { (baseObject, objectVariants) ->
-            val fileSpec = fileSpecFactory.createFileSpec(baseObject, objectVariants)
+            val filteredObjectVariants = objectVariants.groupBy(TLObjectSpec::name)
+                .flatMap { (_, group) ->
+                    if (group.size == 1) group
+                    else group.map { tlObjectSpec ->
+                        val newName = buildString {
+                            append(
+                                tlObjectSpec.name,
+                                CONSTANT_NAME_SEPARATOR,
+                                tlObjectSpec.constructorHash
+                            )
+                        }
+
+                        tlObjectSpec.copy(name = newName)
+                    }
+                }
+
+            val fileSpec = fileSpecFactory.createFileSpec(baseObject, filteredObjectVariants)
             fileSpec.writeTo(sourceCodePath)
         }
     }
