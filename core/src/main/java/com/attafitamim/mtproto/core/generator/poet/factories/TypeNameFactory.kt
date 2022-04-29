@@ -71,6 +71,7 @@ class TypeNameFactory(private val basePackage: String) {
 
     private fun TLTypeSpec.Structure.toTypeName(): TypeName = when(this) {
         is TLTypeSpec.Structure.Collection -> toTypeName()
+        is TLTypeSpec.Structure.Bytes -> ByteArray::class.asTypeName()
     }
 
     private fun TLTypeSpec.Structure.Collection.toTypeName(): TypeName {

@@ -24,6 +24,10 @@ sealed interface TLTypeSpec {
             val clazz: KClass<out Any>,
             val elementGeneric: Generic
         ) : Structure
+
+        data class Bytes(
+            val fixedSize: Int?
+        ) : Structure
     }
 
     sealed interface Generic : TLTypeSpec {

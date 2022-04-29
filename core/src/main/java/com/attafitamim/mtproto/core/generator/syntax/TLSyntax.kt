@@ -29,6 +29,7 @@ const val NAMESPACE_SEPARATOR = "."
 const val FLAGS_PROPERTY_NAME = "flags"
 const val FLAGS_KEY_WORD = "flags:#"
 const val FLAGS_DEFAULT_VALUE = 0
+const val CONSTRUCTOR_DEFAULT_VALUE = -1
 
 const val PROPERTY_FLAG_PREFIX = "flags."
 const val PROPERTY_FLAG_SEPARATOR = "?"
@@ -39,16 +40,17 @@ const val ARRAY_ELEMENT_NAME = "element"
 
 const val ANY_TYPE_SIGNATURE = "Type"
 const val FLAG_SIGNATURE = "true"
+const val BYTES_SIGNATURE = "bytes"
 
 const val DEFAULT_FLAG_VALUE = 0
 const val DEFAULT_FLAG_BASE = 2.0
 
 val primitiveTypes = mapOf(
+    "byte" to Byte::class,
     "string" to String::class,
     "int" to Int::class,
     "long" to Long::class,
     "boolean" to Boolean::class,
     "bool" to Boolean::class,
-    "double" to Double::class,
-    "bytes" to ByteArray::class
+    "double" to Double::class
 )

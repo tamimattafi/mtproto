@@ -9,6 +9,7 @@ import com.attafitamim.mtproto.core.generator.utils.*
 import com.attafitamim.mtproto.core.serialization.helpers.SerializationHelper
 import com.attafitamim.mtproto.core.serialization.helpers.getTypeParseMethod
 import com.attafitamim.mtproto.core.serialization.helpers.getTypeSerializeMethod
+import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.types.TLMethod
 import com.attafitamim.mtproto.core.types.TLObject
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
@@ -81,7 +82,7 @@ class TypeSpecFactory(
 
         val hashConstant = createConstantPropertySpec(
             mtVariantObjectSpec::constructorHash.name,
-            mtVariantObjectSpec.constructorHash
+            mtVariantObjectSpec.constructorHash ?: CONSTRUCTOR_DEFAULT_VALUE
         )
 
         val hashPropertySpec = PropertySpec.builder(TLObjectSpec::constructorHash.name, Int::class)
@@ -175,20 +176,23 @@ class TypeSpecFactory(
         typeVariables: List<TypeVariableName>?,
         returnType: ClassName
     ): TypeSpec.Builder = this.apply {
-        val hashParameterName = TLObject::constructorHash.name
-        val hashConstantName = camelToSnakeCase(hashParameterName).uppercase()
-
-        val hashValidationStatement = StringBuilder().append(
-            REQUIRE_METHOD,
-            PARAMETER_OPEN_PARENTHESIS,
-            hashParameterName,
-            EQUAL_SIGN,
-            hashConstantName,
-            PARAMETER_CLOSE_PARENTHESIS
-        ).toString()
-
         val functionBuilder = TLMethod<*>::parse.asFun3Builder(typeVariables, returnType)
-            .addStatement(hashValidationStatement)
+
+        if (mtObjectSpec.constructorHash != null) {
+            val hashParameterName = TLObject::constructorHash.name
+            val hashConstantName = camelToSnakeCase(hashParameterName).uppercase()
+
+            val hashValidationStatement = StringBuilder().append(
+                REQUIRE_METHOD,
+                PARAMETER_OPEN_PARENTHESIS,
+                hashParameterName,
+                EQUAL_SIGN,
+                hashConstantName,
+                PARAMETER_CLOSE_PARENTHESIS
+            ).toString()
+
+            functionBuilder.addStatement(hashValidationStatement)
+        }
 
         if (mtObjectSpec.hasFlags) {
             functionBuilder.addLocalPropertyParseStatement(FLAGS_PROPERTY_NAME, Int::class)
@@ -217,7 +221,13 @@ class TypeSpecFactory(
         val functionBuilder = FunSpec.builder(TLObject::serialize.name)
             .addParameter(OUTPUT_STREAM_NAME, TLOutputStream::class)
             .addModifiers(KModifier.OVERRIDE)
-            .addLocalPropertySerializeStatement(TLObject::constructorHash.name, Int::class)
+
+        if (mtVariantObjectSpec.constructorHash != null) {
+            functionBuilder.addLocalPropertySerializeStatement(
+                TLObject::constructorHash.name,
+                Int::class
+            )
+        }
 
         if (mtVariantObjectSpec.hasFlags) {
             val flagsInitializationStatement = StringBuilder().append(
@@ -305,6 +315,7 @@ class TypeSpecFactory(
             is TLTypeSpec.Generic.Variable -> addPropertySerializeStatement(name, typeSpec.superType, flag)
             is TLTypeSpec.Primitive -> addLocalPropertySerializeStatement(name, typeSpec.clazz, flag)
             is TLTypeSpec.Structure.Collection -> addCollectionSerializeStatement(name, typeSpec.elementGeneric, flag)
+            is TLTypeSpec.Structure.Bytes -> addBytesSerializeStatement(name, typeSpec, flag)
             TLTypeSpec.Flag -> { /* Do not serialize to stream */}
             TLTypeSpec.Type -> addGenericSerializeStatement(name, flag)
         }
@@ -341,6 +352,7 @@ class TypeSpecFactory(
             is TLTypeSpec.Generic.Variable -> addGenericParseStatement(name, typeSpec, flag)
             is TLTypeSpec.Primitive -> addLocalPropertyParseStatement(name, typeSpec.clazz, flag)
             is TLTypeSpec.Structure.Collection -> addCollectionParseStatement(name, typeSpec.elementGeneric, flag)
+            is TLTypeSpec.Structure.Bytes -> addBytesParseStatement(name, typeSpec, flag)
             TLTypeSpec.Flag -> addFlagParseStatement(name, requireNotNull(flag))
             TLTypeSpec.Type ->  { /* Can't parse property without type info */ }
         }
@@ -470,6 +482,49 @@ class TypeSpecFactory(
         endControlFlow()
     }
 
+
+    private fun FunSpec.Builder.addBytesSerializeStatement(
+        name: String,
+        typeSpec: TLTypeSpec.Structure.Bytes,
+        flag: Int?
+    ): FunSpec.Builder = this.addSerializeFlagCheckStatement(name, flag) {
+        if (typeSpec.fixedSize != null) {
+            val byteArraySizeName = buildString {
+                append(
+                    name,
+                    INSTANCE_ACCESS_KEY,
+                    ByteArray::size.name
+                )
+            }
+
+            val sizeValidationStatement = buildString {
+                append(
+                    REQUIRE_METHOD,
+                    PARAMETER_OPEN_PARENTHESIS,
+                    byteArraySizeName,
+                    EQUAL_SIGN,
+                    typeSpec.fixedSize,
+                    PARAMETER_CLOSE_PARENTHESIS
+                )
+            }
+
+            addStatement(sizeValidationStatement)
+        }
+
+        val serializeStatement = buildString {
+            append(
+                OUTPUT_STREAM_NAME,
+                INSTANCE_ACCESS_KEY,
+                TLOutputStream::writeByteArray.name,
+                PARAMETER_OPEN_PARENTHESIS,
+                name,
+                PARAMETER_CLOSE_PARENTHESIS
+            )
+        }
+
+        addStatement(serializeStatement)
+    }
+
     private fun FunSpec.Builder.addCollectionParseStatement(
         name: String,
         elementGeneric: TLTypeSpec.Generic,
@@ -531,6 +586,39 @@ class TypeSpecFactory(
 
         addStatement(arrayAddStatement)
         endControlFlow()
+    }
+
+    private fun FunSpec.Builder.addBytesParseStatement(
+        name: String,
+        typeSpec: TLTypeSpec.Structure.Bytes,
+        flag: Int?
+    ): FunSpec.Builder = this.apply {
+        val parseStatement = if (typeSpec.fixedSize != null) buildString {
+            append(
+                INPUT_STREAM_NAME,
+                INSTANCE_ACCESS_KEY,
+                TLInputStream::readBytes.name,
+                PARAMETER_OPEN_PARENTHESIS,
+                typeSpec.fixedSize,
+                PARAMETER_CLOSE_PARENTHESIS
+            )
+        } else buildString {
+            append(
+                INPUT_STREAM_NAME,
+                INSTANCE_ACCESS_KEY,
+                TLInputStream::readByteArray.name,
+                PARAMETER_OPEN_PARENTHESIS,
+                PARAMETER_CLOSE_PARENTHESIS
+            )
+        }
+
+        val typeName = typeNameFactory.createTypeName(typeSpec)
+        addPropertyParseStatement(
+            name,
+            parseStatement,
+            flag,
+            typeName
+        )
     }
 
     private fun FunSpec.Builder.addLocalPropertySerializeStatement(

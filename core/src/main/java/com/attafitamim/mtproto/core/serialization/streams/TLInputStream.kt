@@ -8,5 +8,6 @@ interface TLInputStream {
     fun readBoolean(): Boolean
     fun readString(): String
     fun readByteArray(): ByteArray
+    fun readBytes(limit: Int): ByteArray
     fun readInputStream(): TLInputStream
 }

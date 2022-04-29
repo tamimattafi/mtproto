@@ -60,10 +60,6 @@ class TLGenerator(
         val typeSpecFactory = TypeSpecFactory(typeNameFactory, propertySpecFactory)
         val fileSpecFactory = FileSpecFactory(typeNameFactory, typeSpecFactory)
 
-        methodTlObjects.forEach {
-            println(it)
-        }
-
         val objectsGroup = typesTlObjects.groupBy { mtObjectSpec ->
             mtObjectSpec.superType
         }

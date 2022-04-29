@@ -11,7 +11,6 @@ import java.lang.Exception
 object TLObjectParser {
 
     fun parseObject(objectScheme: String): TLObjectSpec {
-
         if (!isValidObjectScheme(objectScheme)) {
             throw TLSchemeParseException(
                 objectScheme,
@@ -20,22 +19,40 @@ object TLObjectParser {
         }
 
         try {
-            var name = objectScheme.substringBefore(CONSTRUCTOR_PREFIX)
+            val hasGenerics = objectScheme.contains(GENERIC_VARIABLE_OPENING_BRACKET) &&
+                    objectScheme.contains(GENERIC_VARIABLE_CLOSING_BRACKET)
+
+            val hasFlags = objectScheme.contains(FLAGS_KEY_WORD)
+
+            val propertiesStringPrefix = when {
+                hasFlags -> FLAGS_KEY_WORD
+                hasGenerics -> GENERIC_VARIABLE_CLOSING_BRACKET
+                else -> PROPERTIES_SEPARATOR
+            }
+
+            val typeStringPostfix = when {
+                hasGenerics -> GENERIC_VARIABLE_OPENING_BRACKET
+                hasFlags -> FLAGS_KEY_WORD
+                else -> PROPERTIES_SEPARATOR
+            }
+
+            var name = objectScheme.substringBefore(typeStringPostfix)
+                .substringBefore(CONSTRUCTOR_PREFIX)
+
+            val constructorHash = objectScheme.substringBefore(typeStringPostfix)
+                .substringAfter(CONSTRUCTOR_PREFIX, missingDelimiterValue = "")
+                .trim()
+                .takeIf(String::isNotBlank)
+                ?.toLong(16)
+                ?.toInt()
+
             var namespace: String? = null
             if (name.contains(NAMESPACE_SEPARATOR)) {
                 namespace = name.substringBeforeLast(NAMESPACE_SEPARATOR)
                 name = name.substringAfterLast(NAMESPACE_SEPARATOR)
             }
 
-            val constructorHex = objectScheme.substringAfter(CONSTRUCTOR_PREFIX)
-                .substringBefore(PROPERTIES_SEPARATOR)
-
-            val hash = constructorHex.toLong(16).toInt()
-
             var genericVariables: HashMap<String, TLTypeSpec.Generic.Variable>? = null
-            val hasGenerics = objectScheme.contains(GENERIC_VARIABLE_OPENING_BRACKET) &&
-                    objectScheme.contains(GENERIC_VARIABLE_CLOSING_BRACKET)
-
             if (hasGenerics) {
                 genericVariables = HashMap()
                 objectScheme.substringAfter(GENERIC_VARIABLE_OPENING_BRACKET)
@@ -49,14 +66,6 @@ object TLObjectParser {
 
                         genericVariables[variable.name] = variable
                     }
-            }
-
-            val hasFlags = objectScheme.contains(FLAGS_KEY_WORD)
-
-            val propertiesStringPrefix = when {
-                hasFlags -> FLAGS_KEY_WORD
-                hasGenerics -> GENERIC_VARIABLE_CLOSING_BRACKET
-                else -> PROPERTIES_SEPARATOR
             }
 
             val propertiesString = objectScheme.substringAfter(propertiesStringPrefix)
@@ -83,7 +92,7 @@ object TLObjectParser {
                 formattedName,
                 namespace,
                 superTypeSpec,
-                hash,
+                constructorHash,
                 hasFlags,
                 tlPropertySpecs,
                 genericVariables
@@ -100,9 +109,8 @@ object TLObjectParser {
     fun isValidObjectScheme(objectScheme: String): Boolean {
         val isNotComment = !objectScheme.startsWith("/")
         val hasLineEnd = objectScheme.endsWith(LINE_END)
-        val hasConstructor = objectScheme.contains(CONSTRUCTOR_PREFIX)
         val hasSuperTypePrefix = objectScheme.contains(SUPER_TYPE_PREFIX)
 
-        return hasLineEnd && hasConstructor && hasSuperTypePrefix && isNotComment
+        return hasLineEnd && hasSuperTypePrefix && isNotComment
     }
 }

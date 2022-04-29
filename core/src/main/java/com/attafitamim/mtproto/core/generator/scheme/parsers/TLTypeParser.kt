@@ -67,8 +67,24 @@ object TLTypeParser {
         // is a true-flag (boolean)
         typeScheme == FLAG_SIGNATURE -> TLTypeSpec.Flag
 
+        // is byteArray with dynamic size
+        typeScheme == BYTES_SIGNATURE -> TLTypeSpec.Structure.Bytes(null)
+
+        // is byteArray with fixed size
+        typeScheme.contains(BYTES_SIGNATURE)
+                && typeScheme.contains(LIST_OPENING_BRACKET)
+                && typeScheme.contains(LIST_CLOSING_BRACKET) -> {
+                    val fixedSize = typeScheme.substringAfter(LIST_OPENING_BRACKET)
+                        .removeSuffix(LIST_CLOSING_BRACKET)
+                        .trim()
+                        .toInt()
+
+                    TLTypeSpec.Structure.Bytes(fixedSize)
+                }
+
         // is a list of types
-        typeScheme.startsWith(LIST_OPENING_BRACKET) && typeScheme.endsWith(LIST_CLOSING_BRACKET) -> {
+        typeScheme.startsWith(LIST_OPENING_BRACKET)
+                && typeScheme.endsWith(LIST_CLOSING_BRACKET) -> {
             val genericName = typeScheme.removePrefix(LIST_OPENING_BRACKET)
                 .removeSuffix(LIST_CLOSING_BRACKET)
                 .trim()

@@ -5,7 +5,7 @@ data class TLObjectSpec(
     var name: String,
     var namespace: String?,
     val superType: TLTypeSpec.Object,
-    val constructorHash: Int,
+    val constructorHash: Int?,
     val hasFlags: Boolean,
     val propertiesSpecs: List<TLPropertySpec>?,
     val genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
