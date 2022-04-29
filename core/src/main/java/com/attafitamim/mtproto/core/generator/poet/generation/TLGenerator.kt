@@ -78,7 +78,7 @@ class TLGenerator(
         val typeSpecFactory = TypeSpecFactory(typeNameFactory, propertySpecFactory)
         val fileSpecFactory = FileSpecFactory(typeNameFactory, typeSpecFactory)
 
-        containerSpecs.values.forEach { tlContainerSpec ->
+        containerSpecs.forEach { tlContainerSpec ->
             val fileSpec = fileSpecFactory.createFileSpec(tlContainerSpec)
             fileSpec.writeTo(sourceCodePath)
         }

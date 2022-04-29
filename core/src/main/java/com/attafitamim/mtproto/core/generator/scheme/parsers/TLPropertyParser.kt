@@ -26,14 +26,14 @@ object TLPropertyParser {
             type = typeDescription
         }
 
-        val formattedType = snakeToTitleCase(type)
         val propertyTypeSpec = TLTypeParser.parseType(
-            formattedType,
+            type,
             genericVariables,
             tlContainers
         )
 
-        return TLPropertySpec(propertyScheme, name, flag, propertyTypeSpec)
+        val formmatedName = snakeToCamelCase(name)
+        return TLPropertySpec(propertyScheme, formmatedName, flag, propertyTypeSpec)
     }
 
     private fun parseTypeFlag(typeString: String): Int {

@@ -128,7 +128,19 @@ object TLTypeParser {
         
         // is TLType
         else -> {
-            parseTLObject(typeScheme, genericVariables, tlContainers)
+            val tlContainerType = tlContainers.firstOrNull { tlContainerSpec ->
+                val fullName = buildString {
+                    if (tlContainerSpec.namespace != null) {
+                        append(tlContainerSpec.namespace, NAMESPACE_SEPARATOR)
+                    }
+
+                    append(tlContainerSpec.name)
+                }
+
+                fullName.equals(typeScheme, ignoreCase = true)
+            }
+
+            tlContainerType?.superType ?: parseTLObject(typeScheme, genericVariables, tlContainers)
         }
     }
 
