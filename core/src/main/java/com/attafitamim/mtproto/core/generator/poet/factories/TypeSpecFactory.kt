@@ -405,7 +405,9 @@ class TypeSpecFactory(
         flag: Int? = null
     ): FunSpec.Builder = this.apply {
         when(typeSpec) {
-            is TLTypeSpec.TLType.Object -> addObjectSerializeStatement(name, flag)
+            is TLTypeSpec.TLType.Object,
+            TLTypeSpec.TLType.SuperContainer,
+            TLTypeSpec.TLType.SuperObject -> addObjectSerializeStatement(name, flag)
             is TLTypeSpec.TLType.Container -> addObjectSerializeStatement(name, flag)
             is TLTypeSpec.Generic.Parameter -> addPropertySerializeStatement(name, typeSpec.type, flag)
             is TLTypeSpec.Generic.Variable -> addPropertySerializeStatement(name, typeSpec.superType, flag)
@@ -448,8 +450,20 @@ class TypeSpecFactory(
             is TLTypeSpec.Generic.Parameter -> addPropertyParseStatement(name, typeSpec.type, flag)
             is TLTypeSpec.Generic.Variable -> addGenericParseStatement(name, typeSpec, flag)
             is TLTypeSpec.Primitive -> addLocalPropertyParseStatement(name, typeSpec.clazz, flag)
-            is TLTypeSpec.Structure.Collection -> addCollectionParseStatement(name, typeSpec.elementGeneric, flag)
             is TLTypeSpec.Structure.Bytes -> addBytesParseStatement(name, typeSpec, flag)
+            is TLTypeSpec.Structure.Collection -> addCollectionParseStatement(
+                name,
+                typeSpec.elementGeneric,
+                flag
+            )
+
+            TLTypeSpec.TLType.SuperContainer,
+            TLTypeSpec.TLType.SuperObject -> addTypeParseStatement(
+                name,
+                typeNameFactory.createTypeName(typeSpec),
+                flag
+            )
+
             TLTypeSpec.Flag -> addFlagParseStatement(name, requireNotNull(flag))
             TLTypeSpec.Type ->  { /* Can't parse property without type info */ }
         }
@@ -458,6 +472,15 @@ class TypeSpecFactory(
     private fun FunSpec.Builder.addGenericParseStatement(
         name: String,
         typeSpec: TLTypeSpec.Generic.Variable,
+        flag: Int?
+    ): FunSpec.Builder = this.apply {
+        val typeName = typeNameFactory.createTypeVariableName(typeSpec)
+        addTypeParseStatement(name, typeName, flag)
+    }
+
+    private fun FunSpec.Builder.addTypeParseStatement(
+        name: String,
+        typeName: TypeName,
         flag: Int?
     ): FunSpec.Builder = this.apply {
         val parseStatement = StringBuilder().append(
@@ -469,7 +492,6 @@ class TypeSpecFactory(
             PARAMETER_CLOSE_PARENTHESIS
         ).toString()
 
-        val typeName = typeNameFactory.createTypeVariableName(typeSpec)
         addPropertyParseStatement(
             name,
             parseStatement,
@@ -478,6 +500,7 @@ class TypeSpecFactory(
             SerializationHelper.javaClass.asTypeName()
         )
     }
+
 
     private fun FunSpec.Builder.addFlagParseStatement(
         name: String,

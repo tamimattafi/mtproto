@@ -7,6 +7,8 @@ import com.attafitamim.mtproto.core.generator.syntax.TYPES_FOLDER_NAME
 import com.attafitamim.mtproto.core.generator.syntax.TYPES_PREFIX
 import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
+import com.attafitamim.mtproto.core.types.TLContainer
+import com.attafitamim.mtproto.core.types.TLObject
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
@@ -21,6 +23,8 @@ class TypeNameFactory(private val basePackage: String) {
             is TLTypeSpec.Primitive -> mtTypeSpec.clazz.asTypeName()
             is TLTypeSpec.TLType.Object -> mtTypeSpec.toTypeName()
             is TLTypeSpec.TLType.Container -> mtTypeSpec.toTypeName()
+            TLTypeSpec.TLType.SuperContainer -> TLContainer::class.asTypeName()
+            TLTypeSpec.TLType.SuperObject -> TLObject::class.asTypeName()
             is TLTypeSpec.Structure -> mtTypeSpec.toTypeName()
             TLTypeSpec.Type -> Any::class.asTypeName()
             TLTypeSpec.Flag -> Boolean::class.asTypeName()

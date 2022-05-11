@@ -97,6 +97,12 @@ object TLTypeParser {
         // is a Type (Any)
         typeScheme == ANY_TYPE_SIGNATURE -> TLTypeSpec.Type
 
+        // is an Object (Any : TLObject)
+        typeScheme == SUPER_OBJECT_SIGNATURE -> TLTypeSpec.TLType.SuperObject
+
+        // is a container (Any : TLContainer)
+        typeScheme == SUPER_CONTAINER_SIGNATURE -> TLTypeSpec.TLType.SuperContainer
+
         // is a true-flag (boolean)
         typeScheme == FLAG_SIGNATURE -> TLTypeSpec.Flag
 
@@ -126,7 +132,7 @@ object TLTypeParser {
             TLTypeSpec.Structure.Collection(List::class, genericSpec)
         }
         
-        // is TLType
+        // extends a TLType
         else -> {
             val tlContainerType = tlContainers.firstOrNull { tlContainerSpec ->
                 val fullName = buildString {

@@ -39,6 +39,8 @@ const val OUTPUT_STREAM_NAME = "outputStream"
 const val ARRAY_ELEMENT_NAME = "element"
 
 const val ANY_TYPE_SIGNATURE = "Type"
+const val SUPER_OBJECT_SIGNATURE = "Object"
+const val SUPER_CONTAINER_SIGNATURE = "Container"
 const val FLAG_SIGNATURE = "true"
 const val BYTES_SIGNATURE = "bytes"
 

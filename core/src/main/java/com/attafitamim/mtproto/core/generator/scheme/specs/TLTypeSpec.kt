@@ -14,6 +14,10 @@ sealed interface TLTypeSpec {
 
     sealed interface TLType : TLTypeSpec {
 
+        object SuperObject : TLType
+
+        object SuperContainer : TLType
+
         data class Object(
             val namespace: String?,
             val name: String,
