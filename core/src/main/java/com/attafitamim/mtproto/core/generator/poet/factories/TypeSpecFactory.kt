@@ -170,14 +170,19 @@ class TypeSpecFactory(
 
         val companionObjectBuilder = TypeSpec.companionObjectBuilder()
             .addProperty(hashConstant)
-            .addObjectParseFunction(
+
+        if (!mtVariantObjectSpec.propertiesSpecs.isNullOrEmpty()) {
+            companionObjectBuilder.addObjectParseFunction(
                 mtVariantObjectSpec.hasFlags,
                 mtVariantObjectSpec.propertiesSpecs,
                 true,
                 objectProperties,
                 typeVariables,
                 className
-            ).build()
+            )
+        }
+
+        val companionObjectSpec = companionObjectBuilder.build()
 
         val objectSerializeFunction = createObjectSerializeFunctionSpec(
             mtVariantObjectSpec.hasFlags,
@@ -185,7 +190,7 @@ class TypeSpecFactory(
             mtVariantObjectSpec.propertiesSpecs
         )
 
-        return classBuilder.addType(companionObjectBuilder)
+        return classBuilder.addType(companionObjectSpec)
             .addProperty(hashPropertySpec)
             .addFunction(objectSerializeFunction)
             .addKdoc(mtVariantObjectSpec.rawScheme)
@@ -217,22 +222,34 @@ class TypeSpecFactory(
         functionBuilder.beginControlFlow(whenStatement)
         mtVariantObjectSpecs.forEach { mtObjectSpec ->
             val objectClass = typeNameFactory.createClassName(mtObjectSpec.name, superClassName)
-            val checkStatement = StringBuilder().append(
+            val statementBuilder = StringBuilder().append(
                 objectClass.simpleName,
                 INSTANCE_ACCESS_KEY,
                 hashConstantName,
-                WHEN_RESULT_ARROW,
-                objectClass.simpleName,
-                INSTANCE_ACCESS_KEY,
-                TLMethod<*>::parse.name,
-                PARAMETER_OPEN_PARENTHESIS,
-                INPUT_STREAM_NAME,
-                PARAMETER_SEPARATOR,
-                hashParameterName,
-                PARAMETER_CLOSE_PARENTHESIS
-            ).toString()
+                WHEN_RESULT_ARROW
+            )
 
-            functionBuilder.addStatement(checkStatement)
+            if (!mtObjectSpec.propertiesSpecs.isNullOrEmpty()) {
+                statementBuilder.append(
+                    objectClass.simpleName,
+                    INSTANCE_ACCESS_KEY,
+                    TLMethod<*>::parse.name,
+                    PARAMETER_OPEN_PARENTHESIS,
+                    INPUT_STREAM_NAME,
+                    PARAMETER_SEPARATOR,
+                    hashParameterName,
+                    PARAMETER_CLOSE_PARENTHESIS
+                )
+
+                val parseStatement = statementBuilder.toString()
+                functionBuilder.addStatement(parseStatement)
+            } else {
+                val constructorCall = createCostructorCallStatement()
+                statementBuilder.append(constructorCall)
+
+                val parseStatement = statementBuilder.toString()
+                functionBuilder.addStatement(parseStatement, objectClass)
+            }
         }
 
         val throwStatement = StringBuilder().append(

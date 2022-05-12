@@ -99,7 +99,7 @@ fun createFunctionCallStatement(
         .toString()
 }
 
-fun createCostructorCallStatement(properties: List<String>?): String {
+fun createCostructorCallStatement(properties: List<String>? = null): String {
     val builder = StringBuilder()
         .append(TYPE_CONCAT_INDICATOR, PARAMETER_OPEN_PARENTHESIS)
 
