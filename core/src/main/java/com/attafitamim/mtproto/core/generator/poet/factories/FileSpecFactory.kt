@@ -1,6 +1,7 @@
 package com.attafitamim.mtproto.core.generator.poet.factories
 
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLMethodSpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLObjectSpec
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.squareup.kotlinpoet.FileSpec
@@ -10,7 +11,7 @@ class FileSpecFactory(
     private val typeSpecFactory: TypeSpecFactory
 ) {
 
-    fun createFileSpec(
+    fun createObjectFileSpec(
         superClassName: TLTypeSpec.TLType.Object,
         mtVariantObjectSpecs: List<TLObjectSpec>
     ): FileSpec {
@@ -33,7 +34,18 @@ class FileSpecFactory(
             .build()
     }
 
-    fun createFileSpec(
+    fun createMethodFileSpecs(
+        methodSpecs: TLMethodSpec
+    ): FileSpec {
+        val className = typeNameFactory.createClassName(methodSpecs.name, methodSpecs.namespace)
+        val classTypeSpec = typeSpecFactory.createMethodSpec(methodSpecs)
+
+        return FileSpec.builder(className.packageName, className.simpleName)
+            .addType(classTypeSpec)
+            .build()
+    }
+
+    fun createContainerFileSpec(
         tlContainerSpec: TLContainerSpec
     ): FileSpec {
         val className = typeNameFactory.createClassName(tlContainerSpec.superType)

@@ -1,22 +1,20 @@
 package com.attafitamim.mtproto.core.generator.scheme.parsers
 
 import com.attafitamim.mtproto.core.exceptions.TLSchemeParseException
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLPropertySpec
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.*
 import com.attafitamim.mtproto.core.generator.syntax.*
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 
-object TLContainerParser {
+object TLMethodParser {
 
-    fun parseContainer(
+    fun parseMethod(
         objectScheme: String,
         tlContainers: List<TLContainerSpec>
-    ): TLContainerSpec {
-        if (!isValidContainerScheme(objectScheme)) {
+    ): TLMethodSpec {
+        if (!isValidMethodScheme(objectScheme)) {
             throw TLSchemeParseException(
                 objectScheme,
-                "Invalid container scheme"
+                "Invalid method scheme"
             )
         }
 
@@ -40,6 +38,10 @@ object TLContainerParser {
 
             var name = objectScheme.substringBefore(typeStringPostfix)
                 .substringBefore(CONSTRUCTOR_PREFIX)
+
+            val constructorHash = objectScheme.substringBefore(typeStringPostfix)
+                .substringAfter(CONSTRUCTOR_PREFIX, missingDelimiterValue = "")
+                .trim()
 
             var namespace: String? = null
             if (name.contains(NAMESPACE_SEPARATOR)) {
@@ -84,18 +86,19 @@ object TLContainerParser {
                 .substringBefore(LINE_END)
                 .trim()
 
-            val superTypeSpec = TLTypeParser.parseTLContainer(
+            val superTypeSpec = TLTypeParser.parseType(
                 superType,
                 genericVariables,
                 tlContainers
             )
             
             val formattedName = snakeToTitleCase(name)
-            return TLContainerSpec(
+            return TLMethodSpec(
                 objectScheme,
                 formattedName,
                 namespace,
                 superTypeSpec,
+                constructorHash,
                 hasFlags,
                 tlPropertySpecs,
                 genericVariables
@@ -109,11 +112,7 @@ object TLContainerParser {
     }
 
     //TODO: optimize this and use regular expressions if possible
-    fun isValidContainerScheme(objectScheme: String): Boolean {
-        val isNotComment = !objectScheme.startsWith("/")
-        val hasLineEnd = objectScheme.endsWith(LINE_END)
-        val hasSuperTypePrefix = objectScheme.contains(SUPER_TYPE_PREFIX)
-
-        return hasLineEnd && hasSuperTypePrefix && isNotComment
+    fun isValidMethodScheme(objectScheme: String): Boolean {
+        return TLObjectParser.isValidObjectScheme(objectScheme)
     }
 }

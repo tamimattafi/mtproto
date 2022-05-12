@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import java.util.*
 import kotlin.reflect.KFunction1
 import kotlin.reflect.KFunction3
+import kotlin.reflect.KFunction2
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.javaType
@@ -47,12 +48,12 @@ fun Collection<KParameter>.asParameterSpecs() = map { kParameter ->
 
 fun KFunction3<*, *, *, *>.asFun3Builder(
     superTypeVariables: List<TypeName>?,
-    returnType: ClassName
+    returnType: TypeName
 ): FunSpec.Builder {
    val builder = FunSpec.builder(name)
        .addParameters(valueParameters.asParameterSpecs())
 
-    val actualReturnType = if (!superTypeVariables.isNullOrEmpty()) {
+    val actualReturnType = if (!superTypeVariables.isNullOrEmpty() && returnType is ClassName) {
         builder.addModifiers(KModifier.INLINE)
 
         superTypeVariables.forEach { typeName ->
@@ -67,6 +68,30 @@ fun KFunction3<*, *, *, *>.asFun3Builder(
 
     return builder.returns(actualReturnType)
 }
+
+fun KFunction2<*, *, *>.asFun2Builder(
+    superTypeVariables: List<TypeName>?,
+    returnType: TypeName
+): FunSpec.Builder {
+    val builder = FunSpec.builder(name)
+        .addParameters(valueParameters.asParameterSpecs())
+
+    val actualReturnType = if (!superTypeVariables.isNullOrEmpty() && returnType is ClassName) {
+        builder.addModifiers(KModifier.INLINE)
+
+        superTypeVariables.forEach { typeName ->
+            if (typeName is TypeVariableName) {
+                val reifiedTypeName = typeName.copy(reified = true)
+                builder.addTypeVariable(reifiedTypeName)
+            }
+        }
+
+        returnType.parameterizedBy(superTypeVariables)
+    } else returnType
+
+    return builder.returns(actualReturnType)
+}
+
 
 fun KFunction1<*, *>.asFun1Builder(): FunSpec.Builder
     = FunSpec.builder(name)
@@ -128,15 +153,15 @@ fun FunSpec.Builder.addReturnStatement(
 }
 
 fun FunSpec.Builder.addReturnConstructorStatement(
-    className: ClassName,
+    returnType: TypeName,
     properties: List<PropertySpec>?,
     typeVariables: List<TypeVariableName>?
 ): FunSpec.Builder {
     val propertyNames = properties?.map(PropertySpec::name)
     val statement = createCostructorCallStatement(propertyNames)
-    val actualClassName = if (!typeVariables.isNullOrEmpty()) {
-        className.parameterizedBy(typeVariables)
-    } else className
+    val actualClassName = if (!typeVariables.isNullOrEmpty() && returnType is ClassName) {
+        returnType.parameterizedBy(typeVariables)
+    } else returnType
 
     return addReturnStatement(statement, actualClassName)
 }

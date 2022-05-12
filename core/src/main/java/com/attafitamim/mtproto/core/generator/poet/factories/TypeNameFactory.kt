@@ -1,10 +1,7 @@
 package com.attafitamim.mtproto.core.generator.poet.factories
 
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
-import com.attafitamim.mtproto.core.generator.syntax.GLOBAL_NAMESPACE
-import com.attafitamim.mtproto.core.generator.syntax.PACKAGE_SEPARATOR
-import com.attafitamim.mtproto.core.generator.syntax.TYPES_FOLDER_NAME
-import com.attafitamim.mtproto.core.generator.syntax.TYPES_PREFIX
+import com.attafitamim.mtproto.core.generator.syntax.*
 import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 import com.attafitamim.mtproto.core.types.TLContainer
@@ -89,6 +86,29 @@ class TypeNameFactory(private val basePackage: String) {
     fun createClassName(name: String, mtSuperObjectSpec: TLTypeSpec.TLType.Object): ClassName {
         val superClassName = createClassName(mtSuperObjectSpec)
         return createClassName(name, superClassName)
+    }
+
+    fun createClassName(name: String, namespace: String?): ClassName {
+        val formattedNameSpace = namespace?.let(::snakeToTitleCase)
+            .orEmpty()
+
+        val formattedClassName = snakeToTitleCase(name)
+
+        val finalClassName = StringBuilder()
+            .append(TYPES_PREFIX)
+            .append(formattedNameSpace)
+            .append(formattedClassName)
+            .toString()
+
+        val actualNameSpace = namespace ?: GLOBAL_NAMESPACE
+        val packageName = StringBuilder(basePackage)
+            .append(PACKAGE_SEPARATOR)
+            .append(METHODS_FOLDER_NAME)
+            .append(PACKAGE_SEPARATOR)
+            .append(actualNameSpace)
+            .toString()
+
+        return ClassName(packageName, finalClassName)
     }
 
     fun createTypeVariableName(genericVariable: TLTypeSpec.Generic.Variable): TypeVariableName {

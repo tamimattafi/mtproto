@@ -1,11 +1,8 @@
 package com.attafitamim.mtproto.core.generator.poet.factories
 
 import com.attafitamim.mtproto.core.exceptions.TLObjectParseException
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.*
 import com.attafitamim.mtproto.core.generator.syntax.*
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLObjectSpec
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLPropertySpec
-import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.*
 import com.attafitamim.mtproto.core.serialization.helpers.SerializationHelper
 import com.attafitamim.mtproto.core.serialization.helpers.getTypeParseMethod
@@ -39,27 +36,14 @@ class TypeSpecFactory(
             classTypeBuilder.addTypeVariables(superTypeVariables)
         }
 
-        mtVariantObjectSpecs.groupBy(TLObjectSpec::name).forEach { (_, group) ->
-            if (group.size > 1) group.forEach { mtObjectSpec ->
-                val objectClass = createObjectSpec(
-                    superClassName,
-                    superTypeVariables,
-                    mtObjectSpec,
-                    true
-                )
+        mtVariantObjectSpecs.forEach { mtObjectSpecs ->
+            val objectClass = createObjectSpec(
+                superClassName,
+                superTypeVariables,
+                mtObjectSpecs
+            )
 
-                classTypeBuilder.addType(objectClass)
-            } else {
-                val tlObjectSpec = group.first()
-                val objectClass = createObjectSpec(
-                    superClassName,
-                    superTypeVariables,
-                    tlObjectSpec,
-                    false
-                )
-
-                classTypeBuilder.addType(objectClass)
-            }
+            classTypeBuilder.addType(objectClass)
         }
 
         val companionObjectBuilder = TypeSpec.companionObjectBuilder()
@@ -98,7 +82,6 @@ class TypeSpecFactory(
             .addObjectParseFunction(
                 tlContainerSpec.hasFlags,
                 tlContainerSpec.propertiesSpecs,
-                false,
                 objectProperties,
                 typeVariables,
                 superClassName
@@ -116,26 +99,71 @@ class TypeSpecFactory(
             .build()
     }
 
+    fun createMethodSpec(tlMethodSpec: TLMethodSpec): TypeSpec {
+        val returnType = typeNameFactory.createTypeName(tlMethodSpec.returnType)
+        val superInterface = TLMethod::class.asTypeName().parameterizedBy(returnType)
+        val classBuilder = TypeSpec.classBuilder(tlMethodSpec.name)
+            .addSuperinterface(superInterface)
+
+        val typeVariables = tlMethodSpec.genericVariables
+            ?.values
+            ?.map(typeNameFactory::createTypeVariableName)
+
+        if (!typeVariables.isNullOrEmpty()) {
+            classBuilder.addTypeVariables(typeVariables)
+        }
+
+        val objectProperties = tlMethodSpec.propertiesSpecs?.map { mtPropertySpec ->
+            propertySpecFactory.createPropertySpec(mtPropertySpec)
+        }
+
+        if (!objectProperties.isNullOrEmpty()) classBuilder
+            .addPrimaryConstructor(objectProperties)
+            .addModifiers(KModifier.DATA)
+
+        val objectSerializeFunction = createObjectSerializeFunctionSpec(
+            tlMethodSpec.hasFlags,
+            true,
+            tlMethodSpec.propertiesSpecs
+        )
+
+        val methodParseFunction = addMethodParseFunction(tlMethodSpec.returnType)
+
+        val hashInt = tlMethodSpec.constructorHash.toLong(16)
+            .toInt()
+
+        val hashConstant = createConstantPropertySpec(
+            tlMethodSpec::constructorHash.name,
+            hashInt
+        )
+
+        val hashPropertySpec = PropertySpec.builder(TLObjectSpec::constructorHash.name, Int::class)
+            .addModifiers(KModifier.OVERRIDE)
+            .initializer("%L", hashConstant.name)
+            .build()
+
+        val companionObjectBuilder = TypeSpec.companionObjectBuilder()
+            .addProperty(hashConstant)
+            .build()
+
+        return classBuilder.addFunction(objectSerializeFunction)
+            .addType(companionObjectBuilder)
+            .addProperty(hashPropertySpec)
+            .addFunction(methodParseFunction)
+            .addKdoc(tlMethodSpec.rawScheme)
+            .build()
+    }
+
     private fun createObjectSpec(
         superClassName: ClassName,
         superTypeVariables: List<TypeVariableName>?,
-        mtVariantObjectSpec: TLObjectSpec,
-        appendHashAsPrefix: Boolean
+        mtVariantObjectSpec: TLObjectSpec
     ): TypeSpec {
         val superInterfaceName = if (!superTypeVariables.isNullOrEmpty()) {
             superClassName.parameterizedBy(superTypeVariables)
         } else superClassName
 
-        val actualName = if (!appendHashAsPrefix) mtVariantObjectSpec.name
-        else buildString {
-            append(
-                mtVariantObjectSpec.name,
-                CONSTANT_NAME_SEPARATOR,
-                mtVariantObjectSpec.constructorHash
-            )
-        }
-
-        val className = typeNameFactory.createClassName(actualName, superClassName)
+        val className = typeNameFactory.createClassName(mtVariantObjectSpec.name, superClassName)
         val classBuilder = TypeSpec.classBuilder(className)
             .addSuperinterface(superInterfaceName)
 
@@ -155,7 +183,7 @@ class TypeSpecFactory(
             .addPrimaryConstructor(objectProperties)
             .addModifiers(KModifier.DATA)
 
-        val hashInt =mtVariantObjectSpec.constructorHash.toLong(16)
+        val hashInt = mtVariantObjectSpec.constructorHash.toLong(16)
             .toInt()
 
         val hashConstant = createConstantPropertySpec(
@@ -175,7 +203,6 @@ class TypeSpecFactory(
             companionObjectBuilder.addObjectParseFunction(
                 mtVariantObjectSpec.hasFlags,
                 mtVariantObjectSpec.propertiesSpecs,
-                true,
                 objectProperties,
                 typeVariables,
                 className
@@ -205,10 +232,12 @@ class TypeSpecFactory(
         val hashParameterName = TLObject::constructorHash.name
         val hashConstantName = camelToSnakeCase(hashParameterName).uppercase()
 
-        val functionBuilder = TLMethod<*>::parse.asFun3Builder(
+        val functionBuilder = TLMethod<*>::parse.asFun2Builder(
             superTypeVariables,
             superClassName
         )
+
+        functionBuilder.addLocalPropertyParseStatement(hashParameterName, Int::class)
 
         val whenStatement = StringBuilder()
             .append(RETURN_KEYWORD)
@@ -236,8 +265,6 @@ class TypeSpecFactory(
                     TLMethod<*>::parse.name,
                     PARAMETER_OPEN_PARENTHESIS,
                     INPUT_STREAM_NAME,
-                    PARAMETER_SEPARATOR,
-                    hashParameterName,
                     PARAMETER_CLOSE_PARENTHESIS
                 )
 
@@ -275,34 +302,11 @@ class TypeSpecFactory(
     private fun TypeSpec.Builder.addObjectParseFunction(
         hasFlags: Boolean,
         propertiesSpecs: List<TLPropertySpec>?,
-        hasHash: Boolean,
         propertySpecs: List<PropertySpec>?,
         typeVariables: List<TypeVariableName>?,
-        returnType: ClassName
+        returnType: TypeName
     ): TypeSpec.Builder = this.apply {
-        val functionBuilder = if (hasHash) {
-            TLMethod<*>::parse.asFun3Builder(typeVariables, returnType)
-        } else {
-            FunSpec.builder(TLMethod<*>::parse.name)
-                .addParameter(INPUT_STREAM_NAME, TLInputStream::class)
-                .returns(returnType)
-        }
-
-        if (hasHash) {
-            val hashParameterName = TLObject::constructorHash.name
-            val hashConstantName = camelToSnakeCase(hashParameterName).uppercase()
-
-            val hashValidationStatement = StringBuilder().append(
-                REQUIRE_METHOD,
-                PARAMETER_OPEN_PARENTHESIS,
-                hashParameterName,
-                EQUAL_SIGN,
-                hashConstantName,
-                PARAMETER_CLOSE_PARENTHESIS
-            ).toString()
-
-            functionBuilder.addStatement(hashValidationStatement)
-        }
+        val functionBuilder = TLMethod<*>::parse.asFun2Builder(typeVariables, returnType)
 
         if (hasFlags) {
             functionBuilder.addLocalPropertyParseStatement(FLAGS_PROPERTY_NAME, Int::class)
@@ -323,6 +327,17 @@ class TypeSpecFactory(
         ).build()
 
         addFunction(functionSpec)
+    }
+
+    private fun addMethodParseFunction(
+        returnType: TLTypeSpec
+    ): FunSpec {
+        val returnTypeName = typeNameFactory.createTypeName(returnType)
+        return TLMethod<*>::parse.asFun2Builder(null, returnTypeName)
+            .addModifiers(KModifier.OVERRIDE)
+            .addPropertyParseStatement("response", returnType)
+            .addReturnStatement("response")
+            .build()
     }
 
     private fun createObjectSerializeFunctionSpec(
@@ -518,7 +533,6 @@ class TypeSpecFactory(
         )
     }
 
-
     private fun FunSpec.Builder.addFlagParseStatement(
         name: String,
         position: Int
@@ -574,13 +588,11 @@ class TypeSpecFactory(
         }
 
         val objectClassName = typeNameFactory.createClassName(typeSpec)
-        val hashParseStatement = getParseStatement(Int::class)
 
         val objectParseStatement = createFunctionCallStatement(
             objectClassName.simpleName,
             TLMethod<*>::parse.name,
-            INPUT_STREAM_NAME,
-            hashParseStatement
+            INPUT_STREAM_NAME
         )
 
         val objectTypeName = if (!genericTypes.isNullOrEmpty()) {

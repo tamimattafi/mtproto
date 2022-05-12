@@ -5,7 +5,7 @@ data class TLMethodSpec(
     var name: String,
     var namespace: String?,
     val returnType: TLTypeSpec,
-    val hash: Int,
+    val constructorHash: String,
     val hasFlags: Boolean,
     val propertiesSpecs: List<TLPropertySpec>?,
     val genericVariables: Map<String, TLTypeSpec.Generic.Variable>?

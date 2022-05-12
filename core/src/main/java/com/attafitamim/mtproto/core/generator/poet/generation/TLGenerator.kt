@@ -7,7 +7,9 @@ import com.attafitamim.mtproto.core.generator.poet.factories.PropertySpecFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.TypeNameFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.TypeSpecFactory
 import com.attafitamim.mtproto.core.generator.scheme.parsers.TLContainerParser
+import com.attafitamim.mtproto.core.generator.scheme.parsers.TLMethodParser
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
+import com.attafitamim.mtproto.core.generator.scheme.specs.TLMethodSpec
 import com.attafitamim.mtproto.core.generator.syntax.CONSTANT_NAME_SEPARATOR
 import org.gradle.api.GradleException
 import java.io.File
@@ -38,7 +40,7 @@ class TLGenerator(
         println("TL: Parsing types from ${schemeFile.name}")
 
         var generatingTypes = true
-        val methodSpecs = ArrayList<TLObjectSpec>()
+        val methodSpecs = ArrayList<TLMethodSpec>()
         val objectSpecs = ArrayList<TLObjectSpec>()
         val containerSpecs = ArrayList<TLContainerSpec>()
 
@@ -48,14 +50,22 @@ class TLGenerator(
                 schemeLine.contains("---functions---", true) -> generatingTypes = false
                 else -> {
                     when {
-                        TLObjectParser.isValidObjectScheme(schemeLine) -> {
+                        generatingTypes && TLObjectParser.isValidObjectScheme(schemeLine) -> {
                             val tlObjectSpecs = TLObjectParser.parseObject(
                                 schemeLine,
                                 containerSpecs
                             )
 
-                            if (generatingTypes) objectSpecs.add(tlObjectSpecs)
-                            else methodSpecs.add(tlObjectSpecs)
+                            objectSpecs.add(tlObjectSpecs)
+                        }
+
+                        TLMethodParser.isValidMethodScheme(schemeLine) -> {
+                            val tlMethodSpec = TLMethodParser.parseMethod(
+                                schemeLine,
+                                containerSpecs
+                            )
+
+                            methodSpecs.add(tlMethodSpec)
                         }
 
                         TLContainerParser.isValidContainerScheme(schemeLine) -> {
@@ -79,7 +89,7 @@ class TLGenerator(
         val fileSpecFactory = FileSpecFactory(typeNameFactory, typeSpecFactory)
 
         containerSpecs.forEach { tlContainerSpec ->
-            val fileSpec = fileSpecFactory.createFileSpec(tlContainerSpec)
+            val fileSpec = fileSpecFactory.createContainerFileSpec(tlContainerSpec)
             fileSpec.writeTo(sourceCodePath)
         }
 
@@ -104,7 +114,12 @@ class TLGenerator(
                     }
                 }
 
-            val fileSpec = fileSpecFactory.createFileSpec(baseObject, filteredObjectVariants)
+            val fileSpec = fileSpecFactory.createObjectFileSpec(baseObject, filteredObjectVariants)
+            fileSpec.writeTo(sourceCodePath)
+        }
+
+        methodSpecs.forEach { tlMethodSpec ->
+            val fileSpec = fileSpecFactory.createMethodFileSpecs(tlMethodSpec)
             fileSpec.writeTo(sourceCodePath)
         }
     }
