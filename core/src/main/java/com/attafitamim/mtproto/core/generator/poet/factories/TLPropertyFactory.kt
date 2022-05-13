@@ -5,9 +5,12 @@ import com.attafitamim.mtproto.core.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.core.generator.utils.snakeToCamelCase
 import com.squareup.kotlinpoet.PropertySpec
 
-class PropertySpecFactory(private val typeNameFactory: TypeNameFactory) {
+object TLPropertyFactory {
 
-    fun createPropertySpec(mtPropertySpec: TLPropertySpec): PropertySpec {
+    fun createPropertySpec(
+        mtPropertySpec: TLPropertySpec,
+        typeNameFactory: TypeNameFactory
+    ): PropertySpec {
         val formattedName = snakeToCamelCase(mtPropertySpec.name)
         var propertyType = typeNameFactory.createTypeName(mtPropertySpec.typeSpec)
 

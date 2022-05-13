@@ -6,11 +6,8 @@ import com.attafitamim.mtproto.core.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.core.generator.utils.snakeToTitleCase
 import com.attafitamim.mtproto.core.types.TLContainer
 import com.attafitamim.mtproto.core.types.TLObject
-import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.TypeVariableName
-import com.squareup.kotlinpoet.asTypeName
 
 class TypeNameFactory(private val basePackage: String) {
 
@@ -27,54 +24,6 @@ class TypeNameFactory(private val basePackage: String) {
             TLTypeSpec.Flag -> Boolean::class.asTypeName()
     }
 
-    fun createClassName(mtObjectSpec: TLTypeSpec.TLType.Object): ClassName {
-        val formattedNameSpace = mtObjectSpec.namespace
-            ?.let(::snakeToTitleCase)
-            .orEmpty()
-
-        val formattedClassName = snakeToTitleCase(mtObjectSpec.name)
-
-        val finalClassName = StringBuilder()
-            .append(TYPES_PREFIX)
-            .append(formattedNameSpace)
-            .append(formattedClassName)
-            .toString()
-
-        val namespace = mtObjectSpec.namespace ?: GLOBAL_NAMESPACE
-        val packageName = StringBuilder(basePackage)
-            .append(PACKAGE_SEPARATOR)
-            .append(TYPES_FOLDER_NAME)
-            .append(PACKAGE_SEPARATOR)
-            .append(namespace)
-            .toString()
-
-        return ClassName(packageName, finalClassName)
-    }
-
-    fun createClassName(mtObjectSpec: TLTypeSpec.TLType.Container): ClassName {
-        val formattedNameSpace = mtObjectSpec.namespace
-            ?.let(::snakeToTitleCase)
-            .orEmpty()
-
-        val formattedClassName = snakeToTitleCase(mtObjectSpec.name)
-
-        val finalClassName = StringBuilder()
-            .append(TYPES_PREFIX)
-            .append(formattedNameSpace)
-            .append(formattedClassName)
-            .toString()
-
-        val namespace = mtObjectSpec.namespace ?: GLOBAL_NAMESPACE
-        val packageName = StringBuilder(basePackage)
-            .append(PACKAGE_SEPARATOR)
-            .append(TYPES_FOLDER_NAME)
-            .append(PACKAGE_SEPARATOR)
-            .append(namespace)
-            .toString()
-
-        return ClassName(packageName, finalClassName)
-    }
-
     fun createClassName(name: String, superClassName: ClassName): ClassName {
         val formattedClassName = name
             .let(::camelToTitleCase)
@@ -83,12 +32,37 @@ class TypeNameFactory(private val basePackage: String) {
         return ClassName(superClassName.packageName, classNames)
     }
 
-    fun createClassName(name: String, mtSuperObjectSpec: TLTypeSpec.TLType.Object): ClassName {
-        val superClassName = createClassName(mtSuperObjectSpec)
-        return createClassName(name, superClassName)
+    fun createClassName(mtSuperObjectSpec: TLTypeSpec.TLType): ClassName =
+        when(mtSuperObjectSpec) {
+            is TLTypeSpec.TLType.Container -> createClassName(
+                mtSuperObjectSpec.name,
+                TYPES_FOLDER_NAME,
+                mtSuperObjectSpec.namespace
+            )
+
+            is TLTypeSpec.TLType.Object -> createClassName(
+                mtSuperObjectSpec.name,
+                TYPES_FOLDER_NAME,
+                mtSuperObjectSpec.namespace
+            )
+
+            TLTypeSpec.TLType.SuperContainer -> TLContainer::class.asClassName()
+            TLTypeSpec.TLType.SuperObject -> TLObject::class.asClassName()
+        }
+
+    fun createTypeVariableName(genericVariable: TLTypeSpec.Generic.Variable): TypeVariableName {
+        val typeBound = createTypeName(genericVariable.superType)
+        return TypeVariableName.invoke(genericVariable.name, typeBound)
     }
 
-    fun createClassName(name: String, namespace: String?): ClassName {
+    fun createMethodClassName(name: String, namespace: String? = null) =
+        createClassName(name, METHODS_FOLDER_NAME, namespace)
+
+    private fun createClassName(
+        name: String,
+        folder: String,
+        namespace: String? = null
+    ): ClassName {
         val formattedNameSpace = namespace?.let(::snakeToTitleCase)
             .orEmpty()
 
@@ -100,20 +74,24 @@ class TypeNameFactory(private val basePackage: String) {
             .append(formattedClassName)
             .toString()
 
-        val actualNameSpace = namespace ?: GLOBAL_NAMESPACE
-        val packageName = StringBuilder(basePackage)
-            .append(PACKAGE_SEPARATOR)
-            .append(METHODS_FOLDER_NAME)
-            .append(PACKAGE_SEPARATOR)
-            .append(actualNameSpace)
-            .toString()
-
+        val packageName = createPackageName(folder, namespace)
         return ClassName(packageName, finalClassName)
     }
 
-    fun createTypeVariableName(genericVariable: TLTypeSpec.Generic.Variable): TypeVariableName {
-        val typeBound = createTypeName(genericVariable.superType)
-        return TypeVariableName.invoke(genericVariable.name, typeBound)
+    private fun createPackageName(
+        folder: String,
+        namespace: String?
+    ): String {
+        val actualNameSpace = namespace ?: GLOBAL_NAMESPACE
+        return buildString {
+            append(
+                basePackage,
+                PACKAGE_SEPARATOR,
+                folder,
+                PACKAGE_SEPARATOR,
+                actualNameSpace
+            )
+        }
     }
 
     private fun TLTypeSpec.Structure.toTypeName(): TypeName = when(this) {
@@ -127,7 +105,12 @@ class TypeNameFactory(private val basePackage: String) {
     }
 
     private fun TLTypeSpec.TLType.Object.toTypeName(): TypeName {
-        val className = createClassName(this)
+        val className = createClassName(
+            name,
+            TYPES_FOLDER_NAME,
+            namespace
+        )
+
         val genericParameters = generics?.map { genericTypeSpec ->
             genericTypeSpec.toTypeName()
         }
@@ -138,7 +121,12 @@ class TypeNameFactory(private val basePackage: String) {
     }
 
     private fun TLTypeSpec.TLType.Container.toTypeName(): TypeName {
-        val className = createClassName(this)
+        val className = createClassName(
+            name,
+            TYPES_FOLDER_NAME,
+            namespace
+        )
+
         val genericParameters = generics?.map { genericTypeSpec ->
             genericTypeSpec.toTypeName()
         }

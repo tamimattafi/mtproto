@@ -21,8 +21,8 @@ object SerializationHelper {
         }
     }
 
-    inline fun <reified T : Any> parse(stream: TLInputStream): T = stream.run {
-        when(T::class) {
+    fun <T : Any> parse(stream: TLInputStream, clazz: KClass<T>): T = stream.run {
+        when(clazz) {
             Boolean::class -> readBoolean()
             Byte::class -> readByte()
             Int::class -> readInt()

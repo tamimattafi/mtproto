@@ -2,10 +2,10 @@ package com.attafitamim.mtproto.core.generator.poet.generation
 
 import com.attafitamim.mtproto.core.generator.scheme.parsers.TLObjectParser
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLObjectSpec
-import com.attafitamim.mtproto.core.generator.poet.factories.FileSpecFactory
-import com.attafitamim.mtproto.core.generator.poet.factories.PropertySpecFactory
 import com.attafitamim.mtproto.core.generator.poet.factories.TypeNameFactory
-import com.attafitamim.mtproto.core.generator.poet.factories.TypeSpecFactory
+import com.attafitamim.mtproto.core.generator.poet.factories.TLContainerFactory
+import com.attafitamim.mtproto.core.generator.poet.factories.TLMethodFactory
+import com.attafitamim.mtproto.core.generator.poet.factories.TLObjectFactory
 import com.attafitamim.mtproto.core.generator.scheme.parsers.TLContainerParser
 import com.attafitamim.mtproto.core.generator.scheme.parsers.TLMethodParser
 import com.attafitamim.mtproto.core.generator.scheme.specs.TLContainerSpec
@@ -84,12 +84,13 @@ class TLGenerator(
         println("TL: Successfully parse ${methodSpecs.size} methods and ${objectSpecs.size} types")
 
         val typeNameFactory = TypeNameFactory(outputPackage)
-        val propertySpecFactory = PropertySpecFactory(typeNameFactory)
-        val typeSpecFactory = TypeSpecFactory(typeNameFactory, propertySpecFactory)
-        val fileSpecFactory = FileSpecFactory(typeNameFactory, typeSpecFactory)
 
         containerSpecs.forEach { tlContainerSpec ->
-            val fileSpec = fileSpecFactory.createContainerFileSpec(tlContainerSpec)
+            val fileSpec = TLContainerFactory.createFileSpec(
+                tlContainerSpec,
+                typeNameFactory
+            )
+
             fileSpec.writeTo(sourceCodePath)
         }
 
@@ -114,12 +115,17 @@ class TLGenerator(
                     }
                 }
 
-            val fileSpec = fileSpecFactory.createObjectFileSpec(baseObject, filteredObjectVariants)
+            val fileSpec = TLObjectFactory.createFileSpec(
+                baseObject,
+                filteredObjectVariants,
+                typeNameFactory
+            )
+
             fileSpec.writeTo(sourceCodePath)
         }
 
         methodSpecs.forEach { tlMethodSpec ->
-            val fileSpec = fileSpecFactory.createMethodFileSpecs(tlMethodSpec)
+            val fileSpec = TLMethodFactory.createFileSpec(tlMethodSpec, typeNameFactory)
             fileSpec.writeTo(sourceCodePath)
         }
     }
