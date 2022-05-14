@@ -43,7 +43,7 @@ fun camelToTitleCase(string: String): String {
     require(string.isNotBlank())
 
     val builder = StringBuilder(string)
-    builder[0] = builder[0].toLowerCase()
+    builder[0] = builder[0].toUpperCase()
     return builder.toString()
 }
 

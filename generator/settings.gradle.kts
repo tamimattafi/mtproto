@@ -14,4 +14,4 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "mtproto.generator"
+rootProject.name = "generator"
