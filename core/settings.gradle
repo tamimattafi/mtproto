@@ -1,6 +1,5 @@
 pluginManagement {
     repositories {
-        mavenLocal()
         gradlePluginPortal()
         google()
         mavenCentral()
@@ -9,9 +8,8 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
-        mavenLocal()
         google()
         mavenCentral()
     }
 }
-rootProject.name = "mtproto.generator"
+rootProject.name = "mtproto.core"

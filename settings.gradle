@@ -12,8 +12,7 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "MTProto"
+rootProject.name = "mtproto"
 include ':sample'
 include ':client'
 include ':server'
-include ':core'

@@ -3,6 +3,7 @@ apply plugin: 'kotlin'
 
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
         google()
     }
@@ -28,7 +29,7 @@ test {
 dependencies {
     // Android gradle plugin will allow us to access Android specific features
     implementation 'com.squareup:kotlinpoet:1.11.0'
-    implementation files("$projectDir.parent/core/build/libs/core.jar")
+    implementation 'com.attafitamim.mtproto:core:1.0.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.1'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.7.1'
 }
