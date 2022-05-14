@@ -1,9 +1,43 @@
-plugins {
-    id 'java-library'
-    id 'org.jetbrains.kotlin.jvm'
+apply plugin: 'java-gradle-plugin'
+apply plugin: 'kotlin'
+
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.10"
+    }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_7
-    targetCompatibility = JavaVersion.VERSION_1_7
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+sourceSets {
+    main.java.srcDirs += ["${project.buildDir}/generated/mtproto"]
+}
+
+test {
+    useJUnitPlatform()
+}
+
+dependencies {
+    // Android gradle plugin will allow us to access Android specific features
+    implementation 'com.squareup:kotlinpoet:1.11.0'
+    implementation files("$projectDir.parent/core/build/libs/core.jar")
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.7.1'
+}
+
+gradlePlugin {
+    plugins {
+        create("MTGenerator") {
+            id = "mtproto-generator"
+            implementationClass = "com.attafitamim.mtproto.generator.plugin.TLGeneratorPlugin"
+        }
+    }
 }
