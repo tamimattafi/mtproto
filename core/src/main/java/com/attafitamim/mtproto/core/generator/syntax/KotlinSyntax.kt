@@ -3,6 +3,7 @@ package com.attafitamim.mtproto.core.generator.syntax
 // Separators
 const val KEYWORD_SEPARATOR = " "
 const val PARAMETER_SEPARATOR = ", "
+const val PACKAGE_SEPARATOR = "."
 
 // Access
 const val INSTANCE_ACCESS_KEY = "."

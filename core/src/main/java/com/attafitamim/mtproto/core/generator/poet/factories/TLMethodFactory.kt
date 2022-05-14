@@ -20,17 +20,15 @@ object TLMethodFactory {
         typeNameFactory: TypeNameFactory
     ): FileSpec {
         val className = typeNameFactory.createMethodClassName(methodSpecs.name, methodSpecs.namespace)
-        val classTypeSpec = createMethodSpec(methodSpecs, typeNameFactory)
-
         return FileSpec.builder(className.packageName, className.simpleName)
-            .addType(classTypeSpec)
+            .addMethodType(methodSpecs, typeNameFactory)
             .build()
     }
 
-    private fun createMethodSpec(
+    private fun FileSpec.Builder.addMethodType(
         tlMethodSpec: TLMethodSpec,
         typeNameFactory: TypeNameFactory
-    ): TypeSpec {
+    ): FileSpec.Builder {
         val returnType = typeNameFactory.createTypeName(tlMethodSpec.returnType)
         val superInterface = TLMethod::class.asTypeName().parameterizedBy(returnType)
         val classBuilder = TypeSpec.classBuilder(tlMethodSpec.name)
@@ -95,12 +93,14 @@ object TLMethodFactory {
             .addProperty(hashConstant)
             .build()
 
-        return classBuilder.addFunction(objectSerializeFunction)
+        val methodType = classBuilder.addFunction(objectSerializeFunction)
             .addType(companionObjectBuilder)
             .addProperty(hashPropertySpec)
             .addFunction(methodParseFunction)
             .addKdoc(tlMethodSpec.rawScheme)
             .build()
+
+        return addType(methodType)
     }
 
     private fun createMethodParseFunction(
@@ -118,45 +118,15 @@ object TLMethodFactory {
     private fun createMethodSerializationFunction(
         hasFlags: Boolean,
         propertiesSpecs: List<TLPropertySpec>?
-    ): FunSpec {
-        val functionBuilder = FunSpec.builder(TLObject::serialize.name)
-            .addParameter(OUTPUT_STREAM_NAME, TLOutputStream::class)
-            .addModifiers(KModifier.OVERRIDE)
-
-        functionBuilder.addLocalPropertySerializeStatement(
+    ): FunSpec = FunSpec.builder(TLObject::serialize.name).apply {
+        addParameter(OUTPUT_STREAM_NAME, TLOutputStream::class)
+        addModifiers(KModifier.OVERRIDE)
+        addLocalPropertySerializeStatement(
             TLObject::constructorHash.name,
             Int::class
         )
 
-        if (hasFlags) {
-            val flagsInitializationStatement = StringBuilder().append(
-                VARIABLE_KEYWORD,
-                KEYWORD_SEPARATOR,
-                FLAGS_PROPERTY_NAME,
-                INITIALIZATION_SIGN,
-                FLAGS_DEFAULT_VALUE
-            ).toString()
-
-            functionBuilder.addStatement(flagsInitializationStatement)
-            propertiesSpecs?.forEach { mtPropertySpec ->
-                if (mtPropertySpec.flag != null) functionBuilder.addFlaggingStatement(
-                    mtPropertySpec,
-                    mtPropertySpec.flag
-                )
-            }
-
-            functionBuilder.addLocalPropertySerializeStatement(FLAGS_PROPERTY_NAME, Int::class)
-        }
-
-        propertiesSpecs?.forEach { tlPropertySpecs ->
-            functionBuilder.addPropertySerializeStatement(
-                tlPropertySpecs.name,
-                tlPropertySpecs.typeSpec,
-                tlPropertySpecs.flag
-            )
-        }
-
-        return functionBuilder.build()
-    }
-
+        if (hasFlags) addFlaggingSerializationLogic(propertiesSpecs)
+        addPropertiesSerializationLogic(propertiesSpecs)
+    }.build()
 }

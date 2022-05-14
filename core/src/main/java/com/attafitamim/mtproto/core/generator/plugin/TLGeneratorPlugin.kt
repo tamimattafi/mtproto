@@ -6,9 +6,13 @@ import org.gradle.api.Project
 class TLGeneratorPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
-        project.tasks.register("generateProtoClasses", TLGenerationTask::class.java) {
-            it.group = "mtproto"
+        project.tasks.register(NAME, TLGenerationTask::class.java) { task ->
+            task.group = GROUP
         }
     }
 
+    companion object {
+        const val NAME = "generateProtoClasses"
+        const val GROUP = "mtproto"
+    }
 }

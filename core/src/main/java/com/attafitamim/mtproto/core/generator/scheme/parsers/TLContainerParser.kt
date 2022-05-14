@@ -68,17 +68,19 @@ object TLContainerParser {
                 .substringBefore(SUPER_TYPE_PREFIX)
                 .trim()
 
-            var tlPropertySpecs: List<TLPropertySpec>? = null
-            if (propertiesString.isNotBlank()) {
-                tlPropertySpecs = propertiesString.split(PROPERTIES_SEPARATOR)
-                    .map { propertyScheme ->
-                        TLPropertyParser.parseProperty(
-                            propertyScheme,
-                            genericVariables,
-                            tlContainers
-                        )
-                    }
-            }
+            if (propertiesString.isBlank()) throw TLSchemeParseException(
+                objectScheme,
+                "Containers must have at least on property"
+            )
+
+            val tlPropertySpecs = propertiesString.split(PROPERTIES_SEPARATOR)
+                .map { propertyScheme ->
+                    TLPropertyParser.parseProperty(
+                        propertyScheme,
+                        genericVariables,
+                        tlContainers
+                    )
+                }
 
             val superType = objectScheme.substringAfter(SUPER_TYPE_PREFIX)
                 .substringBefore(LINE_END)

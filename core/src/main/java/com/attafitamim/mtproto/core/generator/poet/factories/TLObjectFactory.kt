@@ -11,7 +11,6 @@ import com.attafitamim.mtproto.core.types.TLMethod
 import com.attafitamim.mtproto.core.types.TLObject
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import java.lang.StringBuilder
 
 object TLObjectFactory {
 
@@ -40,7 +39,7 @@ object TLObjectFactory {
             .build()
     }
 
-    fun createObjectSpec(
+    private fun createObjectSpec(
         superClassName: ClassName,
         superTypeVariables: List<TypeVariableName>?,
         mtVariantObjectSpecs: List<TLObjectSpec>,
@@ -122,21 +121,21 @@ object TLObjectFactory {
             .initializer("%L", hashConstant.name)
             .build()
 
-        val companionObjectBuilder = TypeSpec.companionObjectBuilder()
-            .addProperty(hashConstant)
+        val companionObjectSpec = TypeSpec.companionObjectBuilder().apply {
+            addProperty(hashConstant)
 
-        if (!mtVariantObjectSpec.propertiesSpecs.isNullOrEmpty()) {
-            companionObjectBuilder.addObjectParseFunction(
-                mtVariantObjectSpec.hasFlags,
-                mtVariantObjectSpec.propertiesSpecs,
-                objectProperties,
-                typeVariables,
-                className,
-                typeNameFactory
-            )
-        }
+            if (!mtVariantObjectSpec.propertiesSpecs.isNullOrEmpty()) {
+                addObjectParseFunction(
+                    mtVariantObjectSpec.hasFlags,
+                    mtVariantObjectSpec.propertiesSpecs,
+                    objectProperties,
+                    typeVariables,
+                    className,
+                    typeNameFactory
+                )
+            }
+        }.build()
 
-        val companionObjectSpec = companionObjectBuilder.build()
 
         val objectSerializeFunction = createObjectSerializeFunctionSpec(
             mtVariantObjectSpec.hasFlags,
@@ -267,44 +266,15 @@ object TLObjectFactory {
     private fun createObjectSerializeFunctionSpec(
         hasFlags: Boolean,
         propertiesSpecs: List<TLPropertySpec>?
-    ): FunSpec {
-        val functionBuilder = FunSpec.builder(TLObject::serialize.name)
-            .addParameter(OUTPUT_STREAM_NAME, TLOutputStream::class)
-            .addModifiers(KModifier.OVERRIDE)
-
-        functionBuilder.addLocalPropertySerializeStatement(
+    ): FunSpec = FunSpec.builder(TLObject::serialize.name).apply {
+        addParameter(OUTPUT_STREAM_NAME, TLOutputStream::class)
+        addModifiers(KModifier.OVERRIDE)
+        addLocalPropertySerializeStatement(
             TLObject::constructorHash.name,
             Int::class
         )
 
-        if (hasFlags) {
-            val flagsInitializationStatement = StringBuilder().append(
-                VARIABLE_KEYWORD,
-                KEYWORD_SEPARATOR,
-                FLAGS_PROPERTY_NAME,
-                INITIALIZATION_SIGN,
-                FLAGS_DEFAULT_VALUE
-            ).toString()
-
-            functionBuilder.addStatement(flagsInitializationStatement)
-            propertiesSpecs?.forEach { mtPropertySpec ->
-                if (mtPropertySpec.flag != null) functionBuilder.addFlaggingStatement(
-                    mtPropertySpec,
-                    mtPropertySpec.flag
-                )
-            }
-
-            functionBuilder.addLocalPropertySerializeStatement(FLAGS_PROPERTY_NAME, Int::class)
-        }
-
-        propertiesSpecs?.forEach { tlPropertySpecs ->
-            functionBuilder.addPropertySerializeStatement(
-                tlPropertySpecs.name,
-                tlPropertySpecs.typeSpec,
-                tlPropertySpecs.flag
-            )
-        }
-
-        return functionBuilder.build()
-    }
+        if (hasFlags) addFlaggingSerializationLogic(propertiesSpecs)
+        addPropertiesSerializationLogic(propertiesSpecs)
+    }.build()
 }

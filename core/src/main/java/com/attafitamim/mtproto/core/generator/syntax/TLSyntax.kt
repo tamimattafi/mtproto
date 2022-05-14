@@ -1,8 +1,11 @@
 package com.attafitamim.mtproto.core.generator.syntax
 
-const val PACKAGE_SEPARATOR = "."
+const val TYPES_KEYWORD = "---types---"
+const val FUNCTIONS_KEYWORD = "---functions---"
 
 const val TYPES_FOLDER_NAME = "types"
+const val CONTAINERS_FOLDER_NAME = "containers"
+
 const val METHODS_FOLDER_NAME = "methods"
 
 const val GLOBAL_NAMESPACE = "global"

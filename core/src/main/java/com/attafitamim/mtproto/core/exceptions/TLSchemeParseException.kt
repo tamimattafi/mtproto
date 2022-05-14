@@ -8,8 +8,8 @@ internal class TLSchemeParseException(
 ) : GradleException() {
     override val message: String
         get() = """
-            Error parsing scheme
-            Scheme: $rawScheme 
+            Error parsing scheme:
+            Raw Scheme: $rawScheme 
             Reason: $reason
         """.trimIndent()
 }

@@ -6,6 +6,6 @@ data class TLContainerSpec(
     var namespace: String?,
     val superType: TLTypeSpec.TLType.Container,
     val hasFlags: Boolean,
-    val propertiesSpecs: List<TLPropertySpec>?,
+    val propertiesSpecs: List<TLPropertySpec>,
     val genericVariables: Map<String, TLTypeSpec.Generic.Variable>?
 )

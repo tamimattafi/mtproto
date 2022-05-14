@@ -776,3 +776,37 @@ fun FunSpec.Builder.addClassInitializationStatement(
 
     addStatement(initializationStatement, classTypeName)
 }
+
+fun FunSpec.Builder.addFlaggingSerializationLogic(
+    propertiesSpecs: List<TLPropertySpec>?
+): FunSpec.Builder = this.apply {
+    val flagsInitializationStatement = StringBuilder().append(
+        VARIABLE_KEYWORD,
+        KEYWORD_SEPARATOR,
+        FLAGS_PROPERTY_NAME,
+        INITIALIZATION_SIGN,
+        FLAGS_DEFAULT_VALUE
+    ).toString()
+
+    addStatement(flagsInitializationStatement)
+    propertiesSpecs?.forEach { mtPropertySpec ->
+        if (mtPropertySpec.flag != null) addFlaggingStatement(
+            mtPropertySpec,
+            mtPropertySpec.flag
+        )
+    }
+
+    addLocalPropertySerializeStatement(FLAGS_PROPERTY_NAME, Int::class)
+}
+
+fun FunSpec.Builder.addPropertiesSerializationLogic(
+    propertiesSpecs: List<TLPropertySpec>?
+): FunSpec.Builder = this.apply {
+    propertiesSpecs?.forEach { tlPropertySpecs ->
+        addPropertySerializeStatement(
+            tlPropertySpecs.name,
+            tlPropertySpecs.typeSpec,
+            tlPropertySpecs.flag
+        )
+    }
+}

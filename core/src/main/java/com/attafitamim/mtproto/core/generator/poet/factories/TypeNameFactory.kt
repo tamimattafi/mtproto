@@ -36,7 +36,7 @@ class TypeNameFactory(private val basePackage: String) {
         when(mtSuperObjectSpec) {
             is TLTypeSpec.TLType.Container -> createClassName(
                 mtSuperObjectSpec.name,
-                TYPES_FOLDER_NAME,
+                CONTAINERS_FOLDER_NAME,
                 mtSuperObjectSpec.namespace
             )
 
@@ -123,7 +123,7 @@ class TypeNameFactory(private val basePackage: String) {
     private fun TLTypeSpec.TLType.Container.toTypeName(): TypeName {
         val className = createClassName(
             name,
-            TYPES_FOLDER_NAME,
+            CONTAINERS_FOLDER_NAME,
             namespace
         )
 
