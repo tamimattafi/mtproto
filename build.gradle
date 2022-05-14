@@ -7,7 +7,7 @@ buildscript {
 
     dependencies {
         //TODO: use maven central instead of jar
-        classpath(files("core/build/libs/mtproto.core.jar"))
+        classpath(files("generator/build/libs/mtproto.generator.jar"))
         classpath("com.squareup:kotlinpoet:1.11.0")
     }
 }

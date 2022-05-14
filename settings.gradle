@@ -16,3 +16,4 @@ rootProject.name = "MTProto"
 include ':sample'
 include ':client'
 include ':server'
+include ':core'
