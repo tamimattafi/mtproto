@@ -1,12 +1,12 @@
 package com.attafitamim.mtproto.generator.utils
 
+import com.attafitamim.mtproto.core.serialization.behavior.TLParser
+import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
 import com.attafitamim.mtproto.core.serialization.helpers.SerializationHelper
 import com.attafitamim.mtproto.core.serialization.helpers.getTypeParseMethod
 import com.attafitamim.mtproto.core.serialization.helpers.getTypeSerializeMethod
 import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
-import com.attafitamim.mtproto.core.types.TLMethod
-import com.attafitamim.mtproto.core.types.TLObject
 import com.attafitamim.mtproto.generator.poet.factories.TypeNameFactory
 import com.attafitamim.mtproto.generator.scheme.specs.TLPropertySpec
 import com.attafitamim.mtproto.generator.scheme.specs.TLTypeSpec
@@ -54,29 +54,6 @@ fun Collection<KParameter>.asParameterSpecs() = map { kParameter ->
     kParameter.asParameterSpec()
 }
 
-fun KFunction3<*, *, *, *>.asFun3Builder(
-    superTypeVariables: List<TypeName>?,
-    returnType: TypeName
-): FunSpec.Builder {
-   val builder = FunSpec.builder(name)
-       .addParameters(valueParameters.asParameterSpecs())
-
-    val actualReturnType = if (!superTypeVariables.isNullOrEmpty() && returnType is ClassName) {
-        builder.addModifiers(KModifier.INLINE)
-
-        superTypeVariables.forEach { typeName ->
-            if (typeName is TypeVariableName) {
-                val reifiedTypeName = typeName.copy(reified = true)
-                builder.addTypeVariable(reifiedTypeName)
-            }
-        }
-
-        returnType.parameterizedBy(superTypeVariables)
-    } else returnType
-
-    return builder.returns(actualReturnType)
-}
-
 fun KFunction2<*, *, *>.asFun2Builder(
     superTypeVariables: List<TypeName>?,
     returnType: TypeName
@@ -99,12 +76,6 @@ fun KFunction2<*, *, *>.asFun2Builder(
 
     return builder.returns(actualReturnType)
 }
-
-
-fun KFunction1<*, *>.asFun1Builder(): FunSpec.Builder
-    = FunSpec.builder(name)
-        .addParameters(valueParameters.asParameterSpecs())
-        .returns(returnType.asTypeName())
 
 fun createFunctionCallStatement(
     parentName: String,
@@ -196,7 +167,7 @@ fun FunSpec.Builder.addPropertyParseStatement(
 
         addStatement(definitionStatement, *typeName)
 
-        val flagPosition = DEFAULT_FLAG_BASE.pow(flag).toInt()
+        val flagPosition = FLAG_BASE.pow(flag).toInt()
         val flagCheckStatement = java.lang.StringBuilder().append(
             IF_KEYWORD,
             PARAMETER_OPEN_PARENTHESIS,
@@ -206,7 +177,7 @@ fun FunSpec.Builder.addPropertyParseStatement(
             flagPosition,
             PARAMETER_CLOSE_PARENTHESIS,
             NOT_EQUAL_SIGN,
-            DEFAULT_FLAG_VALUE,
+            FLAG_INITIAL_VALUE,
             PARAMETER_CLOSE_PARENTHESIS
         ).toString()
 
@@ -301,19 +272,6 @@ fun FunSpec.Builder.addLocalPropertyParseStatement(
         type.asClassName()
     )
 }
-
-fun getParseStatement(type: KClass<*>): String {
-    val parseMethod = getTypeParseMethod(type)
-
-    return java.lang.StringBuilder().append(
-        INPUT_STREAM_NAME,
-        INSTANCE_ACCESS_KEY,
-        parseMethod.name,
-        PARAMETER_OPEN_PARENTHESIS,
-        PARAMETER_CLOSE_PARENTHESIS
-    ).toString()
-}
-
 
 fun FunSpec.Builder.addCollectionParseStatement(
     name: String,
@@ -441,7 +399,7 @@ fun FunSpec.Builder.addGenericSerializeStatement(
     val serializeStatement = java.lang.StringBuilder().append(
         TYPE_CONCAT_INDICATOR,
         INSTANCE_ACCESS_KEY,
-        TLObject::serialize.name,
+        TLSerializable::serialize.name,
         PARAMETER_OPEN_PARENTHESIS,
         OUTPUT_STREAM_NAME,
         PARAMETER_SEPARATOR,
@@ -508,7 +466,7 @@ fun FunSpec.Builder.addTypeParseStatement(
     val parseStatement = java.lang.StringBuilder().append(
         TYPE_CONCAT_INDICATOR,
         INSTANCE_ACCESS_KEY,
-        TLMethod<*>::parse.name,
+        TLParser<*>::parse.name,
         PARAMETER_OPEN_PARENTHESIS,
         INPUT_STREAM_NAME,
         PARAMETER_SEPARATOR,
@@ -529,7 +487,7 @@ fun FunSpec.Builder.addFlagParseStatement(
     name: String,
     position: Int
 ): FunSpec.Builder = this.apply {
-    val flagPosition = DEFAULT_FLAG_BASE.pow(position).toInt()
+    val flagPosition = FLAG_BASE.pow(position).toInt()
     val flagCheckStatement = java.lang.StringBuilder().append(
         PARAMETER_OPEN_PARENTHESIS,
         FLAGS_PROPERTY_NAME,
@@ -537,7 +495,7 @@ fun FunSpec.Builder.addFlagParseStatement(
         flagPosition,
         PARAMETER_CLOSE_PARENTHESIS,
         NOT_EQUAL_SIGN,
-        DEFAULT_FLAG_VALUE
+        FLAG_INITIAL_VALUE
     ).toString()
 
     val initializationStatement = java.lang.StringBuilder().append(
@@ -561,7 +519,7 @@ fun FunSpec.Builder.addObjectSerializeStatement(
     val objectSerializeStatement = java.lang.StringBuilder().append(
         name,
         INSTANCE_ACCESS_KEY,
-        TLObject::serialize.name,
+        TLSerializable::serialize.name,
         PARAMETER_OPEN_PARENTHESIS,
         OUTPUT_STREAM_NAME,
         PARAMETER_CLOSE_PARENTHESIS
@@ -584,7 +542,7 @@ fun FunSpec.Builder.addObjectParseStatement(
 
     val objectParseStatement = createFunctionCallStatement(
         objectClassName.simpleName,
-        TLMethod<*>::parse.name,
+        TLParser<*>::parse.name,
         INPUT_STREAM_NAME
     )
 
@@ -614,7 +572,7 @@ fun FunSpec.Builder.addContainerParseStatement(
 
     val objectParseStatement = createFunctionCallStatement(
         objectClassName.simpleName,
-        TLMethod<*>::parse.name,
+        TLParser<*>::parse.name,
         INPUT_STREAM_NAME
     )
 
@@ -653,7 +611,6 @@ fun FunSpec.Builder.addCollectionSerializeStatement(
     addPropertySerializeStatement(IT_KEYWORD, elementGeneric)
     endControlFlow()
 }
-
 
 fun FunSpec.Builder.addBytesSerializeStatement(
     name: String,
@@ -697,7 +654,6 @@ fun FunSpec.Builder.addBytesSerializeStatement(
     addStatement(serializeStatement)
 }
 
-
 fun FunSpec.Builder.addFlaggingStatement(
     mtPropertySpec: TLPropertySpec,
     flag: Int
@@ -712,7 +668,7 @@ fun FunSpec.Builder.addFlaggingStatement(
         ).toString()
     }
 
-    val flagPosition = DEFAULT_FLAG_BASE.pow(flag).toInt()
+    val flagPosition = FLAG_BASE.pow(flag).toInt()
     val flaggingStatement = java.lang.StringBuilder().append(
         FLAGS_PROPERTY_NAME,
         INITIALIZATION_SIGN,

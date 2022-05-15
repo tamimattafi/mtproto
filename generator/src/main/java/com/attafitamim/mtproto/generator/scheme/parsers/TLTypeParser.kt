@@ -104,7 +104,7 @@ object TLTypeParser {
         typeScheme == SUPER_CONTAINER_SIGNATURE -> TLTypeSpec.TLType.SuperContainer
 
         // is a true-flag (boolean)
-        typeScheme == FLAG_SIGNATURE -> TLTypeSpec.Flag
+        typeScheme == BOOLEAN_FLAG_SIGNATURE -> TLTypeSpec.Flag
 
         // is byteArray with dynamic size
         typeScheme == BYTES_SIGNATURE -> TLTypeSpec.Structure.Bytes(null)

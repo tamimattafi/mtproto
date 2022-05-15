@@ -33,8 +33,8 @@ object TLPropertyParser {
             tlContainers
         )
 
-        val formmatedName = snakeToCamelCase(name)
-        return TLPropertySpec(propertyScheme, formmatedName, flag, propertyTypeSpec)
+        val formattedName = snakeToCamelCase(name)
+        return TLPropertySpec(propertyScheme, formattedName, flag, propertyTypeSpec)
     }
 
     private fun parseTypeFlag(typeString: String): Int {

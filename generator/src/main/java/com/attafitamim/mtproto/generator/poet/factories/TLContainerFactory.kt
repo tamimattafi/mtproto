@@ -1,9 +1,9 @@
 package com.attafitamim.mtproto.generator.poet.factories
 
+import com.attafitamim.mtproto.core.serialization.behavior.TLParser
+import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLContainer
-import com.attafitamim.mtproto.core.types.TLMethod
-import com.attafitamim.mtproto.core.types.TLObject
 import com.attafitamim.mtproto.generator.scheme.specs.TLContainerSpec
 import com.attafitamim.mtproto.generator.scheme.specs.TLPropertySpec
 import com.attafitamim.mtproto.generator.syntax.*
@@ -78,7 +78,7 @@ object TLContainerFactory {
         returnType: TypeName,
         typeNameFactory: TypeNameFactory
     ): TypeSpec.Builder = this.apply {
-        val functionBuilder = TLMethod<*>::parse.asFun2Builder(typeVariables, returnType)
+        val functionBuilder = TLParser<*>::parse.asFun2Builder(typeVariables, returnType)
 
         if (hasFlags) {
             functionBuilder.addLocalPropertyParseStatement(FLAGS_PROPERTY_NAME, Int::class)
@@ -109,7 +109,7 @@ object TLContainerFactory {
     private fun createObjectSerializeFunctionSpec(
         hasFlags: Boolean,
         propertiesSpecs: List<TLPropertySpec>?
-    ): FunSpec = FunSpec.builder(TLObject::serialize.name).apply {
+    ): FunSpec = FunSpec.builder(TLSerializable::serialize.name).apply {
         addParameter(OUTPUT_STREAM_NAME, TLOutputStream::class)
         addModifiers(KModifier.OVERRIDE)
 

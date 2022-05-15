@@ -1,5 +1,7 @@
 package com.attafitamim.mtproto.core.types
 
-interface TLObject : TLContainer {
+import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
+
+interface TLObject : TLSerializable {
     val constructorHash: Int
 }

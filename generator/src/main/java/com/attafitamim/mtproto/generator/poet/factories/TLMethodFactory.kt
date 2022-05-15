@@ -1,5 +1,7 @@
 package com.attafitamim.mtproto.generator.poet.factories
 
+import com.attafitamim.mtproto.core.serialization.behavior.TLParser
+import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLMethod
 import com.attafitamim.mtproto.core.types.TLObject
@@ -86,7 +88,7 @@ object TLMethodFactory {
 
         val hashPropertySpec = PropertySpec.builder(TLObjectSpec::constructorHash.name, Int::class)
             .addModifiers(KModifier.OVERRIDE)
-            .initializer("%L", hashConstant.name)
+            .initializer(LITERAL_CONCAT_INDICATOR, hashConstant.name)
             .build()
 
         val companionObjectBuilder = TypeSpec.companionObjectBuilder()
@@ -108,21 +110,21 @@ object TLMethodFactory {
         typeNameFactory: TypeNameFactory
     ): FunSpec {
         val returnTypeName = typeNameFactory.createTypeName(returnType)
-        return TLMethod<*>::parse.asFun2Builder(null, returnTypeName)
+        return TLParser<*>::parse.asFun2Builder(null, returnTypeName)
             .addModifiers(KModifier.OVERRIDE)
-            .addPropertyParseStatement("response", returnType, typeNameFactory)
-            .addReturnStatement("response")
+            .addPropertyParseStatement(METHOD_RESPONSE_NAME, returnType, typeNameFactory)
+            .addReturnStatement(METHOD_RESPONSE_NAME)
             .build()
     }
 
     private fun createMethodSerializationFunction(
         hasFlags: Boolean,
         propertiesSpecs: List<TLPropertySpec>?
-    ): FunSpec = FunSpec.builder(TLObject::serialize.name).apply {
+    ): FunSpec = FunSpec.builder(TLSerializable::serialize.name).apply {
         addParameter(OUTPUT_STREAM_NAME, TLOutputStream::class)
         addModifiers(KModifier.OVERRIDE)
         addLocalPropertySerializeStatement(
-            TLObject::constructorHash.name,
+            TLMethod<*>::constructorHash.name,
             Int::class
         )
 

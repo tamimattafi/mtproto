@@ -72,15 +72,6 @@ class TLGenerator(
             }
         }
 
-        println(
-            """
-            TL Parsing Results:
-            containers: ${containerSpecs.size}
-            objects: ${objectSpecs.size}
-            methods: ${methodSpecs.size}
-            """.trimIndent()
-        )
-
         generateSourceCode(
             outputPath,
             methodSpecs,
@@ -126,13 +117,13 @@ class TLGenerator(
 
         println(
             """
-            TL Generating Results:
-            TLContainer: ${containerSpecs.size}
-            TLObject (Base): ${objectsGroup.size}
-            TLObject (Variant): ${objectSpecs.size}
-            TLMethod: ${methodSpecs.size}
-            Package: $outputPackage
-            SourceDir: $outputDir
+            TL Generating Finished. Results:
+            TLContainers: ${containerSpecs.size}
+            TLObjects (Base): ${objectsGroup.size}
+            TLObjects (Variant): ${objectSpecs.size}
+            TLMethods: ${methodSpecs.size}
+            Output Dir: $outputDir
+            Output Package: $outputPackage
             """.trimIndent()
         )
     }

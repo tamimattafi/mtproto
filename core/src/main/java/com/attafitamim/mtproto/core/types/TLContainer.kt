@@ -1,7 +1,5 @@
 package com.attafitamim.mtproto.core.types
 
-import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
+import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
 
-interface TLContainer {
-    fun serialize(outputStream: TLOutputStream)
-}
+interface TLContainer : TLSerializable

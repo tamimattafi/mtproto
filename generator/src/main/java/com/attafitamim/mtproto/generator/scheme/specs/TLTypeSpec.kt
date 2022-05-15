@@ -30,8 +30,7 @@ sealed interface TLTypeSpec {
             val generics: List<Generic>?
         ) : TLType
     }
-
-
+    
     sealed interface Structure : TLTypeSpec {
 
         data class Collection(

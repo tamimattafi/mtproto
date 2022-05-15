@@ -5,7 +5,6 @@ const val FUNCTIONS_KEYWORD = "---functions---"
 
 const val TYPES_FOLDER_NAME = "types"
 const val CONTAINERS_FOLDER_NAME = "containers"
-
 const val METHODS_FOLDER_NAME = "methods"
 
 const val GLOBAL_NAMESPACE = "global"
@@ -32,7 +31,6 @@ const val NAMESPACE_SEPARATOR = "."
 const val FLAGS_PROPERTY_NAME = "flags"
 const val FLAGS_KEY_WORD = "flags:#"
 const val FLAGS_DEFAULT_VALUE = 0
-const val CONSTRUCTOR_DEFAULT_VALUE = -1
 
 const val PROPERTY_FLAG_PREFIX = "flags."
 const val PROPERTY_FLAG_SEPARATOR = "?"
@@ -40,15 +38,17 @@ const val PROPERTY_FLAG_SEPARATOR = "?"
 const val INPUT_STREAM_NAME = "inputStream"
 const val OUTPUT_STREAM_NAME = "outputStream"
 const val ARRAY_ELEMENT_NAME = "element"
+const val METHOD_RESPONSE_NAME = "response"
 
 const val ANY_TYPE_SIGNATURE = "Type"
 const val SUPER_OBJECT_SIGNATURE = "Object"
 const val SUPER_CONTAINER_SIGNATURE = "Container"
-const val FLAG_SIGNATURE = "true"
+
+const val BOOLEAN_FLAG_SIGNATURE = "true"
 const val BYTES_SIGNATURE = "bytes"
 
-const val DEFAULT_FLAG_VALUE = 0
-const val DEFAULT_FLAG_BASE = 2.0
+const val FLAG_INITIAL_VALUE = 0
+const val FLAG_BASE = 2.0
 
 val primitiveTypes = mapOf(
     "byte" to Byte::class,
