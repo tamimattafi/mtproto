@@ -33,16 +33,6 @@ object TLMethodFactory {
     ): FileSpec.Builder {
         val returnType = typeNameFactory.createTypeName(tlMethodSpec.returnType)
         val superInterface = TLMethod::class.asTypeName().parameterizedBy(returnType)
-        val classBuilder = TypeSpec.classBuilder(tlMethodSpec.name)
-            .addSuperinterface(superInterface)
-
-        val typeVariables = tlMethodSpec.genericVariables
-            ?.values
-            ?.map(typeNameFactory::createTypeVariableName)
-
-        if (!typeVariables.isNullOrEmpty()) {
-            classBuilder.addTypeVariables(typeVariables)
-        }
 
         val methodProperties = ArrayList<PropertySpec>()
         tlMethodSpec.propertiesSpecs?.forEach { mtPropertySpec ->
@@ -64,9 +54,37 @@ object TLMethodFactory {
             methodProperties.add(responseClassProperty)
         }
 
-        if (!methodProperties.isNullOrEmpty()) classBuilder
-            .addPrimaryConstructor(methodProperties)
-            .addModifiers(KModifier.DATA)
+        val hashInt = tlMethodSpec.constructorHash.toLong(16)
+            .toInt()
+
+        val hashConstant = createConstantPropertySpec(
+            tlMethodSpec::constructorHash.name,
+            hashInt
+        )
+
+        val classBuilder = if (!methodProperties.isNullOrEmpty()) {
+            val companionObjectBuilder = TypeSpec.companionObjectBuilder()
+                .addProperty(hashConstant)
+                .build()
+
+            TypeSpec.classBuilder(tlMethodSpec.name)
+                .addPrimaryConstructor(methodProperties)
+                .addModifiers(KModifier.DATA)
+                .addType(companionObjectBuilder)
+        } else {
+            TypeSpec.objectBuilder(tlMethodSpec.name)
+                .addProperty(hashConstant)
+        }
+
+        classBuilder.addSuperinterface(superInterface)
+
+        val typeVariables = tlMethodSpec.genericVariables
+            ?.values
+            ?.map(typeNameFactory::createTypeVariableName)
+
+        if (!typeVariables.isNullOrEmpty()) {
+            classBuilder.addTypeVariables(typeVariables)
+        }
 
         val objectSerializeFunction = createMethodSerializationFunction(
             tlMethodSpec.hasFlags,
@@ -78,25 +96,13 @@ object TLMethodFactory {
             typeNameFactory
         )
 
-        val hashInt = tlMethodSpec.constructorHash.toLong(16)
-            .toInt()
-
-        val hashConstant = createConstantPropertySpec(
-            tlMethodSpec::constructorHash.name,
-            hashInt
-        )
-
         val hashPropertySpec = PropertySpec.builder(TLObjectSpec::constructorHash.name, Int::class)
             .addModifiers(KModifier.OVERRIDE)
             .initializer(LITERAL_CONCAT_INDICATOR, hashConstant.name)
             .build()
 
-        val companionObjectBuilder = TypeSpec.companionObjectBuilder()
-            .addProperty(hashConstant)
-            .build()
 
         val methodType = classBuilder.addFunction(objectSerializeFunction)
-            .addType(companionObjectBuilder)
             .addProperty(hashPropertySpec)
             .addFunction(methodParseFunction)
             .addKdoc(tlMethodSpec.rawScheme)

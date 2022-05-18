@@ -85,30 +85,6 @@ object TLObjectFactory {
         mtVariantObjectSpec: TLObjectSpec,
         typeNameFactory: TypeNameFactory
     ): TypeSpec {
-        val superInterfaceName = if (!superTypeVariables.isNullOrEmpty()) {
-            superClassName.parameterizedBy(superTypeVariables)
-        } else superClassName
-
-        val className = typeNameFactory.createClassName(mtVariantObjectSpec.name, superClassName)
-        val classBuilder = TypeSpec.classBuilder(className)
-            .addSuperinterface(superInterfaceName)
-
-        val typeVariables = mtVariantObjectSpec.genericVariables
-            ?.values
-            ?.map(typeNameFactory::createTypeVariableName)
-
-        if (!typeVariables.isNullOrEmpty()) {
-            classBuilder.addTypeVariables(typeVariables)
-        }
-
-        val objectProperties = mtVariantObjectSpec.propertiesSpecs?.map { mtPropertySpec ->
-            TLPropertyFactory.createPropertySpec(mtPropertySpec, typeNameFactory)
-        }
-
-        if (!objectProperties.isNullOrEmpty()) classBuilder
-            .addPrimaryConstructor(objectProperties)
-            .addModifiers(KModifier.DATA)
-
         val hashInt = mtVariantObjectSpec.constructorHash.toLong(16)
             .toInt()
 
@@ -117,40 +93,64 @@ object TLObjectFactory {
             hashInt
         )
 
+        val objectProperties = mtVariantObjectSpec.propertiesSpecs?.map { mtPropertySpec ->
+            TLPropertyFactory.createPropertySpec(mtPropertySpec, typeNameFactory)
+        }
+
+        val superInterfaceName = if (!superTypeVariables.isNullOrEmpty()) {
+            superClassName.parameterizedBy(superTypeVariables)
+        } else superClassName
+
+        val genericTypeVariables = mtVariantObjectSpec.genericVariables
+            ?.values
+            ?.map(typeNameFactory::createTypeVariableName)
+
+        val className = typeNameFactory.createClassName(mtVariantObjectSpec.name, superClassName)
+        val classBuilder = if (!objectProperties.isNullOrEmpty()) {
+            val companionObjectSpec = TypeSpec.companionObjectBuilder()
+                .apply {
+                    addProperty(hashConstant)
+
+                    addObjectParseFunction(
+                        mtVariantObjectSpec.hasFlags,
+                        mtVariantObjectSpec.propertiesSpecs,
+                        objectProperties,
+                        genericTypeVariables,
+                        className,
+                        typeNameFactory
+                    )
+                }.build()
+
+            TypeSpec.classBuilder(className)
+                .addPrimaryConstructor(objectProperties)
+                .addModifiers(KModifier.DATA)
+                .addType(companionObjectSpec)
+        } else {
+            TypeSpec.objectBuilder(className).
+                addProperty(hashConstant)
+        }
+
+        classBuilder.addSuperinterface(superInterfaceName)
+
+        if (!genericTypeVariables.isNullOrEmpty()) {
+            classBuilder.addTypeVariables(genericTypeVariables)
+        }
+
         val hashPropertySpec = PropertySpec.builder(TLObjectSpec::constructorHash.name, Int::class)
             .addModifiers(KModifier.OVERRIDE)
             .initializer("%L", hashConstant.name)
             .build()
-
-        val companionObjectSpec = TypeSpec.companionObjectBuilder().apply {
-            addProperty(hashConstant)
-
-            if (!mtVariantObjectSpec.propertiesSpecs.isNullOrEmpty()) {
-                addObjectParseFunction(
-                    mtVariantObjectSpec.hasFlags,
-                    mtVariantObjectSpec.propertiesSpecs,
-                    objectProperties,
-                    typeVariables,
-                    className,
-                    typeNameFactory
-                )
-            }
-        }.build()
-
 
         val objectSerializeFunction = createObjectSerializeFunctionSpec(
             mtVariantObjectSpec.hasFlags,
             mtVariantObjectSpec.propertiesSpecs
         )
 
-        return classBuilder.addType(companionObjectSpec)
-            .addProperty(hashPropertySpec)
+        return classBuilder.addProperty(hashPropertySpec)
             .addFunction(objectSerializeFunction)
             .addKdoc(mtVariantObjectSpec.rawScheme)
             .build()
     }
-
-
 
     private fun TypeSpec.Builder.addBaseObjectParseFunction(
         superClassName: ClassName,
@@ -200,10 +200,7 @@ object TLObjectFactory {
                 val parseStatement = statementBuilder.toString()
                 functionBuilder.addStatement(parseStatement)
             } else {
-                val constructorCall = createCostructorCallStatement()
-                statementBuilder.append(constructorCall)
-
-                val parseStatement = statementBuilder.toString()
+                val parseStatement = statementBuilder.append(TYPE_CONCAT_INDICATOR).toString()
                 functionBuilder.addStatement(parseStatement, objectClass)
             }
         }

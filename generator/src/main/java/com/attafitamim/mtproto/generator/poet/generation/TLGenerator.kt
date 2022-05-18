@@ -13,6 +13,7 @@ import com.attafitamim.mtproto.generator.scheme.specs.TLMethodSpec
 import com.attafitamim.mtproto.generator.syntax.CONSTANT_NAME_SEPARATOR
 import com.attafitamim.mtproto.generator.syntax.FUNCTIONS_KEYWORD
 import com.attafitamim.mtproto.generator.syntax.TYPES_KEYWORD
+import com.attafitamim.mtproto.generator.utils.takeIfSingleElement
 import org.gradle.api.GradleException
 import java.io.File
 
@@ -99,7 +100,7 @@ class TLGenerator(
 
         val objectsGroup = objectSpecs.groupBy(TLObjectSpec::superType)
         objectsGroup.forEach { (superType, variants) ->
-            val filteredObjectVariants = mutateDuplicates(variants)
+            val filteredObjectVariants = cleanVariants(variants)
 
             val fileSpec = TLObjectFactory.createFileSpec(
                 superType,
@@ -128,20 +129,20 @@ class TLGenerator(
         )
     }
 
-    private fun mutateDuplicates(variants: List<TLObjectSpec>) =
-        variants.groupBy(TLObjectSpec::name).flatMap { (name, duplicates) ->
-            if (duplicates.size == 1) {
-                duplicates
-            } else duplicates.map { tlObjectSpec ->
-                val newName = buildString {
-                    append(
-                        name,
-                        CONSTANT_NAME_SEPARATOR,
-                        tlObjectSpec.constructorHash
-                    )
-                }
-
-                tlObjectSpec.copy(name = newName)
+    private fun cleanVariants(variants: List<TLObjectSpec>) =
+        variants.takeIfSingleElement() ?: variants.groupBy(TLObjectSpec::name)
+            .flatMap { (name, duplicates) ->
+                duplicates.takeIfSingleElement() ?: mutateDuplicatesName(name, variants)
             }
+
+    private fun mutateDuplicatesName(
+        duplicateName: String,
+        duplicates: List<TLObjectSpec>
+    ) = duplicates.map { tlObjectSpec ->
+        val newName = buildString {
+            append(duplicateName, CONSTANT_NAME_SEPARATOR, tlObjectSpec.constructorHash)
         }
+
+        tlObjectSpec.copy(name = newName)
+    }
 }
