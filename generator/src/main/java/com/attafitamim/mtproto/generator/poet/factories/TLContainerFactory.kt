@@ -78,14 +78,10 @@ object TLContainerFactory {
         returnType: TypeName,
         typeNameFactory: TypeNameFactory
     ): TypeSpec.Builder = this.apply {
-        val functionBuilder = TLParser<*>::parse.asFun2Builder(typeVariables, returnType)
+        val functionBuilder = TLParser<*>::parse.asParseFunctionBuilder(typeVariables, returnType)
 
         if (hasFlags) {
             functionBuilder.addLocalPropertyParseStatement(FLAGS_PROPERTY_NAME, Int::class)
-        }
-
-        typeVariables?.forEach { typeVariableName ->
-            functionBuilder.addClassInitializationStatement(typeVariableName)
         }
 
         propertiesSpecs?.forEach { mtPropertySpec ->

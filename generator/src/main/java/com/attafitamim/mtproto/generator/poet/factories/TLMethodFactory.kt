@@ -4,7 +4,6 @@ import com.attafitamim.mtproto.core.serialization.behavior.TLParser
 import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLMethod
-import com.attafitamim.mtproto.core.types.TLObject
 import com.attafitamim.mtproto.generator.scheme.specs.TLMethodSpec
 import com.attafitamim.mtproto.generator.scheme.specs.TLObjectSpec
 import com.attafitamim.mtproto.generator.scheme.specs.TLPropertySpec
@@ -13,7 +12,6 @@ import com.attafitamim.mtproto.generator.syntax.*
 import com.attafitamim.mtproto.generator.utils.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import kotlin.reflect.KClass
 
 object TLMethodFactory {
 
@@ -45,11 +43,9 @@ object TLMethodFactory {
         }
 
         if (tlMethodSpec.returnType is TLTypeSpec.Generic.Variable) {
-            val responseClass = KClass::class.asTypeName()
-                .parameterizedBy(returnType)
-
-            val className = createTypeVariableClassName(tlMethodSpec.returnType.name)
-            val responseClassProperty = PropertySpec.builder(className, responseClass).build()
+            val parserClass = createTypeParseFunctionTypeName(returnType)
+            val parserName = createTypeParserParameterName(tlMethodSpec.returnType.name)
+            val responseClassProperty = PropertySpec.builder(parserName, parserClass).build()
 
             methodProperties.add(responseClassProperty)
         }
@@ -116,7 +112,7 @@ object TLMethodFactory {
         typeNameFactory: TypeNameFactory
     ): FunSpec {
         val returnTypeName = typeNameFactory.createTypeName(returnType)
-        return TLParser<*>::parse.asFun2Builder(null, returnTypeName)
+        return TLParser<*>::parse.asParseFunctionBuilder(null, returnTypeName)
             .addModifiers(KModifier.OVERRIDE)
             .addPropertyParseStatement(METHOD_RESPONSE_NAME, returnType, typeNameFactory)
             .addReturnStatement(METHOD_RESPONSE_NAME)

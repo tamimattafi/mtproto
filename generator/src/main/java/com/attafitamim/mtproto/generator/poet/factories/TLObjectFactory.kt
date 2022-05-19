@@ -161,7 +161,7 @@ object TLObjectFactory {
         val hashParameterName = TLObject::constructorHash.name
         val hashConstantName = camelToSnakeCase(hashParameterName).toUpperCase()
 
-        val functionBuilder = TLParser<*>::parse.asFun2Builder(
+        val functionBuilder = TLParser<*>::parse.asParseFunctionBuilder(
             superTypeVariables,
             superClassName
         )
@@ -184,7 +184,7 @@ object TLObjectFactory {
                 objectClass.simpleName,
                 INSTANCE_ACCESS_KEY,
                 hashConstantName,
-                WHEN_RESULT_ARROW
+                RESULT_ARROW
             )
 
             if (!mtObjectSpec.propertiesSpecs.isNullOrEmpty()) {
@@ -193,11 +193,15 @@ object TLObjectFactory {
                     INSTANCE_ACCESS_KEY,
                     TLParser<*>::parse.name,
                     PARAMETER_OPEN_PARENTHESIS,
-                    INPUT_STREAM_NAME,
-                    PARAMETER_CLOSE_PARENTHESIS
+                    INPUT_STREAM_NAME
                 )
 
-                val parseStatement = statementBuilder.toString()
+                mtObjectSpec.genericVariables?.values?.forEach { typeVariable ->
+                    val parserName = createTypeParserParameterName(typeVariable.name)
+                    statementBuilder.append(PARAMETER_SEPARATOR, parserName)
+                }
+
+                val parseStatement = statementBuilder.append(PARAMETER_CLOSE_PARENTHESIS).toString()
                 functionBuilder.addStatement(parseStatement)
             } else {
                 val parseStatement = statementBuilder.append(TYPE_CONCAT_INDICATOR).toString()
@@ -207,7 +211,7 @@ object TLObjectFactory {
 
         val throwStatement = StringBuilder().append(
             ELSE_KEYWORD,
-            WHEN_RESULT_ARROW,
+            RESULT_ARROW,
             THROW_KEYWORD,
             KEYWORD_SEPARATOR,
             TYPE_CONCAT_INDICATOR,
@@ -233,14 +237,10 @@ object TLObjectFactory {
         returnType: TypeName,
         typeNameFactory: TypeNameFactory
     ): TypeSpec.Builder = this.apply {
-        val functionBuilder = TLParser<*>::parse.asFun2Builder(typeVariables, returnType)
+        val functionBuilder = TLParser<*>::parse.asParseFunctionBuilder(typeVariables, returnType)
 
         if (hasFlags) {
             functionBuilder.addLocalPropertyParseStatement(FLAGS_PROPERTY_NAME, Int::class)
-        }
-
-        typeVariables?.forEach { typeVariableName ->
-            functionBuilder.addClassInitializationStatement(typeVariableName)
         }
 
         propertiesSpecs?.forEach { mtPropertySpec ->

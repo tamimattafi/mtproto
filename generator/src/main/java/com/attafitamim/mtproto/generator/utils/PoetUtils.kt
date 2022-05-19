@@ -3,10 +3,9 @@ package com.attafitamim.mtproto.generator.utils
 import com.attafitamim.mtproto.core.serialization.behavior.TLParser
 import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
 import com.attafitamim.mtproto.core.serialization.helpers.SerializationHelper
-import com.attafitamim.mtproto.core.serialization.helpers.getTypeParseMethod
-import com.attafitamim.mtproto.core.serialization.helpers.getTypeSerializeMethod
 import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
+import com.attafitamim.mtproto.core.types.TLContainer
 import com.attafitamim.mtproto.generator.poet.factories.TypeNameFactory
 import com.attafitamim.mtproto.generator.scheme.specs.TLPropertySpec
 import com.attafitamim.mtproto.generator.scheme.specs.TLTypeSpec
@@ -14,9 +13,13 @@ import com.attafitamim.mtproto.generator.syntax.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.math.pow
-import kotlin.reflect.*
+import kotlin.reflect.KClass
+import kotlin.reflect.KParameter
 import kotlin.reflect.full.valueParameters
+import kotlin.reflect.KFunction2
+
 import kotlin.reflect.jvm.javaType
 
 fun TypeSpec.Builder.addPrimaryConstructor(properties: List<PropertySpec>): TypeSpec.Builder {
@@ -54,7 +57,7 @@ fun Collection<KParameter>.asParameterSpecs() = map { kParameter ->
     kParameter.asParameterSpec()
 }
 
-fun KFunction2<*, *, *>.asFun2Builder(
+fun KFunction2<*, *, *>.asParseFunctionBuilder(
     superTypeVariables: List<TypeName>?,
     returnType: TypeName
 ): FunSpec.Builder {
@@ -68,6 +71,9 @@ fun KFunction2<*, *, *>.asFun2Builder(
             if (typeName is TypeVariableName) {
                 val reifiedTypeName = typeName.copy(reified = true)
                 builder.addTypeVariable(reifiedTypeName)
+                val parserClass = createTypeParseFunctionTypeName(typeName)
+                val parserName = createTypeParserParameterName(typeName.name)
+                builder.addParameter(parserName, parserClass)
             }
         }
 
@@ -461,27 +467,40 @@ fun FunSpec.Builder.addTypeParseStatement(
     typeName: TypeName,
     flag: Int?
 ): FunSpec.Builder = this.apply {
-    val typeClassName = createTypeVariableClassName(type)
+    val typeParseFunctionName = createTypeParserParameterName(type)
 
-    val parseStatement = java.lang.StringBuilder().append(
-        TYPE_CONCAT_INDICATOR,
-        INSTANCE_ACCESS_KEY,
-        TLParser<*>::parse.name,
-        PARAMETER_OPEN_PARENTHESIS,
-        INPUT_STREAM_NAME,
-        PARAMETER_SEPARATOR,
-        typeClassName,
-        PARAMETER_CLOSE_PARENTHESIS
-    ).toString()
+    val parseStatement = buildString {
+        append(
+            typeParseFunctionName,
+            INSTANCE_ACCESS_KEY,
+            INVOKE_KEYWORD,
+            PARAMETER_OPEN_PARENTHESIS,
+            INPUT_STREAM_NAME,
+            PARAMETER_CLOSE_PARENTHESIS
+        )
+    }
 
     addPropertyParseStatement(
         name,
         parseStatement,
         flag,
-        typeName,
-        SerializationHelper.javaClass.asTypeName()
+        typeName
     )
 }
+
+fun createTypeParserParameterName(type: String) = buildString {
+    append(
+        TLParser<*>::parse.name,
+        type
+    )
+}
+
+fun createTypeParseFunctionTypeName(
+    returnType: TypeName
+): TypeName = LambdaTypeName.get(
+    parameters = listOf(ParameterSpec.builder(INPUT_STREAM_NAME, TLInputStream::class.java).build()),
+    returnType = returnType
+)
 
 fun FunSpec.Builder.addFlagParseStatement(
     name: String,
@@ -540,10 +559,16 @@ fun FunSpec.Builder.addObjectParseStatement(
 
     val objectClassName = typeNameFactory.createClassName(typeSpec)
 
+    val parameters = ArrayList<String>()
+    parameters.add(INPUT_STREAM_NAME)
+    typeSpec.generics?.forEach { generic ->
+        createTypeParserAsParameter(generic, typeNameFactory)?.let(parameters::add)
+    }
+
     val objectParseStatement = createFunctionCallStatement(
         objectClassName.simpleName,
         TLParser<*>::parse.name,
-        INPUT_STREAM_NAME
+        *parameters.toTypedArray()
     )
 
     val objectTypeName = if (!genericTypes.isNullOrEmpty()) {
@@ -698,41 +723,6 @@ fun FunSpec.Builder.addFlaggingStatement(
     addStatement(flaggingStatement)
 }
 
-fun createTypeVariableClassName(
-    name: String
-): String = buildString {
-    append(
-        titleToCamelCase(name),
-        camelToTitleCase(CLASS_KEYWORD)
-    )
-}
-
-fun FunSpec.Builder.addClassInitializationStatement(
-    typeVariable: TypeVariableName
-): FunSpec.Builder = this.apply {
-    val propertyName = createTypeVariableClassName(typeVariable.name)
-
-    val initializationStatement = buildString {
-        append(
-            IMMUTABLE_KEYWORD,
-            KEYWORD_SEPARATOR,
-            propertyName,
-            TYPE_SIGN,
-            KEYWORD_SEPARATOR,
-            TYPE_CONCAT_INDICATOR,
-            INITIALIZATION_SIGN,
-            typeVariable.name,
-            CLASS_ACCESS_KEY,
-            CLASS_KEYWORD
-        )
-    }
-
-    val classTypeName = KClass::class.asClassName()
-        .parameterizedBy(typeVariable)
-
-    addStatement(initializationStatement, classTypeName)
-}
-
 fun FunSpec.Builder.addFlaggingSerializationLogic(
     propertiesSpecs: List<TLPropertySpec>?
 ): FunSpec.Builder = this.apply {
@@ -765,4 +755,89 @@ fun FunSpec.Builder.addPropertiesSerializationLogic(
             tlPropertySpecs.flag
         )
     }
+}
+
+fun createTypeParserAsParameter(
+    typeSpec: TLTypeSpec,
+    typeNameFactory: TypeNameFactory
+): String? = when(typeSpec) {
+    is TLTypeSpec.Generic.Parameter -> createTypeParserAsParameter(typeSpec.type, typeNameFactory)
+    is TLTypeSpec.Generic.Variable -> createTypeParserParameterName(typeSpec.name)
+
+    is TLTypeSpec.Primitive -> buildString {
+        append(
+            CURLY_BRACE_OPEN,
+            KEYWORD_SEPARATOR,
+            IT_KEYWORD,
+            INSTANCE_ACCESS_KEY,
+            getTypeParseMethod(typeSpec.clazz).name,
+            PARAMETER_OPEN_PARENTHESIS,
+            PARAMETER_CLOSE_PARENTHESIS,
+            KEYWORD_SEPARATOR,
+            CURLY_BRACE_CLOSE
+        )
+    }
+
+    is TLTypeSpec.Structure.Bytes -> if (typeSpec.fixedSize != null) buildString {
+        append(
+            CURLY_BRACE_OPEN,
+            KEYWORD_SEPARATOR,
+            IT_KEYWORD,
+            INSTANCE_ACCESS_KEY,
+            TLInputStream::readBytes.name,
+            PARAMETER_OPEN_PARENTHESIS,
+            typeSpec.fixedSize,
+            PARAMETER_CLOSE_PARENTHESIS,
+            KEYWORD_SEPARATOR,
+            CURLY_BRACE_CLOSE
+        )
+    } else createTypeParserAsParameter(TLTypeSpec.Primitive(ByteArray::class), typeNameFactory)
+
+    is TLTypeSpec.TLType.Container -> buildString {
+        append(
+            typeNameFactory.createClassName(typeSpec).simpleName,
+            INSTANCE_ACCESS_KEY,
+            COMPANION_DEFAULT_NAME,
+            CLASS_ACCESS_KEY,
+            TLParser<*>::parse.name
+        )
+    }
+    is TLTypeSpec.TLType.Object -> buildString {
+        append(
+            typeNameFactory.createClassName(typeSpec).simpleName,
+            INSTANCE_ACCESS_KEY,
+            COMPANION_DEFAULT_NAME,
+            CLASS_ACCESS_KEY,
+            TLParser<*>::parse.name
+        )
+    }
+    TLTypeSpec.TLType.SuperContainer -> createTypeParserParameterName(TLContainer::class.java.simpleName)
+    TLTypeSpec.TLType.SuperObject -> createTypeParserParameterName(TLContainer::class.java.simpleName)
+    TLTypeSpec.Type -> createTypeParserParameterName(Any::class.java.simpleName)
+    is TLTypeSpec.Structure.Collection -> null
+    TLTypeSpec.Flag -> null
+}
+
+fun getTypeParseMethod(type: KClass<out Any>) = when(type) {
+    Boolean::class -> TLInputStream::readBoolean
+    Byte::class -> TLInputStream::readByte
+    Int::class -> TLInputStream::readInt
+    Long::class -> TLInputStream::readLong
+    Double::class -> TLInputStream::readDouble
+    String::class -> TLInputStream::readString
+    ByteArray::class -> TLInputStream::readByteArray
+    TLInputStream::class -> TLInputStream::readInputStream
+    else -> throw Exception()
+}
+
+fun getTypeSerializeMethod(type: KClass<out Any>) = when(type) {
+    Boolean::class -> TLOutputStream::writeBoolean
+    Byte::class -> TLOutputStream::writeByte
+    Int::class -> TLOutputStream::writeInt
+    Long::class -> TLOutputStream::writeLong
+    Double::class -> TLOutputStream::writeDouble
+    String::class -> TLOutputStream::writeString
+    ByteArray::class -> TLOutputStream::writeByteArray
+    TLInputStream::class -> TLOutputStream::writeInputStream
+    else -> throw Exception()
 }
