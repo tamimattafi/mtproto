@@ -1,16 +1,6 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        google()
-    }
-}
-
 plugins {
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     id("java-gradle-plugin")
-    id("maven-publish")
-    id("org.jetbrains.kotlin.jvm") version "1.6.10"
+    id("org.jetbrains.kotlin.jvm")
 }
 
 ext {
@@ -19,16 +9,11 @@ ext {
     PUBLISH_ARTIFACT_ID = 'generator'
 }
 
-apply from: "${rootDir}/scripts/publish-root.gradle"
 apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
-}
-
-sourceSets {
-    main.java.srcDirs += ["${project.buildDir}/generated/mtproto"]
 }
 
 test {

@@ -18,3 +18,5 @@ rootProject.name = "mtproto"
 include ':sample'
 include ':client'
 include ':server'
+include ':core'
+include ':generator'

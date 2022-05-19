@@ -2,24 +2,25 @@
 buildscript {
     repositories {
         mavenLocal()
-        google()
         mavenCentral()
+        google()
     }
 
     dependencies {
+        classpath('com.android.tools.build:gradle:7.2.0')
         classpath("com.attafitamim.mtproto:generator:1.0.0")
         classpath("com.squareup:kotlinpoet:1.11.0")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.21")
+        classpath("io.github.gradle-nexus:publish-plugin:1.1.0")
     }
 }
 
 plugins {
-    id 'com.android.application' version '7.1.0' apply false
-    id 'com.android.library' version '7.1.0' apply false
-    id 'org.jetbrains.kotlin.android' version '1.6.10' apply false
-    id 'org.jetbrains.kotlin.jvm' version '1.6.10' apply false
+    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
 }
+
+apply from: "${rootDir}/scripts/publish-root.gradle"
 
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
-
