@@ -1,12 +1,10 @@
 plugins {
-    id 'java-library'
-    id "org.jetbrains.kotlin.jvm"
-    id 'maven-publish'
+    id("java-library")
+    id("org.jetbrains.kotlin.jvm")
+    id("maven-publish")
 }
 
 ext {
-    PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '1.0.0-beta02'
     PUBLISH_ARTIFACT_ID = 'core'
 }
 

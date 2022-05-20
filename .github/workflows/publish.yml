@@ -25,7 +25,7 @@ jobs:
         run: ./gradlew :generator:assemble
 
       - name: Source jar
-        run: ./gradlew projectSourcesJar
+        run: ./gradlew projectSourcesJar javadocJar
 
         # Runs upload, and then closes & releases the repository
       - name: Publish to MavenCentral
