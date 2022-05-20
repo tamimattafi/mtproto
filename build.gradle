@@ -8,7 +8,6 @@ buildscript {
 
     dependencies {
         classpath('com.android.tools.build:gradle:7.2.0')
-        classpath("com.attafitamim.mtproto:generator:1.0.0")
         classpath("com.squareup:kotlinpoet:1.11.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.21")
         classpath("io.github.gradle-nexus:publish-plugin:1.1.0")
