@@ -132,7 +132,7 @@ class TLGenerator(
     private fun cleanVariants(variants: List<TLObjectSpec>) =
         variants.takeIfSingleElement() ?: variants.groupBy(TLObjectSpec::name)
             .flatMap { (name, duplicates) ->
-                duplicates.takeIfSingleElement() ?: mutateDuplicatesName(name, variants)
+                duplicates.takeIfSingleElement() ?: mutateDuplicatesName(name, duplicates)
             }
 
     private fun mutateDuplicatesName(
