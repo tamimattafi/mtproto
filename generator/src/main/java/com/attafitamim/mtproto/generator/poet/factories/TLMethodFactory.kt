@@ -21,11 +21,12 @@ object TLMethodFactory {
     ): FileSpec {
         val className = typeNameFactory.createMethodClassName(methodSpecs.name, methodSpecs.namespace)
         return FileSpec.builder(className.packageName, className.simpleName)
-            .addMethodType(methodSpecs, typeNameFactory)
+            .addMethodType(className, methodSpecs, typeNameFactory)
             .build()
     }
 
     private fun FileSpec.Builder.addMethodType(
+        className: ClassName,
         tlMethodSpec: TLMethodSpec,
         typeNameFactory: TypeNameFactory
     ): FileSpec.Builder {
@@ -58,17 +59,17 @@ object TLMethodFactory {
             hashInt
         )
 
-        val classBuilder = if (!methodProperties.isNullOrEmpty()) {
+        val classBuilder = if (methodProperties.isNotEmpty()) {
             val companionObjectBuilder = TypeSpec.companionObjectBuilder()
                 .addProperty(hashConstant)
                 .build()
 
-            TypeSpec.classBuilder(tlMethodSpec.name)
+            TypeSpec.classBuilder(className)
                 .addPrimaryConstructor(methodProperties)
                 .addModifiers(KModifier.DATA)
                 .addType(companionObjectBuilder)
         } else {
-            TypeSpec.objectBuilder(tlMethodSpec.name)
+            TypeSpec.objectBuilder(className)
                 .addProperty(hashConstant)
         }
 

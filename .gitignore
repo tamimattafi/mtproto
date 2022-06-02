@@ -74,3 +74,5 @@ lint/outputs/
 lint/tmp/
 # lint/reports/
 sign.properties
+
+.DS_Store
