@@ -15,7 +15,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "mtproto"
-include ':client'
 include ':server'
 include ':core'
 include ':generator'
+include ':client'

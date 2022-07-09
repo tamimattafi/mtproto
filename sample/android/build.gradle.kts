@@ -6,7 +6,7 @@ plugins {
 tasks.generateProtoClasses {
     schemeFilesDir = "${projectDir.path}/schemes"
     outputDir = "${buildDir.absolutePath}/generated/mtproto"
-    basePackage = "com.tezro.data.remote.mtproto"
+    basePackage = "com.attafitamim.data.remote.mtproto"
 }
 
 android {
