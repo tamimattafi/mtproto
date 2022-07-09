@@ -4,13 +4,20 @@ apply plugin: 'org.jetbrains.dokka'
 
 ext {
     PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '1.1.0-beta01'
+    PUBLISH_VERSION = '1.1.0-beta02'
 }
 
 task projectSourcesJar(type: Jar) {
     archiveClassifier.set('sources')
-    from sourceSets.main.java.srcDirs
-    from sourceSets.main.kotlin.srcDirs
+    if (project.plugins.findPlugin("com.android.library")) {
+        // For Android libraries
+        from android.sourceSets.main.java.srcDirs
+        from android.sourceSets.main.kotlin.srcDirs
+    } else {
+        // For pure Kotlin libraries, in case you have them
+        from sourceSets.main.java.srcDirs
+        from sourceSets.main.kotlin.srcDirs
+    }
 }
 
 task javadocJar(type: Jar, dependsOn: dokkaJavadoc) {
@@ -45,7 +52,11 @@ afterEvaluate {
                 artifactId PUBLISH_ARTIFACT_ID
                 version PUBLISH_VERSION
 
-                from components.java
+                if (project.plugins.findPlugin("com.android.library")) {
+                    from components.release
+                } else {
+                    from components.java
+                }
 
                 artifact projectSourcesJar
                 artifact javadocJar

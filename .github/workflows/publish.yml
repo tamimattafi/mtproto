@@ -24,6 +24,9 @@ jobs:
       - name: Build Generator
         run: ./gradlew :generator:assemble
 
+      - name: Build Client
+        run: ./gradlew :client:assemble
+
       - name: Source jar
         run: ./gradlew projectSourcesJar javadocJar
 
