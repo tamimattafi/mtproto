@@ -387,7 +387,7 @@ public class NativeByteBuffer extends AbstractSerializedData {
     @NotNull
     @Override
     public byte[] readBytes(int i) {
-        byte[] b = new byte[0];
+        byte[] b = new byte[i];
         try {
             buffer.get(b);
         } catch (Exception e) {

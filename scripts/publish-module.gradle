@@ -4,7 +4,7 @@ apply plugin: 'org.jetbrains.dokka'
 
 ext {
     PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '1.1.0-beta03'
+    PUBLISH_VERSION = '1.1.0-beta04'
 }
 
 task projectSourcesJar(type: Jar) {
@@ -13,6 +13,7 @@ task projectSourcesJar(type: Jar) {
         // For Android libraries
         from android.sourceSets.main.java.srcDirs
         from android.sourceSets.main.kotlin.srcDirs
+        from android.sourceSets.main.jniLibs.srcDirs
     } else {
         // For pure Kotlin libraries, in case you have them
         from sourceSets.main.java.srcDirs
