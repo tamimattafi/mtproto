@@ -17,12 +17,15 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.attafitamim.mtproto.client.core.IEventListener;
 import com.attafitamim.mtproto.core.types.TLMethod;
 import com.attafitamim.mtproto.client.core.BuildVars;
 import com.attafitamim.mtproto.client.core.StatsController;
 import com.attafitamim.mtproto.client.core.UserConfig;
 import com.attafitamim.mtproto.client.core.Utilities;
+import com.attafitamim.mtproto.core.types.TLObject;
 
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -108,6 +111,9 @@ public class ConnectionsManager {
 
     public static UpdateHandler updateHandler;
 
+    @Nullable
+    private IEventListener listener;
+
     public ConnectionsManager(
             int userId,
             BackendInfo backendInfo,
@@ -119,8 +125,11 @@ public class ConnectionsManager {
             int layer,
             int appId,
             String logPath,
-            boolean enablePushConnection
+            boolean enablePushConnection,
+            @Nullable IEventListener listener
     ) {
+        this.listener = listener;
+
         currentAccount = UserConfig.selectedAccount;
         connectionState = native_getConnectionState(currentAccount);
         String deviceModel;
@@ -197,16 +206,19 @@ public class ConnectionsManager {
         return native_getTimeDifference(currentAccount);
     }
 
-    public <T> int sendRequest(TLMethod<T> method, RequestDelegate<T> completionBlock, int flags, int connetionType) throws Exception {
+    public <T extends TLObject> int sendRequest(TLMethod<T> method, RequestDelegate<T> completionBlock, int flags, int connetionType) throws Exception {
         return sendRequest(method, completionBlock, null, null, flags, DEFAULT_DATACENTER_ID, connetionType, false);
     }
 
-    public <T> int sendRequest(TLMethod<T> method, RequestDelegate<T> completionBlock, QuickAckDelegate quickAckBlock, int flags) throws Exception {
+    public <T extends TLObject> int sendRequest(TLMethod<T> method, RequestDelegate<T> completionBlock, QuickAckDelegate quickAckBlock, int flags) throws Exception {
         return sendRequest(method, completionBlock, quickAckBlock, null, flags, DEFAULT_DATACENTER_ID, ConnectionTypeGeneric, false);
     }
 
-    public <T> int sendRequest(TLMethod<T> method, final RequestDelegate<T> onComplete, final QuickAckDelegate onQuickAck, final WriteToSocketDelegate onWriteToSocket, final int flags, final int datacenterId, final int connetionType, final boolean immediate) throws Exception {
+    public <T extends TLObject> int sendRequest(TLMethod<T> method, final RequestDelegate<T> onComplete, final QuickAckDelegate onQuickAck, final WriteToSocketDelegate onWriteToSocket, final int flags, final int datacenterId, final int connetionType, final boolean immediate) throws Exception {
         final int requestToken = lastRequestToken.getAndIncrement();
+
+        logRequest(requestToken, method);
+
         NativeByteBuffer buffer = null;
 
         NativeByteBuffer bufferSizeCalculator = new NativeByteBuffer(true);
@@ -221,17 +233,19 @@ public class ConnectionsManager {
                 T resp = null;
                 RequestError error = null;
 
-
                 if (response != 0) {
                     NativeByteBuffer buff = NativeByteBuffer.wrap(response);
                     buff.reused = true;
                     try {
                         resp = method.parse(buff);
+                        logResponse(requestToken, method, resp);
                     } catch (Exception e) {
                         error = new RequestError(-1, e.getMessage());
+                        logError(requestToken, method, error);
                     }
                 } else if (errorText != null) {
                     error = new RequestError(errorCode, errorText);
+                    logError(requestToken, method, error);
                 }
 
                 onComplete.run(resp, error);
@@ -381,6 +395,22 @@ public class ConnectionsManager {
 
         if (isAppPaused) native_pauseNetwork(currentAccount);
         else native_resumeNetwork(currentAccount, false);
+    }
+
+    private void logRequest(int requestToken, TLMethod<?> request) {
+        if (listener != null) listener.onRequest(requestToken, request);
+    }
+
+    private void logResponse(int requestToken, TLMethod<?> request, TLObject response) {
+        if (listener != null) listener.onResponse(requestToken, 0, request, response);
+    }
+
+    private void logError(int requestToken, TLMethod<?> request, RequestError error) {
+        if (listener != null) listener.onError(requestToken, 0, request, error);
+    }
+
+    private void logUpdate(TLObject update) {
+        if (listener != null) listener.onUpdate(update);
     }
 
     public static void onUnparsedMessageReceived(long address, final int currentAccount) {
