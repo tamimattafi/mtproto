@@ -2559,6 +2559,7 @@ void ConnectionsManager::updateDcSettings(uint32_t dcNum, bool workaround) {
 
         if (response != nullptr) {
             TL_config *config = (TL_config *) response;
+            DEBUG_D("updateDcSettings config date %d", config->date);
             clientBlocked = (config->flags & 256) != 0;
             if (!workaround) {
                 int32_t updateIn = config->expires - getCurrentTime();

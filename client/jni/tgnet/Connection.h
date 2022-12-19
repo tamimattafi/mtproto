@@ -93,7 +93,7 @@ private:
     bool forceNextPort = false;
     bool isMediaConnection = false;
     bool waitForReconnectTimer = false;
-    uint32_t lastReconnectTimeout = 1000;
+    uint32_t lastReconnectTimeout = 100;
     int64_t usefullDataReceiveTime;
 
     uint8_t temp[64];

@@ -410,7 +410,7 @@ void Connection::setHasUsefullData() {
     if (!usefullData) {
         usefullDataReceiveTime = ConnectionsManager::getInstance(currentDatacenter->instanceNum).getCurrentTimeMonotonicMillis();
         usefullData = true;
-        lastReconnectTimeout = 1000;
+        lastReconnectTimeout = 50;
     }
 }
 
@@ -684,9 +684,9 @@ void Connection::onDisconnected(int32_t reason, int32_t error) {
             if (connectionType != ConnectionTypeProxy) {
                 waitForReconnectTimer = true;
                 reconnectTimer->setTimeout(lastReconnectTimeout, false);
-                lastReconnectTimeout += 1000;
-                if (lastReconnectTimeout > 5000) {
-                    lastReconnectTimeout = 5000;
+                lastReconnectTimeout *= 2;
+                if (lastReconnectTimeout > 400) {
+                    lastReconnectTimeout = 400;
                 }
                 reconnectTimer->start();
             }
@@ -694,7 +694,7 @@ void Connection::onDisconnected(int32_t reason, int32_t error) {
             waitForReconnectTimer = false;
             if (connectionType == ConnectionTypeGenericMedia && currentDatacenter->isHandshaking(true) || connectionType == ConnectionTypeGeneric && (currentDatacenter->isHandshaking(false) || datacenterId == ConnectionsManager::getInstance(currentDatacenter->instanceNum).currentDatacenterId || datacenterId == ConnectionsManager::getInstance(currentDatacenter->instanceNum).movingToDatacenterId)) {
                 DEBUG_D("connection(%p, account%u, dc%u, type %d) reconnect %s:%hu", this, currentDatacenter->instanceNum, currentDatacenter->getDatacenterId(), connectionType, hostAddress.c_str(), hostPort);
-                reconnectTimer->setTimeout(5000, false);
+                reconnectTimer->setTimeout(1000, false);
                 reconnectTimer->start();
             }
         }
