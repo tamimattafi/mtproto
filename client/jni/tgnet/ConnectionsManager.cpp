@@ -567,10 +567,6 @@ void ConnectionsManager::cleanUp(bool resetKeys) {
     scheduleTask([&, resetKeys] {
         for (requestsIter iter = requestsQueue.begin(); iter != requestsQueue.end();) {
             Request *request = iter->get();
-            if (request->requestFlags & RequestFlagWithoutLogin) {
-                iter++;
-                continue;
-            }
             if (request->onCompleteRequestCallback != nullptr) {
                 TL_error *error = new TL_error();
                 error->code = -1000;
@@ -582,10 +578,6 @@ void ConnectionsManager::cleanUp(bool resetKeys) {
         }
         for (requestsIter iter = runningRequests.begin(); iter != runningRequests.end();) {
             Request *request = iter->get();
-            if (request->requestFlags & RequestFlagWithoutLogin) {
-                iter++;
-                continue;
-            }
             if (request->onCompleteRequestCallback != nullptr) {
                 TL_error *error = new TL_error();
                 error->code = -1000;

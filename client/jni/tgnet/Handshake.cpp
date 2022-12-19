@@ -55,19 +55,11 @@ void Handshake::beginHandshake(bool reconnect) {
         connection->connect();
     }
 
-#ifdef USE_OLD_KEYS
-    TL_req_pq *request = new TL_req_pq();
-    request->nonce = std::unique_ptr<ByteArray>(new ByteArray(16));
-    RAND_bytes(request->nonce->bytes, 16);
-    authNonce = new ByteArray(request->nonce.get());
-    sendRequestData(request, true);
-#else
     TL_req_pq_multi *request = new TL_req_pq_multi();
     request->nonce = std::unique_ptr<ByteArray>(new ByteArray(16));
     RAND_bytes(request->nonce->bytes, 16);
     authNonce = new ByteArray(request->nonce.get());
     sendRequestData(request, true);
-#endif
 }
 
 void Handshake::cleanupHandshake() {
@@ -490,7 +482,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             sendRequestData(request, true);
         } else {
             DEBUG_E("dc%u handshake: invalid client nonce, type = %d", currentDatacenter->datacenterId, handshakeType);
-            beginHandshake(true);
+            beginHandshake(false);
         }
     } else if (dynamic_cast<Server_DH_Params *>(message)) {
         if (typeInfo == typeid(TL_server_DH_params_ok)) {

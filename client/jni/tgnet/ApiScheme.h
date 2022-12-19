@@ -101,7 +101,7 @@ public:
 class TL_help_getCdnConfig : public TLObject {
 
 public:
-    static const uint32_t constructor = 0x5c5168f0;
+    static const uint32_t constructor = 0x52029342;
 
     bool isNeedLayer();
     TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
@@ -111,7 +111,7 @@ public:
 class TL_config : public TLObject {
 
 public:
-    static const uint32_t constructor = 0x3213dbba;
+    static const uint32_t constructor = 0x5c5168f0;
 
     int32_t flags;
     bool phonecalls_enabled;
