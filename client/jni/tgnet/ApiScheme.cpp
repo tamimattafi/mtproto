@@ -79,6 +79,28 @@ void TL_dcOption::serializeToStream(NativeByteBuffer *stream) {
     }
 }
 
+TL_disabledFeature *TL_disabledFeature::TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error) {
+    if (TL_disabledFeature::constructor != constructor) {
+        error = true;
+        DEBUG_E("can't parse magic %x in TL_disabledFeature", constructor);
+        return nullptr;
+    }
+    TL_disabledFeature *result = new TL_disabledFeature();
+    result->readParams(stream, instanceNum, error);
+    return result;
+}
+
+void TL_disabledFeature::readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error) {
+    feature = stream->readString(&error);
+    description = stream->readString(&error);
+}
+
+void TL_disabledFeature::serializeToStream(NativeByteBuffer *stream) {
+    stream->writeInt32(constructor);
+    stream->writeString(feature);
+    stream->writeString(description);
+}
+
 TL_cdnPublicKey *TL_cdnPublicKey::TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error) {
     if (TL_cdnPublicKey::constructor != constructor) {
         error = true;
@@ -206,6 +228,7 @@ void TL_config::readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &
         tmp_sessions = stream->readInt32(&error);
     }
     pinned_dialogs_count_max = stream->readInt32(&error);
+    pinned_infolder_count_max = stream->readInt32(&error);
     call_receive_timeout_ms = stream->readInt32(&error);
     call_ring_timeout_ms = stream->readInt32(&error);
     call_connect_timeout_ms = stream->readInt32(&error);
@@ -234,6 +257,24 @@ void TL_config::readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &
     }
     if ((flags & 4) != 0) {
         lang_pack_version = stream->readInt32(&error);
+    }
+    if ((flags & 4) != 0) {
+        base_lang_pack_version = stream->readInt32(&error);
+    }
+
+    uint32_t disabledFeaturesVectorMagic = stream->readUint32(&error);
+    if (disabledFeaturesVectorMagic != 0x1cb5c415) {
+        error = true;
+        DEBUG_E("wrong Vector magic, got %x", disabledFeaturesVectorMagic);
+        return;
+    }
+    int32_t disabledFeaturesVectorCount = stream->readInt32(&error);
+    for (int32_t a = 0; a < disabledFeaturesVectorCount; a++) {
+        TL_disabledFeature *object = TL_disabledFeature::TLdeserialize(stream, stream->readUint32(&error), instanceNum, error);
+        if (object == nullptr) {
+            return;
+        }
+        disabled_features.push_back(std::unique_ptr<TL_disabledFeature>(object));
     }
 }
 
@@ -274,6 +315,7 @@ void TL_config::serializeToStream(NativeByteBuffer *stream) {
         stream->writeInt32(tmp_sessions);
     }
     stream->writeInt32(pinned_dialogs_count_max);
+    stream->writeInt32(pinned_infolder_count_max);
     stream->writeInt32(call_receive_timeout_ms);
     stream->writeInt32(call_ring_timeout_ms);
     stream->writeInt32(call_connect_timeout_ms);
@@ -302,6 +344,16 @@ void TL_config::serializeToStream(NativeByteBuffer *stream) {
     }
     if ((flags & 4) != 0) {
         stream->writeInt32(lang_pack_version);
+    }
+    if ((flags & 4) != 0) {
+        stream->writeInt32(base_lang_pack_version);
+    }
+
+    stream->writeInt32(0x1cb5c415);
+    uint32_t disabledFeaturesCount = (uint32_t) disabled_features.size();
+    stream->writeInt32(disabledFeaturesCount);
+    for (uint32_t a = 0; a < disabledFeaturesCount; a++) {
+        disabled_features[a]->serializeToStream(stream);
     }
 }
 

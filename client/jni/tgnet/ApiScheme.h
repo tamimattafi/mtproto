@@ -60,6 +60,19 @@ public:
     void serializeToStream(NativeByteBuffer *stream);
 };
 
+class TL_disabledFeature : public TLObject {
+
+public:
+    static const uint32_t constructor = 0xae636f24;
+
+    std::string feature;
+    std::string description;
+
+    static TL_disabledFeature *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
 class TL_cdnPublicKey : public TLObject {
 
 public:
@@ -88,7 +101,7 @@ public:
 class TL_help_getCdnConfig : public TLObject {
 
 public:
-    static const uint32_t constructor = 0x52029342;
+    static const uint32_t constructor = 0x5c5168f0;
 
     bool isNeedLayer();
     TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
@@ -101,6 +114,13 @@ public:
     static const uint32_t constructor = 0x3213dbba;
 
     int32_t flags;
+    bool phonecalls_enabled;
+    bool default_p2p_contacts;
+    bool preload_featured_stickers;
+    bool ignore_phone_entities;
+    bool revoke_pm_inbox;
+    bool blocked_mode;
+    bool pfs_enabled;
     int32_t date;
     int32_t expires;
     bool test_mode;
@@ -128,6 +148,7 @@ public:
     int32_t channels_read_media_period;
     int32_t tmp_sessions;
     int32_t pinned_dialogs_count_max;
+    int32_t pinned_infolder_count_max;
     int32_t call_receive_timeout_ms;
     int32_t call_ring_timeout_ms;
     int32_t call_connect_timeout_ms;
@@ -143,6 +164,8 @@ public:
     int32_t webfile_dc_id;
     std::string suggested_lang_code;
     int32_t lang_pack_version;
+    int32_t base_lang_pack_version;
+    std::vector<std::unique_ptr<TL_disabledFeature>> disabled_features;
 
     static TL_config *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);

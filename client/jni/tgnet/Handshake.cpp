@@ -490,7 +490,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             sendRequestData(request, true);
         } else {
             DEBUG_E("dc%u handshake: invalid client nonce, type = %d", currentDatacenter->datacenterId, handshakeType);
-            beginHandshake(false);
+            beginHandshake(true);
         }
     } else if (dynamic_cast<Server_DH_Params *>(message)) {
         if (typeInfo == typeid(TL_server_DH_params_ok)) {
