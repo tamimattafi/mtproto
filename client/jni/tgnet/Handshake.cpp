@@ -950,6 +950,7 @@ void Handshake::onHandshakeConnectionClosed() {
     if (handshakeState == 0) {
         return;
     }
+
     needResendData = true;
 }
 
@@ -957,5 +958,6 @@ void Handshake::onHandshakeConnectionConnected() {
     if (handshakeState == 0 || !needResendData) {
         return;
     }
-    beginHandshake(false);
+
+    needResendData = false;
 }

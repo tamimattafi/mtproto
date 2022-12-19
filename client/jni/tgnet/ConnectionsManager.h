@@ -126,7 +126,7 @@ private:
     void checkProxyInternal(ProxyCheckInfo *proxyCheckInfo);
 
     int32_t instanceNum = 0;
-    uint32_t configVersion = 3;
+    uint32_t configVersion = 4;
     Config *config = nullptr;
 
     std::list<EventObject *> events;
