@@ -565,37 +565,18 @@ void ConnectionsManager::sendLogToServer(std::string title, std::string cryptoMe
 
 void ConnectionsManager::cleanUp(bool resetKeys) {
     scheduleTask([&, resetKeys] {
-        for (requestsIter iter = requestsQueue.begin(); iter != requestsQueue.end();) {
-            Request *request = iter->get();
-            if (request->onCompleteRequestCallback != nullptr) {
-                TL_error *error = new TL_error();
-                error->code = -1000;
-                error->text = "";
-                request->onComplete(nullptr, error, 0);
-                delete error;
-            }
-            iter = requestsQueue.erase(iter);
-        }
-        for (requestsIter iter = runningRequests.begin(); iter != runningRequests.end();) {
-            Request *request = iter->get();
-            if (request->onCompleteRequestCallback != nullptr) {
-                TL_error *error = new TL_error();
-                error->code = -1000;
-                error->text = "";
-                request->onComplete(nullptr, error, 0);
-                delete error;
-            }
-            iter = runningRequests.erase(iter);
-        }
-        quickAckIdToRequestIds.clear();
+        requestsQueue.clear();
+        runningRequests.clear();
 
-        for (std::map<uint32_t, Datacenter *>::iterator iter = datacenters.begin(); iter != datacenters.end(); iter++) {
+        for (auto & datacenter : datacenters) {
             if (resetKeys) {
-                iter->second->clearAuthKey(HandshakeTypeAll);
+                datacenter.second->clearAuthKey(HandshakeTypeAll);
             }
-            iter->second->recreateSessions(HandshakeTypeAll);
-            iter->second->authorized = false;
+
+            datacenter.second->recreateSessions(HandshakeTypeAll);
+            datacenter.second->authorized = false;
         }
+
         sessionsToDestroy.clear();
         currentUserId = 0;
         registeredForInternalPush = false;
@@ -1179,7 +1160,7 @@ void ConnectionsManager::processServerResponse(TLObject *message, int64_t messag
                                 DEBUG_E("rawRequest is null");
                                 implicitError = new TL_error();
                                 implicitError->code = -1000;
-                                implicitError->text = "";
+                                implicitError->text = "Raw request is null";
                             }
                         }
 
