@@ -4,7 +4,7 @@ apply plugin: 'org.jetbrains.dokka'
 
 ext {
     PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '1.1.6'
+    PUBLISH_VERSION = '1.1.7'
 }
 
 task projectSourcesJar(type: Jar) {

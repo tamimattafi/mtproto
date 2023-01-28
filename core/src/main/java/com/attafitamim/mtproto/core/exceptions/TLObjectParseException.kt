@@ -5,8 +5,8 @@ import java.lang.Exception
 import kotlin.reflect.KClass
 
 class TLObjectParseException(
-    private val superClass: KClass<out TLObject>,
-    private val hash: Int
+    val superClass: KClass<out TLObject>,
+    val hash: Int
 ) : Exception() {
     override val message: String
         get() = """
