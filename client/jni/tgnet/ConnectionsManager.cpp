@@ -693,7 +693,7 @@ void ConnectionsManager::onConnectionConnected(Connection *connection) {
             if (networkPaused && lastPauseTime != 0) {
                 lastPauseTime = getCurrentTimeMonotonicMillis();
             }
-            processRequestQueue(connection->getConnectionType(), datacenter->getDatacenterId());
+//            processRequestQueue(connection->getConnectionType(), datacenter->getDatacenterId());
         }
     }
 }
