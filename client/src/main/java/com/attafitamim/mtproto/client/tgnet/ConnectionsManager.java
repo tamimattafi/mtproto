@@ -207,11 +207,11 @@ public class ConnectionsManager {
     }
 
     public <T extends TLObject> int sendRequest(TLMethod<T> method, RequestDelegate<T> completionBlock, int flags, int connetionType) throws Exception {
-        return sendRequest(method, completionBlock, null, null, flags, DEFAULT_DATACENTER_ID, connetionType, true);
+        return sendRequest(method, completionBlock, null, null, flags, DEFAULT_DATACENTER_ID, connetionType, false);
     }
 
     public <T extends TLObject> int sendRequest(TLMethod<T> method, RequestDelegate<T> completionBlock, QuickAckDelegate quickAckBlock, int flags) throws Exception {
-        return sendRequest(method, completionBlock, quickAckBlock, null, flags, DEFAULT_DATACENTER_ID, ConnectionTypeGeneric, true);
+        return sendRequest(method, completionBlock, quickAckBlock, null, flags, DEFAULT_DATACENTER_ID, ConnectionTypeGeneric, false);
     }
 
     public <T extends TLObject> int sendRequest(TLMethod<T> method, final RequestDelegate<T> onComplete, final QuickAckDelegate onQuickAck, final WriteToSocketDelegate onWriteToSocket, final int flags, final int datacenterId, final int connetionType, final boolean immediate) throws Exception {
