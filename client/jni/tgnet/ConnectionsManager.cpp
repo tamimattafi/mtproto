@@ -693,7 +693,9 @@ void ConnectionsManager::onConnectionConnected(Connection *connection) {
             if (networkPaused && lastPauseTime != 0) {
                 lastPauseTime = getCurrentTimeMonotonicMillis();
             }
-//            processRequestQueue(connection->getConnectionType(), datacenter->getDatacenterId());
+            justOpenedSocket = true;
+            processRequestQueue(connection->getConnectionType(), datacenter->getDatacenterId());
+            justOpenedSocket = false;
         }
     }
 }
@@ -1742,8 +1744,25 @@ void ConnectionsManager::sendMessagesToConnection(std::vector<std::unique_ptr<Ne
 
     uint32_t currentSize = 0;
     size_t count = messages.size();
+    std::vector<int64_t> messageIds;
+
     for (uint32_t a = 0; a < count; a++) {
         NetworkMessage *networkMessage = messages[a].get();
+        int64_t messageId = networkMessage->message->msg_id;
+        bool mustSkipMessage = false;
+
+        for (int i = 0; i < messageIds.size(); ++i) {
+            int64_t postMessageId = messageIds[i];
+            if (messageId == postMessageId) {
+                mustSkipMessage = true;
+                break;
+            }
+        }
+
+        if (mustSkipMessage) {
+            continue;
+        }
+
         currentMessages.push_back(std::move(messages[a]));
         currentSize += networkMessage->message->bytes;
 
@@ -2030,32 +2049,39 @@ void ConnectionsManager::processRequestQueue(uint32_t connectionTypes, uint32_t 
                 networkMessage->needQuickAck = (request->requestFlags & RequestFlagNeedQuickAck) != 0;
 
                 request->connectionToken = connection->getConnectionToken();
-                switch (requestConnectionType) {
-                    case ConnectionTypeGeneric:
-                        addMessageToDatacenter(requestDatacenter->getDatacenterId(), networkMessage, genericMessagesToDatacenters);
-                        break;
-                    case ConnectionTypeGenericMedia:
-                        addMessageToDatacenter(requestDatacenter->getDatacenterId(), networkMessage, genericMediaMessagesToDatacenters);
-                        break;
-                    case ConnectionTypeTemp:
-                        addMessageToDatacenter(requestDatacenter->getDatacenterId(), networkMessage, tempMessagesToDatacenters);
-                        break;
-                    case ConnectionTypeProxy: {
-                        std::vector<std::unique_ptr<NetworkMessage>> array;
-                        array.push_back(std::unique_ptr<NetworkMessage>(networkMessage));
-                        sendMessagesToConnection(array, connection, false);
-                        break;
+
+                if (!justOpenedSocket) {
+                    switch (requestConnectionType) {
+                        case ConnectionTypeGeneric:
+                            addMessageToDatacenter(requestDatacenter->getDatacenterId(),
+                                                   networkMessage, genericMessagesToDatacenters);
+                            break;
+                        case ConnectionTypeGenericMedia:
+                            addMessageToDatacenter(requestDatacenter->getDatacenterId(),
+                                                   networkMessage,
+                                                   genericMediaMessagesToDatacenters);
+                            break;
+                        case ConnectionTypeTemp:
+                            addMessageToDatacenter(requestDatacenter->getDatacenterId(),
+                                                   networkMessage, tempMessagesToDatacenters);
+                            break;
+                        case ConnectionTypeProxy: {
+                            std::vector<std::unique_ptr<NetworkMessage>> array;
+                            array.push_back(std::unique_ptr<NetworkMessage>(networkMessage));
+                            sendMessagesToConnection(array, connection, false);
+                            break;
+                        }
+                        case ConnectionTypeDownload:
+                        case ConnectionTypeUpload: {
+                            std::vector<std::unique_ptr<NetworkMessage>> array;
+                            array.push_back(std::unique_ptr<NetworkMessage>(networkMessage));
+                            sendMessagesToConnectionWithConfirmation(array, connection, false);
+                            request->onWriteToSocket();
+                            break;
+                        }
+                        default:
+                            delete networkMessage;
                     }
-                    case ConnectionTypeDownload:
-                    case ConnectionTypeUpload: {
-                        std::vector<std::unique_ptr<NetworkMessage>> array;
-                        array.push_back(std::unique_ptr<NetworkMessage>(networkMessage));
-                        sendMessagesToConnectionWithConfirmation(array, connection, false);
-                        request->onWriteToSocket();
-                        break;
-                    }
-                    default:
-                        delete networkMessage;
                 }
             }
             iter++;

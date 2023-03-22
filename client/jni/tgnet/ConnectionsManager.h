@@ -126,6 +126,7 @@ private:
     void checkProxyInternal(ProxyCheckInfo *proxyCheckInfo);
 
     int32_t instanceNum = 0;
+    bool justOpenedSocket = false;
     uint32_t configVersion = 4;
     Config *config = nullptr;
 
