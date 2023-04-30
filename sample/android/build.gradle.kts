@@ -10,6 +10,7 @@ tasks.generateProtoClasses {
 }
 
 android {
+    namespace = "com.attafitamim.mtproto.sample.android"
     compileSdk = 32
 
     defaultConfig {
