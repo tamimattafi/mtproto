@@ -11,12 +11,12 @@ tasks.generateProtoClasses {
 
 android {
     namespace = "com.attafitamim.mtproto.sample.android"
-    compileSdk = 32
+    compileSdk = 33
 
     defaultConfig {
         applicationId = "com.attafitamim.mtproto.sample.android"
         minSdk = 16
-        targetSdk = 32
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
     }
@@ -32,8 +32,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlin {
+        jvmToolchain(11)
     }
 
     sourceSets {
@@ -52,5 +56,5 @@ android {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.4.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("com.attafitamim.mtproto:core:1.0.0-beta04")
+    implementation("com.attafitamim.mtproto:core:1.1.9")
 }
