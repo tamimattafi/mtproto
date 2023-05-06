@@ -65,6 +65,8 @@
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 
+#if !defined(OPENSSL_TRUSTY)
+
 #include "../internal.h"
 
 typedef struct lookup_dir_hashes_st {
@@ -336,7 +338,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                 c = ent->dir[strlen(ent->dir) - 1];
                 if (c != ':' && c != '>' && c != ']') {
                     /*
-                     * If no SEPARATOR is present, we assume the directory
+                     * If no separator is present, we assume the directory
                      * specifier is a logical name, and add a colon.  We
                      * really should use better VMS routines for merging
                      * things like this, but this will do for now... --
@@ -350,7 +352,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                 if (c == '\0') {
                     /*
                      * This is special.  When c == '\0', no directory
-                     * SEPARATOR should be added.
+                     * separator should be added.
                      */
                     BIO_snprintf(b->data, b->max,
                                  "%s%08lx.%s%d", ent->dir, h, postfix, k);
@@ -387,6 +389,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
              */
             CRYPTO_MUTEX_lock_write(&xl->store_ctx->objs_lock);
             tmp = NULL;
+            sk_X509_OBJECT_sort(xl->store_ctx->objs);
             if (sk_X509_OBJECT_find(xl->store_ctx->objs, &idx, &stmp)) {
                 tmp = sk_X509_OBJECT_value(xl->store_ctx->objs, idx);
             }
@@ -404,6 +407,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                  */
                 if (!hent) {
                     htmp.hash = h;
+                    sk_BY_DIR_HASH_sort(ent->hashes);
                     if (sk_BY_DIR_HASH_find(ent->hashes, &idx, &htmp))
                         hent = sk_BY_DIR_HASH_value(ent->hashes, idx);
                 }
@@ -422,6 +426,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                         ok = 0;
                         goto finish;
                     }
+                    sk_BY_DIR_HASH_sort(ent->hashes);
                 } else if (hent->suffix < k)
                     hent->suffix = k;
 
@@ -449,3 +454,5 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         BUF_MEM_free(b);
     return (ok);
 }
+
+#endif  // OPENSSL_TRUSTY

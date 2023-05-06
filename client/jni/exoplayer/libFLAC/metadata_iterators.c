@@ -471,7 +471,7 @@ static FLAC__bool simple_iterator_prime_input_(FLAC__Metadata_SimpleIterator *it
  * partition for the tempfile.  If space is a problem, you can pass a
  * directory name belonging to a different partition in
  * 'tempfile_path_prefix'.  Note that you should use the forward slash
- * '/' as the directory SEPARATOR.  A trailing slash is not needed; it
+ * '/' as the directory separator.  A trailing slash is not needed; it
  * will be added automatically.
  */
 FLAC__bool FLAC__metadata_simple_iterator_init(FLAC__Metadata_SimpleIterator *iterator, const char *filename, FLAC__bool preserve_file_stats, const char *tempfile_path_prefix);

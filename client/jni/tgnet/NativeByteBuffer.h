@@ -83,7 +83,7 @@ public:
     ByteArray *readByteArray(bool *error);
     NativeByteBuffer *readByteBuffer(bool copy, bool *error);
     double readDouble(bool *error);
-    uint32_t _limit = 0;
+
     void reuse();
 #ifdef ANDROID
     jobject getJavaByteBuffer();
@@ -96,6 +96,7 @@ private:
     bool calculateSizeOnly = false;
     bool sliced = false;
     uint32_t _position = 0;
+    uint32_t _limit = 0;
     uint32_t _capacity = 0;
     bool bufferOwner = true;
 #ifdef ANDROID

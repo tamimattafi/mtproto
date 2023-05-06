@@ -64,7 +64,7 @@ jobject getJavaByteBuffer(JNIEnv *env, jclass c, jlong address) {
     return buffer->getJavaByteBuffer();
 }
 
-static const char *NativeByteBufferClassPathName = "com/attafitamim/mtproto/client/NativeByteBuffer";
+static const char *NativeByteBufferClassPathName = "org/telegram/tgnet/NativeByteBuffer";
 static JNINativeMethod NativeByteBufferMethods[] = {
         {"native_getFreeBuffer", "(I)J", (void *) getFreeBuffer},
         {"native_limit", "(J)I", (void *) limit},
@@ -211,7 +211,7 @@ void resumeNetwork(JNIEnv *env, jclass c, jint instanceNum, jboolean partial) {
 }
 
 void updateDcSettings(JNIEnv *env, jclass c, jint instanceNum) {
-    ConnectionsManager::getInstance(instanceNum).updateDcSettings(0, false);
+    ConnectionsManager::getInstance(instanceNum).updateDcSettings(0, false, false);
 }
 
 void setIpStrategy(JNIEnv *env, jclass c, jint instanceNum, jbyte value) {
@@ -433,14 +433,14 @@ void setJava(JNIEnv *env, jclass c, jboolean useJavaByteBuffers) {
     }
 }
 
-static const char *ConnectionsManagerClassPathName = "com/attafitamim/mtproto/client/ConnectionsManager";
+static const char *ConnectionsManagerClassPathName = "org/telegram/tgnet/ConnectionsManager";
 static JNINativeMethod ConnectionsManagerMethods[] = {
         {"native_getCurrentTimeMillis", "(I)J", (void *) getCurrentTimeMillis},
         {"native_getCurrentTime", "(I)I", (void *) getCurrentTime},
         {"native_getCurrentDatacenterId", "(I)I", (void *) getCurrentDatacenterId},
         {"native_isTestBackend", "(I)I", (void *) isTestBackend},
         {"native_getTimeDifference", "(I)I", (void *) getTimeDifference},
-        {"native_sendRequest", "(IJLcom/attafitamim/mtproto/client/RequestDelegateInternal;Lcom/attafitamim/mtproto/client/QuickAckDelegate;Lcom/attafitamim/mtproto/client/WriteToSocketDelegate;IIIZI)V", (void *) sendRequest},
+        {"native_sendRequest", "(IJLorg/telegram/tgnet/RequestDelegateInternal;Lorg/telegram/tgnet/QuickAckDelegate;Lorg/telegram/tgnet/WriteToSocketDelegate;IIIZI)V", (void *) sendRequest},
         {"native_cancelRequest", "(IIZ)V", (void *) cancelRequest},
         {"native_cleanUp", "(IZ)V", (void *) cleanUp},
         {"native_cancelRequestsForGuid", "(II)V", (void *) cancelRequestsForGuid},
@@ -462,7 +462,7 @@ static JNINativeMethod ConnectionsManagerMethods[] = {
         {"native_setPushConnectionEnabled", "(IZ)V", (void *) setPushConnectionEnabled},
         {"native_setJava", "(Z)V", (void *) setJava},
         {"native_applyDnsConfig", "(IJLjava/lang/String;I)V", (void *) applyDnsConfig},
-        {"native_checkProxy", "(ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/attafitamim/mtproto/client/RequestTimeDelegate;)J", (void *) checkProxy},
+        {"native_checkProxy", "(ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lorg/telegram/tgnet/RequestTimeDelegate;)J", (void *) checkProxy},
         {"native_onHostNameResolved", "(Ljava/lang/String;JLjava/lang/String;)V", (void *) onHostNameResolved}
 };
 
@@ -490,7 +490,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
     }
 
     DEBUG_REF("RequestDelegateInternal class");
-    jclass_RequestDelegateInternal = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/RequestDelegateInternal"));
+    jclass_RequestDelegateInternal = (jclass) env->NewGlobalRef(env->FindClass("org/telegram/tgnet/RequestDelegateInternal"));
     if (jclass_RequestDelegateInternal == 0) {
         return JNI_FALSE;
     }
@@ -500,7 +500,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
     }
 
     DEBUG_REF("RequestTimeDelegate class");
-    jclass_RequestTimeDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/RequestTimeDelegate"));
+    jclass_RequestTimeDelegate = (jclass) env->NewGlobalRef(env->FindClass("org/telegram/tgnet/RequestTimeDelegate"));
     if (jclass_RequestTimeDelegate == 0) {
         return JNI_FALSE;
     }
@@ -510,7 +510,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
     }
 
     DEBUG_REF("QuickAckDelegate class");
-    jclass_QuickAckDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/QuickAckDelegate"));
+    jclass_QuickAckDelegate = (jclass) env->NewGlobalRef(env->FindClass("org/telegram/tgnet/QuickAckDelegate"));
     if (jclass_RequestDelegateInternal == 0) {
         return JNI_FALSE;
     }
@@ -520,7 +520,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
     }
 
     DEBUG_REF("WriteToSocketDelegate class");
-    jclass_WriteToSocketDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/WriteToSocketDelegate"));
+    jclass_WriteToSocketDelegate = (jclass) env->NewGlobalRef(env->FindClass("org/telegram/tgnet/WriteToSocketDelegate"));
     if (jclass_WriteToSocketDelegate == 0) {
         return JNI_FALSE;
     }
@@ -529,7 +529,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
         return JNI_FALSE;
     }
     DEBUG_REF("ConnectionsManager class");
-    jclass_ConnectionsManager = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/ConnectionsManager"));
+    jclass_ConnectionsManager = (jclass) env->NewGlobalRef(env->FindClass("org/telegram/tgnet/ConnectionsManager"));
     if (jclass_ConnectionsManager == 0) {
         return JNI_FALSE;
     }

@@ -962,7 +962,7 @@ FLAC_API FLAC__bool FLAC__stream_encoder_set_loose_mid_side_stereo(FLAC__StreamE
  * Note that each function specified causes the encoder to occupy a
  * floating point array in which to store the window. Also note that the
  * values of P, STDDEV and ov are locale-specific, so if the comma
- * SEPARATOR specified by the locale is a comma, a comma should be used.
+ * separator specified by the locale is a comma, a comma should be used.
  *
  * \default \c "tukey(0.5)"
  * \param  encoder        An encoder instance to set.

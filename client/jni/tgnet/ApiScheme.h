@@ -11,7 +11,6 @@
 
 #include <vector>
 #include <memory>
-#include <bits/unique_ptr.h>
 #include "TLObject.h"
 
 class ByteArray;
@@ -50,25 +49,14 @@ public:
     bool tcpo_only;
     bool cdn;
     bool isStatic;
+    bool thisPortOnly;
+    bool force_try_ipv6;
     int32_t id;
     std::string ip_address;
     int32_t port;
     std::unique_ptr<ByteArray> secret;
 
     static TL_dcOption *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
-    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_disabledFeature : public TLObject {
-
-public:
-    static const uint32_t constructor = 0xae636f24;
-
-    std::string feature;
-    std::string description;
-
-    static TL_disabledFeature *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
 };
@@ -108,19 +96,19 @@ public:
     void serializeToStream(NativeByteBuffer *stream);
 };
 
+class Reaction : public TLObject {
+
+public:
+    static Reaction *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+};
+
+
 class TL_config : public TLObject {
 
 public:
-    static const uint32_t constructor = 0x5c5168f0;
+    static const uint32_t constructor = 0xcc1a241e;
 
     int32_t flags;
-    bool phonecalls_enabled;
-    bool default_p2p_contacts;
-    bool preload_featured_stickers;
-    bool ignore_phone_entities;
-    bool revoke_pm_inbox;
-    bool blocked_mode;
-    bool pfs_enabled;
     int32_t date;
     int32_t expires;
     bool test_mode;
@@ -138,17 +126,17 @@ public:
     int32_t notify_default_delay_ms;
     int32_t push_chat_period_ms;
     int32_t push_chat_limit;
-    int32_t saved_gifs_limit;
+    // int32_t saved_gifs_limit;
     int32_t edit_time_limit;
     int32_t revoke_time_limit;
     int32_t revoke_pm_time_limit;
     int32_t rating_e_decay;
     int32_t stickers_recent_limit;
-    int32_t stickers_faved_limit;
+    // int32_t stickers_faved_limit;
     int32_t channels_read_media_period;
     int32_t tmp_sessions;
-    int32_t pinned_dialogs_count_max;
-    int32_t pinned_infolder_count_max;
+    // int32_t pinned_dialogs_count_max;
+    // int32_t pinned_infolder_count_max;
     int32_t call_receive_timeout_ms;
     int32_t call_ring_timeout_ms;
     int32_t call_connect_timeout_ms;
@@ -165,7 +153,8 @@ public:
     std::string suggested_lang_code;
     int32_t lang_pack_version;
     int32_t base_lang_pack_version;
-    std::vector<std::unique_ptr<TL_disabledFeature>> disabled_features;
+    std::unique_ptr<Reaction> reactions_default;
+    std::string autologin_token;
 
     static TL_config *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
@@ -176,6 +165,19 @@ class TL_help_getConfig : public TLObject {
 
 public:
     static const uint32_t constructor = 0xc4f9186b;
+
+    bool isNeedLayer();
+    TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_account_registerDevice : public TLObject {
+
+public:
+    static const uint32_t constructor = 0x637ea878;
+
+    int32_t token_type;
+    std::string token;
 
     bool isNeedLayer();
     TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
@@ -243,38 +245,16 @@ public:
 class FileLocation : public TLObject {
 
 public:
-    int32_t dc_id;
     int64_t volume_id;
     int32_t local_id;
-    int64_t secret;
-    std::unique_ptr<ByteArray> key;
-    std::unique_ptr<ByteArray> iv;
 
     static FileLocation *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
 };
 
-class TL_fileLocation : public FileLocation {
+class TL_fileLocationToBeDeprecated : public FileLocation {
 
 public:
-    static const uint32_t constructor = 0x53d69076;
-
-    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_fileEncryptedLocation : public FileLocation {
-
-public:
-    static const uint32_t constructor = 0x55555554;
-
-    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_fileLocationUnavailable : public FileLocation {
-
-public:
-    static const uint32_t constructor = 0x7c596b46;
+    static const uint32_t constructor = 0xbc7fc6cd;
 
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
@@ -283,9 +263,11 @@ public:
 class UserProfilePhoto : public TLObject {
 
 public:
+    int32_t flags;
+    bool has_video;
     int64_t photo_id;
-    std::unique_ptr<FileLocation> photo_small;
-    std::unique_ptr<FileLocation> photo_big;
+    std::unique_ptr<ByteArray> stripped_thumb;
+    int32_t dc_id;
 
     static UserProfilePhoto *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
 };
@@ -301,8 +283,36 @@ public:
 class TL_userProfilePhoto : public UserProfilePhoto {
 
 public:
-    static const uint32_t constructor = 0xd559d8c8;
+    static const uint32_t constructor = 0x82d1f706;
 
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_restrictionReason : public TLObject {
+
+public:
+    static const uint32_t constructor = 0xd072acb4;
+
+    std::string platform;
+    std::string reason;
+    std::string text;
+
+    static TL_restrictionReason *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_username : public TLObject {
+
+public:
+    static const uint32_t constructor = 0xb4073647;
+    int32_t flags;
+    bool editable;
+    bool active;
+    std::string username;
+
+    static TL_username *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
 };
@@ -310,7 +320,7 @@ public:
 class User : public TLObject {
 
 public:
-    int32_t id;
+    int64_t id;
     std::string first_name;
     std::string last_name;
     std::string username;
@@ -319,10 +329,12 @@ public:
     std::unique_ptr<UserProfilePhoto> photo;
     std::unique_ptr<UserStatus> status;
     int32_t flags;
+    int32_t flags2;
     int32_t bot_info_version;
-    std::string restriction_reason;
+    std::vector<std::unique_ptr<TL_restrictionReason>> restriction_reason;
     std::string bot_inline_placeholder;
     std::string lang_code;
+    std::vector<std::unique_ptr<TL_username>> usernames;
 
     static User *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
 };
@@ -330,7 +342,7 @@ public:
 class TL_userEmpty : public User {
 
 public:
-    static const uint32_t constructor = 0x200250ba;
+    static const uint32_t constructor = 0xd3bc4b7a;
 
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
@@ -339,31 +351,380 @@ public:
 class TL_user : public User {
 
 public:
-    static const uint32_t constructor = 0x2e13f4c3;
+    static const uint32_t constructor = 0x8f97c628;
 
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
 };
 
-class TL_auth_authorization : public TLObject {
+class InputPeer : public TLObject {
 
 public:
-    static const uint32_t constructor = 0xcd050916;
+    int64_t user_id;
+    int64_t chat_id;
+    int64_t channel_id;
+    int64_t access_hash;
+
+    static InputPeer *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+};
+
+class TL_inputPeerSelf : public InputPeer {
+
+public:
+    static const uint32_t constructor = 0x7da07ec9;
+
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputPeerUser : public InputPeer {
+
+public:
+    static const uint32_t constructor = 0xdde8a54c;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputPeerChat : public InputPeer {
+
+public:
+    static const uint32_t constructor = 0x35a95cb9;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputPeerUserFromMessage : public InputPeer {
+
+public:
+    static const uint32_t constructor = 0xa87b0a1c;
+
+    std::unique_ptr<InputPeer> peer;
+    int32_t msg_id;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputPeerChannelFromMessage : public InputPeer {
+    
+public:
+    static const uint32_t constructor = 0xbd2a0840;
+
+    std::unique_ptr<InputPeer> peer;
+    int32_t msg_id;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputPeerChannel : public InputPeer {
+    
+public:
+    static const uint32_t constructor = 0x27bcbbfc;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputPeerEmpty : public InputPeer {
+
+public:
+    static const uint32_t constructor = 0x7f3b18ea;
+
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class InputUser : public TLObject {
+
+public:
+    int64_t user_id;
+    int64_t access_hash;
+
+    static InputUser *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+};
+
+class TL_inputUserSelf : public InputUser {
+    
+public:
+    static const uint32_t constructor = 0xf7c1b13f;
+
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputUser : public InputUser {
+
+public:
+    static const uint32_t constructor = 0xf21158c6;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputUserEmpty : public InputUser {
+    
+public:
+    static const uint32_t constructor = 0xb98886cf;
+
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputUserFromMessage : public InputUser {
+
+public:
+    static const uint32_t constructor = 0x1da448e2;
+
+    std::unique_ptr<InputPeer> peer;
+    int32_t msg_id;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class MessageEntity : public TLObject {
+
+public:
+    int32_t offset;
+    int32_t length;
+    std::string url;
+    std::string language;
+
+    static MessageEntity *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+};
+
+class TL_messageEntityTextUrl : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x76a6d327;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityBotCommand : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x6cef8ac7;
+    
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityEmail : public MessageEntity {
+    
+public:
+    static const uint32_t constructor = 0x64e475c2;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityPre : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x73924be0;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityUnknown : public MessageEntity {
+public:
+    static const uint32_t constructor = 0xbb92ba95;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityUrl : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x6ed02538;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityItalic : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x826f8b60;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityMention : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0xfa04579d;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityMentionName : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0xdc7b1140;
+
+    int64_t user_id;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_inputMessageEntityMentionName : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x208e68c9;
+
+    std::unique_ptr<InputUser> user_id;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityCashtag : public MessageEntity {
+    
+public:
+    static const uint32_t constructor = 0x4c4e743f;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityBold : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0xbd610bc9;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityHashtag : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x6f635b0d;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityCode : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x28a20571;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityStrike : public MessageEntity {
+    
+public:
+    static const uint32_t constructor = 0xbf0693d4;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityBlockquote : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x20df5d0;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityUnderline : public MessageEntity {
+
+public:
+    static const uint32_t constructor = 0x9c4e7e8b;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_messageEntityPhone : public MessageEntity {
+    
+public:
+    static const uint32_t constructor = 0x9b69e34b;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_dataJSON : public TLObject {
+
+public:
+    static const uint32_t constructor = 0x7d748d04;
+
+    std::string data;
+
+    static TL_dataJSON *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_help_termsOfService : public TLObject {
+
+public:
+    static const uint32_t constructor = 0x780a0310;
+
+    int32_t flags;
+    bool popup;
+    std::unique_ptr<TL_dataJSON> id;
+    std::string text;
+    std::vector<std::unique_ptr<MessageEntity>> entities;
+    int32_t min_age_confirm;
+
+    static TL_help_termsOfService *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class auth_Authorization : public TLObject {
+
+public:
+    static auth_Authorization *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
+};
+
+class TL_auth_authorizationSignUpRequired : public auth_Authorization {
+
+public:
+    static const uint32_t constructor = 0x44747e9a;
+
+    int32_t flags;
+    std::unique_ptr<TL_help_termsOfService> terms_of_service;
+
+    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
+};
+
+class TL_auth_authorization : public auth_Authorization {
+    
+public:
+    static const uint32_t constructor = 0x2ea2c0d4;
 
     int32_t flags;
     int32_t tmp_sessions;
+    int32_t otherwise_relogin_days;
+    std::unique_ptr<ByteArray> future_auth_token;
     std::unique_ptr<User> user;
 
-    static TL_auth_authorization *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
+    void serializeToStream(NativeByteBuffer *stream);
 };
 
 class TL_auth_exportedAuthorization : public TLObject {
 
 public:
-    static const uint32_t constructor = 0xdf969c2d;
+    static const uint32_t constructor = 0xb434e2b8;
 
-    int32_t id;
+    int64_t id;
     std::unique_ptr<ByteArray> bytes;
 
     static TL_auth_exportedAuthorization *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
@@ -385,56 +746,12 @@ public:
 class TL_auth_importAuthorization : public TLObject {
 
 public:
-    static const uint32_t constructor = 0xe3ef9613;
+    static const uint32_t constructor = 0xa57a7dad;
 
-    int32_t id;
+    int64_t id;
     std::unique_ptr<ByteArray> bytes;
 
     bool isNeedLayer();
-    TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class auth_SentCode : public TLObject {
-
-public:
-    bool phone_registered;
-    std::string phone_code_hash;
-    int32_t send_call_timeout;
-    bool is_password;
-
-    static auth_SentCode *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
-};
-
-class TL_auth_sentAppCode : public auth_SentCode {
-
-public:
-    static const uint32_t constructor = 0xe325edcf;
-
-    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_auth_sentCode : public auth_SentCode {
-
-public:
-    static const uint32_t constructor = 0xefed51d9;
-
-    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_auth_sendCode : public TLObject {
-
-public:
-    static const uint32_t constructor = 0x768d5f4d;
-
-    std::string phone_number;
-    int32_t sms_type;
-    int32_t api_id;
-    std::string api_hash;
-    std::string lang_code;
-
     TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
 };
@@ -447,172 +764,36 @@ public:
     void serializeToStream(NativeByteBuffer *stream);
 };
 
-class storage_FileType : public TLObject {
+
+class TL_reactionCustomEmoji : public Reaction {
 
 public:
-
-    static storage_FileType *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
-};
-
-class TL_storage_fileUnknown : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0xaa963b05;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_fileMp4 : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0xb3cea0e4;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_fileWebp : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0x1081464c;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_filePng : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0xa4f63c0;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_fileGif : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0xcae1aadf;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_filePdf : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0xae1e508d;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_fileMp3 : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0x528a0677;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_fileJpeg : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0x7efe0e;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_fileMov : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0x4b09ebbc;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_storage_filePartial : public storage_FileType {
-
-public:
-    static const uint32_t constructor = 0x40bc6f52;
-
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class InputFileLocation : public TLObject {
-
-public:
-    int64_t id;
-    int64_t access_hash;
-    int32_t version;
-    int64_t volume_id;
-    int32_t local_id;
-    int64_t secret;
-
-    static InputFileLocation *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
-};
-
-class TL_inputDocumentFileLocation : public InputFileLocation {
-
-public:
-    static const uint32_t constructor = 0x430f0724;
+    static const uint32_t constructor = 0x8935fc73;
+    int64_t document_id;
 
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
 };
 
-class TL_inputFileLocation : public InputFileLocation {
+
+class TL_reactionEmoji : public Reaction {
 
 public:
-    static const uint32_t constructor = 0x14637196;
+    static const uint32_t constructor = 0x1b2286b8;
+    std::string emoticon;
 
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
 };
 
-class TL_inputEncryptedFileLocation : public InputFileLocation {
+
+
+class TL_reactionEmpty : public Reaction {
 
 public:
-    static const uint32_t constructor = 0xf5235d55;
+    static const uint32_t constructor = 0x79f5d419;
 
     void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_upload_saveFilePart : public TLObject {
-
-public:
-    static const uint32_t constructor = 0xb304a621;
-
-    int64_t file_id;
-    int32_t file_part;
-    std::unique_ptr<ByteArray> bytes;
-
-    bool isNeedLayer();
-    TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
-    void serializeToStream(NativeByteBuffer *stream);
-};
-
-class TL_upload_file : public TLObject {
-
-public:
-    static const uint32_t constructor = 0x96a18d5;
-
-    std::unique_ptr<storage_FileType> type;
-    int32_t mtime;
-    NativeByteBuffer *bytes = nullptr;
-
-    ~TL_upload_file();
-    static TL_upload_file *TLdeserialize(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
-    void readParams(NativeByteBuffer *stream, int32_t instanceNum, bool &error);
-};
-
-class TL_upload_getFile : public TLObject {
-
-public:
-    static const uint32_t constructor = 0xe3a6cfb5;
-
-    InputFileLocation *location;
-    int32_t offset;
-    int32_t limit;
-
-    bool isNeedLayer();
-    TLObject *deserializeResponse(NativeByteBuffer *stream, uint32_t constructor, int32_t instanceNum, bool &error);
     void serializeToStream(NativeByteBuffer *stream);
 };
 

@@ -48,6 +48,7 @@ protected:
     void onReceivedData(NativeByteBuffer *buffer) override;
     void onDisconnected(int32_t reason, int32_t error) override;
     void onConnected() override;
+    bool hasPendingRequests() override;
     void reconnect();
 
 private:
@@ -63,11 +64,13 @@ private:
     enum ProtocolType {
         ProtocolTypeEF,
         ProtocolTypeEE,
-        ProtocolTypeDD
+        ProtocolTypeDD,
+        ProtocolTypeTLS
     };
 
     inline void encryptKeyWithSecret(uint8_t *array, uint8_t secretType);
     inline std::string *getCurrentSecret(uint8_t secretType);
+    void onDisconnectedInternal(int32_t reason, int32_t error);
 
     ProtocolType currentProtocolType = ProtocolTypeEE;
 
@@ -93,8 +96,11 @@ private:
     bool forceNextPort = false;
     bool isMediaConnection = false;
     bool waitForReconnectTimer = false;
+    bool connectionInProcess = false;
     uint32_t lastReconnectTimeout = 100;
     int64_t usefullDataReceiveTime;
+    uint32_t currentTimeout = 4;
+    uint32_t receivedDataAmount = 0;
 
     uint8_t temp[64];
 

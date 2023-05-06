@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 #include <algorithm>
+#include <memory>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <openssl/bn.h>
@@ -45,7 +46,7 @@ Handshake::~Handshake() {
 }
 
 void Handshake::beginHandshake(bool reconnect) {
-    DEBUG_D("dc%u handshake: begin, type = %d", currentDatacenter->datacenterId, handshakeType);
+    if (LOGS_ENABLED) DEBUG_D("account%u dc%u handshake: begin, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
     cleanupHandshake();
     Connection *connection = getConnection();
     handshakeState = 1;
@@ -55,8 +56,8 @@ void Handshake::beginHandshake(bool reconnect) {
         connection->connect();
     }
 
-    TL_req_pq_multi *request = new TL_req_pq_multi();
-    request->nonce = std::unique_ptr<ByteArray>(new ByteArray(16));
+    auto request = new TL_req_pq_multi();
+    request->nonce = std::make_unique<ByteArray>(16);
     RAND_bytes(request->nonce->bytes, 16);
     authNonce = new ByteArray(request->nonce.get());
     sendRequestData(request, true);
@@ -189,7 +190,7 @@ inline bool factorizeValue(uint64_t what, uint32_t &p, uint32_t &q) {
         }
         return true;
     } else {
-        DEBUG_E("factorization failed for %" PRIu64, what);
+        if (LOGS_ENABLED) DEBUG_FATAL("factorization failed for %" PRIu64, what);
         p = 0;
         q = 0;
         return false;
@@ -198,8 +199,8 @@ inline bool factorizeValue(uint64_t what, uint32_t &p, uint32_t &q) {
 
 inline bool check_prime(BIGNUM *p) {
     int result = 0;
-    if (!BN_primality_test(&result, p, BN_prime_checks, bnContext, 0, NULL)) {
-        DEBUG_E("OpenSSL error at BN_primality_test");
+    if (!BN_primality_test(&result, p, 64, bnContext, 0, NULL)) {
+        if (LOGS_ENABLED) DEBUG_FATAL("OpenSSL error at BN_primality_test");
         return false;
     }
     return result != 0;
@@ -214,20 +215,20 @@ inline bool isGoodPrime(BIGNUM *p, uint32_t g) {
     BIGNUM *dh_g = BN_new();
 
     if (!BN_set_word(dh_g, 4 * g)) {
-        DEBUG_E("OpenSSL error at BN_set_word(dh_g, 4 * g)");
+        if (LOGS_ENABLED) DEBUG_FATAL("OpenSSL error at BN_set_word(dh_g, 4 * g)");
         BN_free(t);
         BN_free(dh_g);
         return false;
     }
     if (!BN_mod(t, p, dh_g, bnContext)) {
-        DEBUG_E("OpenSSL error at BN_mod");
+        if (LOGS_ENABLED) DEBUG_FATAL("OpenSSL error at BN_mod");
         BN_free(t);
         BN_free(dh_g);
         return false;
     }
     uint64_t x = BN_get_word(t);
     if (x >= 4 * g) {
-        DEBUG_E("OpenSSL error at BN_get_word");
+        if (LOGS_ENABLED) DEBUG_FATAL("OpenSSL error at BN_get_word");
         BN_free(t);
         BN_free(dh_g);
         return false;
@@ -282,13 +283,13 @@ inline bool isGoodPrime(BIGNUM *p, uint32_t g) {
 
     BIGNUM *b = BN_new();
     if (!BN_set_word(b, 2)) {
-        DEBUG_E("OpenSSL error at BN_set_word(b, 2)");
+        if (LOGS_ENABLED) DEBUG_E("OpenSSL error at BN_set_word(b, 2)");
         BN_free(b);
         BN_free(t);
         return false;
     }
     if (!BN_div(t, 0, p, b, bnContext)) {
-        DEBUG_E("OpenSSL error at BN_div");
+        if (LOGS_ENABLED) DEBUG_E("OpenSSL error at BN_div");
         BN_free(b);
         BN_free(t);
         return false;
@@ -315,6 +316,11 @@ inline bool isGoodGaAndGb(BIGNUM *g_a, BIGNUM *p) {
     return true;
 }
 
+void Handshake::cleanupServerKeys() {
+    serverPublicKeys.clear();
+    serverPublicKeysFingerprints.clear();
+}
+
 void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
     if (handshakeState == 0) {
         return;
@@ -327,14 +333,14 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
         }
 
         handshakeState = 2;
-        TL_resPQ *result = (TL_resPQ *) message;
+        auto result = (TL_resPQ *) message;
         if (authNonce->isEqualTo(result->nonce.get())) {
-            std::string key;
+            std::string key = "";
             int64_t keyFingerprint = 0;
 
             size_t count1 = result->server_public_key_fingerprints.size();
             if (currentDatacenter->isCdnDatacenter) {
-                std::map<int32_t, uint64_t>::iterator iter = cdnPublicKeysFingerprints.find(currentDatacenter->datacenterId);
+                auto iter = cdnPublicKeysFingerprints.find(currentDatacenter->datacenterId);
                 if (iter != cdnPublicKeysFingerprints.end()) {
                     for (uint32_t a = 0; a < count1; a++) {
                         if ((uint64_t) result->server_public_key_fingerprints[a] == iter->second) {
@@ -345,8 +351,27 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
                 }
             } else {
                 if (serverPublicKeys.empty()) {
-                    serverPublicKeys.push_back(ConnectionsManager::getInstance(currentDatacenter->instanceNum).publicKey);
-                    serverPublicKeysFingerprints.push_back(0xdd4871feb0a26c27);
+                    if (ConnectionsManager::getInstance(currentDatacenter->instanceNum).testBackend) {
+                        serverPublicKeys.emplace_back("-----BEGIN RSA PUBLIC KEY-----\n"
+                                                      "MIIBCgKCAQEAyMEdY1aR+sCR3ZSJrtztKTKqigvO/vBfqACJLZtS7QMgCGXJ6XIR\n"
+                                                      "yy7mx66W0/sOFa7/1mAZtEoIokDP3ShoqF4fVNb6XeqgQfaUHd8wJpDWHcR2OFwv\n"
+                                                      "plUUI1PLTktZ9uW2WE23b+ixNwJjJGwBDJPQEQFBE+vfmH0JP503wr5INS1poWg/\n"
+                                                      "j25sIWeYPHYeOrFp/eXaqhISP6G+q2IeTaWTXpwZj4LzXq5YOpk4bYEQ6mvRq7D1\n"
+                                                      "aHWfYmlEGepfaYR8Q0YqvvhYtMte3ITnuSJs171+GDqpdKcSwHnd6FudwGO4pcCO\n"
+                                                      "j4WcDuXc2CTHgH8gFTNhp/Y8/SpDOhvn9QIDAQAB\n"
+                                                      "-----END RSA PUBLIC KEY-----");
+                        serverPublicKeysFingerprints.push_back(0xb25898df208d2603);
+                    } else {
+                        serverPublicKeys.emplace_back("-----BEGIN RSA PUBLIC KEY-----\n"
+                                                      "MIIBCgKCAQEA6LszBcC1LGzyr992NzE0ieY+BSaOW622Aa9Bd4ZHLl+TuFQ4lo4g\n"
+                                                      "5nKaMBwK/BIb9xUfg0Q29/2mgIR6Zr9krM7HjuIcCzFvDtr+L0GQjae9H0pRB2OO\n"
+                                                      "62cECs5HKhT5DZ98K33vmWiLowc621dQuwKWSQKjWf50XYFw42h21P2KXUGyp2y/\n"
+                                                      "+aEyZ+uVgLLQbRA1dEjSDZ2iGRy12Mk5gpYc397aYp438fsJoHIgJ2lgMv5h7WY9\n"
+                                                      "t6N/byY9Nw9p21Og3AoXSL2q/2IJ1WRUhebgAdGVMlV1fkuOQoEzR7EdpqtQD9Cs\n"
+                                                      "5+bfo3Nhmcyvk5ftB0WkJ9z6bNZ7yxrP8wIDAQAB\n"
+                                                      "-----END RSA PUBLIC KEY-----");
+                        serverPublicKeysFingerprints.push_back(0xd09d1d85de64fd85);
+                    }
                 }
 
                 size_t count2 = serverPublicKeysFingerprints.size();
@@ -354,7 +379,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
                     for (uint32_t b = 0; b < count2; b++) {
                         if ((uint64_t) result->server_public_key_fingerprints[a] == serverPublicKeysFingerprints[b]) {
                             keyFingerprint = result->server_public_key_fingerprints[a];
-                            key = serverPublicKeys[a];
+                            key = serverPublicKeys[b];
                             break;
                         }
                     }
@@ -366,10 +391,10 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
 
             if (keyFingerprint == 0) {
                 if (currentDatacenter->isCdnDatacenter) {
-                    DEBUG_D("dc%u handshake: can't find valid cdn server public key, type = %d", currentDatacenter->datacenterId, handshakeType);
+                    if (LOGS_ENABLED) DEBUG_D("account%u dc%u handshake: can't find valid cdn server public key, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                     loadCdnConfig(currentDatacenter);
                 } else {
-                    DEBUG_E("dc%u handshake: can't find valid server public key, type = %d", currentDatacenter->datacenterId, handshakeType);
+                    if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: can't find valid server public key, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                     beginHandshake(false);
                 }
                 return;
@@ -391,15 +416,15 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
                 return;
             }
 
-            TL_req_DH_params *request = new TL_req_DH_params();
-            request->nonce = std::unique_ptr<ByteArray>(new ByteArray(authNonce));
-            request->server_nonce = std::unique_ptr<ByteArray>(new ByteArray(authServerNonce));
-            request->p = std::unique_ptr<ByteArray>(new ByteArray(4));
+            auto request = new TL_req_DH_params();
+            request->nonce = std::make_unique<ByteArray>(new ByteArray(authNonce));
+            request->server_nonce = std::make_unique<ByteArray>(new ByteArray(authServerNonce));
+            request->p = std::make_unique<ByteArray>(new ByteArray(4));
             request->p->bytes[3] = (uint8_t) p;
             request->p->bytes[2] = (uint8_t) (p >> 8);
             request->p->bytes[1] = (uint8_t) (p >> 16);
             request->p->bytes[0] = (uint8_t) (p >> 24);
-            request->q = std::unique_ptr<ByteArray>(new ByteArray(4));
+            request->q = std::make_unique<ByteArray>(new ByteArray(4));
             request->q->bytes[3] = (uint8_t) q;
             request->q->bytes[2] = (uint8_t) (q >> 8);
             request->q->bytes[1] = (uint8_t) (q >> 16);
@@ -408,35 +433,42 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
 
             TLObject *innerData;
             if (handshakeType == HandshakeTypePerm) {
-                TL_p_q_inner_data_dc *tl_p_q_inner_data = new TL_p_q_inner_data_dc();
-                tl_p_q_inner_data->nonce = std::unique_ptr<ByteArray>(new ByteArray(authNonce));
-                tl_p_q_inner_data->server_nonce = std::unique_ptr<ByteArray>(new ByteArray(authServerNonce));
-                tl_p_q_inner_data->pq = std::unique_ptr<ByteArray>(new ByteArray(result->pq.get()));
-                tl_p_q_inner_data->p = std::unique_ptr<ByteArray>(new ByteArray(request->p.get()));
-                tl_p_q_inner_data->q = std::unique_ptr<ByteArray>(new ByteArray(request->q.get()));
-                tl_p_q_inner_data->new_nonce = std::unique_ptr<ByteArray>(new ByteArray(32));
-                tl_p_q_inner_data->dc = currentDatacenter->datacenterId;
-
+                auto tl_p_q_inner_data = new TL_p_q_inner_data_dc();
+                tl_p_q_inner_data->nonce = std::make_unique<ByteArray>(authNonce);
+                tl_p_q_inner_data->server_nonce = std::make_unique<ByteArray>(authServerNonce);
+                tl_p_q_inner_data->pq = std::make_unique<ByteArray>(new ByteArray(result->pq.get()));
+                tl_p_q_inner_data->p = std::make_unique<ByteArray>(new ByteArray(request->p.get()));
+                tl_p_q_inner_data->q = std::make_unique<ByteArray>(new ByteArray(request->q.get()));
+                tl_p_q_inner_data->new_nonce = std::make_unique<ByteArray>(new ByteArray(32));
+                if (ConnectionsManager::getInstance(currentDatacenter->instanceNum).testBackend) {
+                    tl_p_q_inner_data->dc = 10000 + currentDatacenter->datacenterId;
+                } else {
+                    tl_p_q_inner_data->dc = currentDatacenter->datacenterId;
+                }
                 RAND_bytes(tl_p_q_inner_data->new_nonce->bytes, 32);
                 authNewNonce = new ByteArray(tl_p_q_inner_data->new_nonce.get());
                 innerData = tl_p_q_inner_data;
             } else {
-                TL_p_q_inner_data_temp_dc *tl_p_q_inner_data_temp = new TL_p_q_inner_data_temp_dc();
-                tl_p_q_inner_data_temp->nonce = std::unique_ptr<ByteArray>(new ByteArray(authNonce));
-                tl_p_q_inner_data_temp->server_nonce = std::unique_ptr<ByteArray>(new ByteArray(authServerNonce));
-                tl_p_q_inner_data_temp->pq = std::unique_ptr<ByteArray>(new ByteArray(result->pq.get()));
-                tl_p_q_inner_data_temp->p = std::unique_ptr<ByteArray>(new ByteArray(request->p.get()));
-                tl_p_q_inner_data_temp->q = std::unique_ptr<ByteArray>(new ByteArray(request->q.get()));
-                tl_p_q_inner_data_temp->new_nonce = std::unique_ptr<ByteArray>(new ByteArray(32));
-                /*if (handshakeType == HandshakeTypeMediaTemp) {
+                auto tl_p_q_inner_data_temp = new TL_p_q_inner_data_temp_dc();
+                tl_p_q_inner_data_temp->nonce = std::make_unique<ByteArray>(new ByteArray(authNonce));
+                tl_p_q_inner_data_temp->server_nonce = std::make_unique<ByteArray>(new ByteArray(authServerNonce));
+                tl_p_q_inner_data_temp->pq = std::make_unique<ByteArray>(new ByteArray(result->pq.get()));
+                tl_p_q_inner_data_temp->p = std::make_unique<ByteArray>(new ByteArray(request->p.get()));
+                tl_p_q_inner_data_temp->q = std::make_unique<ByteArray>(new ByteArray(request->q.get()));
+                tl_p_q_inner_data_temp->new_nonce = std::make_unique<ByteArray>(new ByteArray(32));
+                if (handshakeType == HandshakeTypeMediaTemp) {
                     if (ConnectionsManager::getInstance(currentDatacenter->instanceNum).testBackend) {
                         tl_p_q_inner_data_temp->dc = -(10000 + currentDatacenter->datacenterId);
                     } else {
                         tl_p_q_inner_data_temp->dc = -currentDatacenter->datacenterId;
                     }
-                } else {*/
-                    tl_p_q_inner_data_temp->dc = currentDatacenter->datacenterId;
-                //}
+                } else {
+                    if (ConnectionsManager::getInstance(currentDatacenter->instanceNum).testBackend) {
+                        tl_p_q_inner_data_temp->dc = 10000 + currentDatacenter->datacenterId;
+                    } else {
+                        tl_p_q_inner_data_temp->dc = currentDatacenter->datacenterId;
+                    }
+                }
                 tl_p_q_inner_data_temp->expires_in = TEMP_AUTH_KEY_EXPIRE_TIME;
                 RAND_bytes(tl_p_q_inner_data_temp->new_nonce->bytes, 32);
                 authNewNonce = new ByteArray(tl_p_q_inner_data_temp->new_nonce.get());
@@ -444,32 +476,83 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             }
 
             uint32_t innerDataSize = innerData->getObjectSize();
-            uint32_t additionalSize = innerDataSize + SHA_DIGEST_LENGTH < 255 ? 255 - (innerDataSize + SHA_DIGEST_LENGTH) : 0;
-            NativeByteBuffer *innerDataBuffer = BuffersStorage::getInstance().getFreeBuffer(innerDataSize + additionalSize + SHA_DIGEST_LENGTH);
-            innerDataBuffer->position(SHA_DIGEST_LENGTH);
+            if (innerDataSize > 144) {
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: inner data too large %d, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, innerDataSize, handshakeType);
+                delete innerData;
+                beginHandshake(false);
+                return;
+            }
+            uint32_t keySize = 32;
+            uint32_t ivSize = 32;
+            uint32_t paddedDataSize = 192;
+            uint32_t encryptedDataSize = keySize + paddedDataSize + SHA256_DIGEST_LENGTH;
+            uint32_t additionalSize = innerDataSize < paddedDataSize ? paddedDataSize - innerDataSize : 0;
+            NativeByteBuffer *innerDataBuffer = BuffersStorage::getInstance().getFreeBuffer(encryptedDataSize + paddedDataSize + ivSize + SHA256_DIGEST_LENGTH + 256);
+
+            innerDataBuffer->position(encryptedDataSize);
             innerData->serializeToStream(innerDataBuffer);
             delete innerData;
 
-            SHA1(innerDataBuffer->bytes() + SHA_DIGEST_LENGTH, innerDataSize, innerDataBuffer->bytes());
-            if (additionalSize != 0) {
-                RAND_bytes(innerDataBuffer->bytes() + SHA_DIGEST_LENGTH + innerDataSize, additionalSize);
-            }
-
             BIO *keyBio = BIO_new(BIO_s_mem());
             BIO_write(keyBio, key.c_str(), (int) key.length());
-            RSA *rsaKey = PEM_read_bio_RSAPublicKey(keyBio, NULL, NULL, NULL);
+            RSA *rsaKey = PEM_read_bio_RSAPublicKey(keyBio, nullptr, nullptr, nullptr);
             BIO_free(keyBio);
+
+            while (true) {
+                RAND_bytes(innerDataBuffer->bytes() + encryptedDataSize + innerDataSize, additionalSize);
+                for (uint32_t i = 0; i < paddedDataSize; i++) {
+                    innerDataBuffer->bytes()[keySize + i] = innerDataBuffer->bytes()[encryptedDataSize + paddedDataSize - i - 1];
+                }
+
+                RAND_bytes(innerDataBuffer->bytes(), keySize);
+                SHA256_CTX sha256Ctx;
+                SHA256_Init(&sha256Ctx);
+                SHA256_Update(&sha256Ctx, innerDataBuffer->bytes(), keySize);
+                SHA256_Update(&sha256Ctx, innerDataBuffer->bytes() + encryptedDataSize, paddedDataSize);
+                SHA256_Final(innerDataBuffer->bytes() + keySize + paddedDataSize, &sha256Ctx);
+
+                memset(innerDataBuffer->bytes() + encryptedDataSize + paddedDataSize, 0, ivSize);
+                Datacenter::aesIgeEncryption(innerDataBuffer->bytes() + keySize, innerDataBuffer->bytes(), innerDataBuffer->bytes() + encryptedDataSize + paddedDataSize, true, true, paddedDataSize + SHA256_DIGEST_LENGTH);
+
+                SHA256_Init(&sha256Ctx);
+                SHA256_Update(&sha256Ctx, innerDataBuffer->bytes() + keySize, paddedDataSize + SHA256_DIGEST_LENGTH);
+                SHA256_Final(innerDataBuffer->bytes() + encryptedDataSize + paddedDataSize + ivSize, &sha256Ctx);
+
+                for (uint32_t i = 0; i < keySize; i++) {
+                    innerDataBuffer->bytes()[i] ^= innerDataBuffer->bytes()[encryptedDataSize + paddedDataSize + ivSize + i];
+                }
+
+                bool ok = false;
+                uint32_t offset = encryptedDataSize + paddedDataSize + ivSize + SHA256_DIGEST_LENGTH;
+                size_t resLen = BN_bn2bin(rsaKey->n, innerDataBuffer->bytes() + offset);
+                const auto shift = (256 - resLen);
+
+                for (auto i = 0; i != 256; ++i) {
+                    const auto a = innerDataBuffer->bytes()[i];
+                    const auto b = (i < shift) ? 0 : innerDataBuffer->bytes()[offset + i - shift];
+                    if (a > b) {
+                        break;
+                    } else if (a < b) {
+                        ok = true;
+                        break;
+                    }
+                }
+                if (ok) {
+                    break;
+                }
+            }
+
             if (bnContext == nullptr) {
                 bnContext = BN_CTX_new();
             }
-            BIGNUM *a = BN_bin2bn(innerDataBuffer->bytes(), innerDataBuffer->limit(), NULL);
+            BIGNUM *a = BN_bin2bn(innerDataBuffer->bytes(), encryptedDataSize, nullptr);
             BIGNUM *r = BN_new();
             BN_mod_exp(r, a, rsaKey->e, rsaKey->n, bnContext);
             uint32_t size = BN_num_bytes(r);
-            ByteArray *rsaEncryptedData = new ByteArray(size >= 256 ? size : 256);
-            size_t resLen = BN_bn2bin(r, rsaEncryptedData->bytes);
-            if (256 - resLen > 0) {
-                memset(rsaEncryptedData->bytes + resLen, 0, 256 - resLen);
+            auto rsaEncryptedData = new ByteArray(size >= 256 ? size : 256);
+            BN_bn2bin(r, rsaEncryptedData->bytes + (size < 256 ? (256 - size) : 0));
+            if (256 - size > 0) {
+                memset(rsaEncryptedData->bytes, 0, 256 - size);
             }
             BN_free(a);
             BN_free(r);
@@ -481,7 +564,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             sendAckRequest(messageId);
             sendRequestData(request, true);
         } else {
-            DEBUG_E("dc%u handshake: invalid client nonce, type = %d", currentDatacenter->datacenterId, handshakeType);
+            if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid client nonce, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
             beginHandshake(false);
         }
     } else if (dynamic_cast<Server_DH_Params *>(message)) {
@@ -528,7 +611,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             }
 
             if (!hashVerified) {
-                DEBUG_E("dc%u handshake: can't decode DH params, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: can't decode DH params, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
                 return;
             }
@@ -540,30 +623,30 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             delete answerWithHash;
 
             if (error) {
-                DEBUG_E("dc%u handshake: can't parse decoded DH params, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: can't parse decoded DH params, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
                 return;
             }
 
             if (!authNonce->isEqualTo(dhInnerData->nonce.get())) {
-                DEBUG_E("dc%u handshake: invalid DH nonce, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid DH nonce, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
                 return;
             }
 
             if (!authServerNonce->isEqualTo(dhInnerData->server_nonce.get())) {
-                DEBUG_E("dc%u handshake: invalid DH server nonce, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid DH server nonce, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
                 return;
             }
 
             BIGNUM *p = BN_bin2bn(dhInnerData->dh_prime->bytes, dhInnerData->dh_prime->length, NULL);
             if (p == nullptr) {
-                DEBUG_E("can't allocate BIGNUM p");
+                if (LOGS_ENABLED) DEBUG_E("can't allocate BIGNUM p");
                 exit(1);
             }
             if (!isGoodPrime(p, dhInnerData->g)) {
-                DEBUG_E("dc%u handshake: bad prime, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: bad prime, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
                 BN_free(p);
                 return;
@@ -571,12 +654,12 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
 
             BIGNUM *g_a = BN_new();
             if (g_a == nullptr) {
-                DEBUG_E("can't allocate BIGNUM g_a");
+                if (LOGS_ENABLED) DEBUG_E("can't allocate BIGNUM g_a");
                 exit(1);
             }
             BN_bin2bn(dhInnerData->g_a->bytes, dhInnerData->g_a->length, g_a);
             if (!isGoodGaAndGb(g_a, p)) {
-                DEBUG_E("dc%u handshake: bad prime and g_a, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: bad prime and g_a, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
                 BN_free(p);
                 BN_free(g_a);
@@ -585,11 +668,11 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
 
             BIGNUM *g = BN_new();
             if (g == nullptr) {
-                DEBUG_E("can't allocate BIGNUM g");
+                if (LOGS_ENABLED) DEBUG_E("can't allocate BIGNUM g");
                 exit(1);
             }
             if (!BN_set_word(g, dhInnerData->g)) {
-                DEBUG_E("OpenSSL error at BN_set_word(g_b, dhInnerData->g)");
+                if (LOGS_ENABLED) DEBUG_E("OpenSSL error at BN_set_word(g_b, dhInnerData->g)");
                 beginHandshake(false);
                 BN_free(g);
                 BN_free(g_a);
@@ -600,13 +683,13 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             RAND_bytes(bytes, 256);
             BIGNUM *b = BN_bin2bn(bytes, 256, NULL);
             if (b == nullptr) {
-                DEBUG_E("can't allocate BIGNUM b");
+                if (LOGS_ENABLED) DEBUG_E("can't allocate BIGNUM b");
                 exit(1);
             }
 
             BIGNUM *g_b = BN_new();
             if (!BN_mod_exp(g_b, g, b, p, bnContext)) {
-                DEBUG_E("OpenSSL error at BN_mod_exp(g_b, g, b, p, bnContext)");
+                if (LOGS_ENABLED) DEBUG_E("OpenSSL error at BN_mod_exp(g_b, g, b, p, bnContext)");
                 beginHandshake(false);
                 BN_free(g);
                 BN_free(g_a);
@@ -678,7 +761,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
                 handshakeServerSalt->salt |= (authNewNonce->bytes[a] ^ authServerNonce->bytes[a]);
             }
         } else {
-            DEBUG_E("dc%u handshake: can't set DH params, type = %d", currentDatacenter->datacenterId, handshakeType);
+            if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: can't set DH params, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
             beginHandshake(false);
         }
     } else if (dynamic_cast<Set_client_DH_params_answer *>(message)) {
@@ -692,12 +775,12 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
         Set_client_DH_params_answer *result = (Set_client_DH_params_answer *) message;
 
         if (!authNonce->isEqualTo(result->nonce.get())) {
-            DEBUG_E("dc%u handshake: invalid DH answer nonce, type = %d", currentDatacenter->datacenterId, handshakeType);
+            if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid DH answer nonce, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
             beginHandshake(false);
             return;
         }
         if (!authServerNonce->isEqualTo(result->server_nonce.get())) {
-            DEBUG_E("dc%u handshake: invalid DH answer server nonce, type = %d", currentDatacenter->datacenterId, handshakeType);
+            if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid DH answer server nonce, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
             beginHandshake(false);
             return;
         }
@@ -714,11 +797,11 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             SHA1(authKeyAuxHashBuffer->bytes(), authKeyAuxHashLength - 12, authKeyAuxHashBuffer->bytes() + authKeyAuxHashLength);
 
             if (memcmp(result->new_nonce_hash1->bytes, authKeyAuxHashBuffer->bytes() + authKeyAuxHashLength + SHA_DIGEST_LENGTH - 16, 16)) {
-                DEBUG_E("dc%u handshake: invalid DH answer nonce hash 1, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid DH answer nonce hash 1, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 authKeyAuxHashBuffer->reuse();
                 beginHandshake(false);
             } else {
-                DEBUG_D("dc%u handshake: completed, time difference = %d, type = %d", currentDatacenter->datacenterId, timeDifference, handshakeType);
+                if (LOGS_ENABLED) DEBUG_D("account%u dc%u handshake: completed, time difference = %d, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, timeDifference, handshakeType);
                 authKeyAuxHashBuffer->position(authNewNonce->length + 1 + 12);
                 authKeyTempPendingId = authKeyAuxHashBuffer->readInt64(nullptr);
                 authKeyAuxHashBuffer->reuse();
@@ -729,7 +812,8 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
                 }
 
                 std::unique_ptr<TL_future_salt> salt = std::unique_ptr<TL_future_salt>(handshakeServerSalt);
-                currentDatacenter->addServerSalt(salt);
+                currentDatacenter->clearServerSalts(handshakeType == HandshakeTypeMediaTemp);
+                currentDatacenter->addServerSalt(salt, handshakeType == HandshakeTypeMediaTemp);
                 handshakeServerSalt = nullptr;
 
                 if (handshakeType == HandshakeTypePerm) {
@@ -754,7 +838,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
                         inner->temp_session_id = connection->getSessionId();
 
                         NetworkMessage *networkMessage = new NetworkMessage();
-                        networkMessage->message = std::unique_ptr<TL_message>(new TL_message());
+                        networkMessage->message = std::make_unique<TL_message>();
                         networkMessage->message->msg_id = authKeyPendingMessageId = messageId;
                         networkMessage->message->bytes = inner->getObjectSize();
                         networkMessage->message->body = std::unique_ptr<TLObject>(inner);
@@ -769,17 +853,17 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
                         request->encrypted_message = currentDatacenter->createRequestsData(array, nullptr, connection, true);
                     };
 
-                    authKeyPendingRequestId = ConnectionsManager::getInstance(currentDatacenter->instanceNum).sendRequest(request, [&](TLObject *response, TL_error *error, int32_t networkType) {
+                    authKeyPendingRequestId = ConnectionsManager::getInstance(currentDatacenter->instanceNum).sendRequest(request, [&](TLObject *response, TL_error *error, int32_t networkType, int64_t responseTime, int64_t msgId) {
                         authKeyPendingMessageId = 0;
                         authKeyPendingRequestId = 0;
                         if (response != nullptr && typeid(*response) == typeid(TL_boolTrue)) {
-                            DEBUG_D("dc%u handshake: bind completed", currentDatacenter->datacenterId);
+                            if (LOGS_ENABLED) DEBUG_D("account%u dc%u handshake: bind completed", currentDatacenter->instanceNum, currentDatacenter->datacenterId);
                             ConnectionsManager::getInstance(currentDatacenter->instanceNum).scheduleTask([&] {
                                 ByteArray *authKey = authKeyTempPending;
                                 authKeyTempPending = nullptr;
                                 delegate->onHandshakeComplete(this, authKeyTempPendingId, authKey, timeDifference);
                             });
-                        } else {
+                        } else if (error == nullptr || error->code != 400 || error->text.find("ENCRYPTED_MESSAGE_INVALID") == std::string::npos) {
                             ConnectionsManager::getInstance(currentDatacenter->instanceNum).scheduleTask([&] {
                                 beginHandshake(true);
                             });
@@ -792,10 +876,10 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             SHA1(authKeyAuxHashBuffer->bytes(), authKeyAuxHashLength - 12, authKeyAuxHashBuffer->bytes() + authKeyAuxHashLength);
 
             if (memcmp(result->new_nonce_hash2->bytes, authKeyAuxHashBuffer->bytes() + authKeyAuxHashLength + SHA_DIGEST_LENGTH - 16, 16)) {
-                DEBUG_E("dc%u handshake: invalid DH answer nonce hash 2, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid DH answer nonce hash 2, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
             } else {
-                DEBUG_D("dc%u handshake: retry DH, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_D("account%u dc%u handshake: retry DH, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
             }
             authKeyAuxHashBuffer->reuse();
@@ -804,10 +888,10 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
             SHA1(authKeyAuxHashBuffer->bytes(), authKeyAuxHashLength - 12, authKeyAuxHashBuffer->bytes() + authKeyAuxHashLength);
 
             if (memcmp(result->new_nonce_hash3->bytes, authKeyAuxHashBuffer->bytes() + authKeyAuxHashLength + SHA_DIGEST_LENGTH - 16, 16)) {
-                DEBUG_E("dc%u handshake: invalid DH answer nonce hash 3, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: invalid DH answer nonce hash 3, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
             } else {
-                DEBUG_E("dc%u handshake: server declined DH params, type = %d", currentDatacenter->datacenterId, handshakeType);
+                if (LOGS_ENABLED) DEBUG_E("account%u dc%u handshake: server declined DH params, type = %d", currentDatacenter->instanceNum, currentDatacenter->datacenterId, handshakeType);
                 beginHandshake(false);
             }
             authKeyAuxHashBuffer->reuse();
@@ -816,7 +900,7 @@ void Handshake::processHandshakeResponse(TLObject *message, int64_t messageId) {
 }
 
 void Handshake::sendAckRequest(int64_t messageId) {
-    TL_msgs_ack *msgsAck = new TL_msgs_ack();
+    auto msgsAck = new TL_msgs_ack();
     msgsAck->msg_ids.push_back(messageId);
     sendRequestData(msgsAck, false);
 }
@@ -828,10 +912,10 @@ TLObject *Handshake::getCurrentHandshakeRequest() {
 void Handshake::saveCdnConfigInternal(NativeByteBuffer *buffer) {
     buffer->writeInt32(1);
     buffer->writeInt32((int32_t) cdnPublicKeys.size());
-    for (std::map<int32_t, std::string>::iterator iter = cdnPublicKeys.begin(); iter != cdnPublicKeys.end(); iter++) {
-        buffer->writeInt32(iter->first);
-        buffer->writeString(iter->second);
-        buffer->writeInt64(cdnPublicKeysFingerprints[iter->first]);
+    for (auto & cdnPublicKey : cdnPublicKeys) {
+        buffer->writeInt32(cdnPublicKey.first);
+        buffer->writeString(cdnPublicKey.second);
+        buffer->writeInt64(cdnPublicKeysFingerprints[cdnPublicKey.first]);
     }
 }
 
@@ -839,7 +923,7 @@ void Handshake::saveCdnConfig(Datacenter *datacenter) {
     if (cdnConfig == nullptr) {
         cdnConfig = new Config(datacenter->instanceNum, "cdnkeys.dat");
     }
-    thread_local static NativeByteBuffer *sizeCalculator = new NativeByteBuffer(true);
+    thread_local static auto sizeCalculator = new NativeByteBuffer(true);
     sizeCalculator->clearCapacity();
     saveCdnConfigInternal(sizeCalculator);
     NativeByteBuffer *buffer = BuffersStorage::getInstance().getFreeBuffer(sizeCalculator->capacity());
@@ -856,38 +940,39 @@ void Handshake::loadCdnConfig(Datacenter *datacenter) {
     if (loadingCdnKeys) {
         return;
     }
-    if (cdnPublicKeysFingerprints.empty()) {
-        if (cdnConfig == nullptr) {
-            cdnConfig = new Config(datacenter->instanceNum, "cdnkeys.dat");
-        }
-        NativeByteBuffer *buffer = cdnConfig->readConfig();
-        if (buffer != nullptr) {
-            uint32_t version = buffer->readUint32(nullptr);
-            if (version >= 1) {
-                size_t count = buffer->readUint32(nullptr);
-                for (uint32_t a = 0; a < count; a++) {
-                    int dcId = buffer->readInt32(nullptr);
-                    cdnPublicKeys[dcId] = buffer->readString(nullptr);
-                    cdnPublicKeysFingerprints[dcId] = buffer->readUint64(nullptr);
-                }
-            }
-            buffer->reuse();
-            if (!cdnPublicKeysFingerprints.empty()) {
-                size_t count = cdnWaitingDatacenters.size();
-                for (uint32_t a = 0; a < count; a++) {
-                    cdnWaitingDatacenters[a]->beginHandshake(HandshakeTypeCurrent, false);
-                }
-                cdnWaitingDatacenters.clear();
-                return;
-            }
-        }
-    }
+    if (LOGS_ENABLED) DEBUG_D("account%u dc%u loadCdnConfig", datacenter->instanceNum, datacenter->datacenterId);
+//    if (cdnPublicKeysFingerprints.empty()) {
+//        if (cdnConfig == nullptr) {
+//            cdnConfig = new Config(datacenter->instanceNum, "cdnkeys.dat");
+//        }
+//        NativeByteBuffer *buffer = cdnConfig->readConfig();
+//        if (buffer != nullptr) {
+//            uint32_t version = buffer->readUint32(nullptr);
+//            if (version >= 1) {
+//                size_t count = buffer->readUint32(nullptr);
+//                for (uint32_t a = 0; a < count; a++) {
+//                    int dcId = buffer->readInt32(nullptr);
+//                    cdnPublicKeys[dcId] = buffer->readString(nullptr);
+//                    cdnPublicKeysFingerprints[dcId] = buffer->readUint64(nullptr);
+//                }
+//            }
+//            buffer->reuse();
+//            if (!cdnPublicKeysFingerprints.empty()) {
+//                size_t count = cdnWaitingDatacenters.size();
+//                for (uint32_t a = 0; a < count; a++) {
+//                    cdnWaitingDatacenters[a]->beginHandshake(HandshakeTypeCurrent, false);
+//                }
+//                cdnWaitingDatacenters.clear();
+//                return;
+//            }
+//        }
+//    }
     loadingCdnKeys = true;
-    TL_help_getCdnConfig *request = new TL_help_getCdnConfig();
+    auto request = new TL_help_getCdnConfig();
 
-    ConnectionsManager::getInstance(datacenter->instanceNum).sendRequest(request, [&, datacenter](TLObject *response, TL_error *error, int32_t networkType) {
+    ConnectionsManager::getInstance(datacenter->instanceNum).sendRequest(request, [&, datacenter](TLObject *response, TL_error *error, int32_t networkType, int64_t responseTime, int64_t msgId) {
         if (response != nullptr) {
-            TL_cdnConfig *config = (TL_cdnConfig *) response;
+            auto config = (TL_cdnConfig *) response;
             size_t count = config->public_keys.size();
             BIO *keyBio = BIO_new(BIO_s_mem());
             NativeByteBuffer *buffer = BuffersStorage::getInstance().getFreeBuffer(1024);
@@ -897,7 +982,7 @@ void Handshake::loadCdnConfig(Datacenter *datacenter) {
                 cdnPublicKeys[publicKey->dc_id] = publicKey->public_key;
 
                 BIO_write(keyBio, publicKey->public_key.c_str(), (int) publicKey->public_key.length());
-                RSA *rsaKey = PEM_read_bio_RSAPublicKey(keyBio, NULL, NULL, NULL);
+                RSA *rsaKey = PEM_read_bio_RSAPublicKey(keyBio, nullptr, nullptr, nullptr);
 
                 int nBytes = BN_num_bytes(rsaKey->n);
                 int eBytes = BN_num_bytes(rsaKey->e);
@@ -924,6 +1009,7 @@ void Handshake::loadCdnConfig(Datacenter *datacenter) {
             buffer->reuse();
             BIO_free(keyBio);
             count = cdnWaitingDatacenters.size();
+            if (LOGS_ENABLED) DEBUG_D("account%u dc%u cdnConfig loaded begin handshake", datacenter->instanceNum, datacenter->datacenterId);
             for (uint32_t a = 0; a < count; a++) {
                 cdnWaitingDatacenters[a]->beginHandshake(HandshakeTypeCurrent, false);
             }
@@ -938,11 +1024,11 @@ HandshakeType Handshake::getType() {
     return handshakeType;
 }
 
-ByteArray *Handshake::getAuthKeyTempPending() {
+ByteArray *Handshake::getPendingAuthKey() {
     return authKeyTempPending;
 }
 
-int64_t Handshake::getAuthKeyTempPendingId() {
+int64_t Handshake::getPendingAuthKeyId() {
     return authKeyTempPendingId;
 }
 
@@ -950,7 +1036,6 @@ void Handshake::onHandshakeConnectionClosed() {
     if (handshakeState == 0) {
         return;
     }
-
     needResendData = true;
 }
 
@@ -958,6 +1043,5 @@ void Handshake::onHandshakeConnectionConnected() {
     if (handshakeState == 0 || !needResendData) {
         return;
     }
-
-    needResendData = false;
+    beginHandshake(false);
 }

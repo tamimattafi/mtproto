@@ -202,7 +202,7 @@ namespace ocr{
 	}
 }
 
-extern "C" JNIEXPORT jintArray Java_com_attafitamim_mtproto_client_core_MrzRecognizer_findCornerPoints(JNIEnv* env, jclass clasz, jobject bitmap){
+extern "C" JNIEXPORT jintArray Java_org_telegram_messenger_MrzRecognizer_findCornerPoints(JNIEnv* env, jclass clasz, jobject bitmap){
 	AndroidBitmapInfo info={0};
 	if(AndroidBitmap_getInfo(env, bitmap, &info)!=ANDROID_BITMAP_RESULT_SUCCESS){
 		return NULL;
@@ -370,7 +370,7 @@ extern "C" JNIEXPORT jintArray Java_com_attafitamim_mtproto_client_core_MrzRecog
 	return result;
 }
 
-extern "C" JNIEXPORT jobjectArray Java_com_attafitamim_mtproto_client_core_MrzRecognizer_binarizeAndFindCharacters(JNIEnv* env, jclass clasz, jobject inBmp, jobject outBmp){
+extern "C" JNIEXPORT jobjectArray Java_org_telegram_messenger_MrzRecognizer_binarizeAndFindCharacters(JNIEnv* env, jclass clasz, jobject inBmp, jobject outBmp){
 	AndroidBitmapInfo inInfo={0}, outInfo={0};
 	if(AndroidBitmap_getInfo(env, inBmp, &inInfo)!=ANDROID_BITMAP_RESULT_SUCCESS || AndroidBitmap_getInfo(env, outBmp, &outInfo)!=ANDROID_BITMAP_RESULT_SUCCESS){
 		LOGE("AndroidBitmap_getInfo failed");
@@ -576,7 +576,7 @@ extern "C" JNIEXPORT jobjectArray Java_com_attafitamim_mtproto_client_core_MrzRe
 	return resultArray;
 }
 
-extern "C" JNIEXPORT jstring Java_com_attafitamim_mtproto_client_core_MrzRecognizer_performRecognition(JNIEnv* env, jclass clasz, jobject bitmap, jint numRows, jint numCols, jobject jAssetManager){
+extern "C" JNIEXPORT jstring Java_org_telegram_messenger_MrzRecognizer_performRecognition(JNIEnv* env, jclass clasz, jobject bitmap, jint numRows, jint numCols, jobject jAssetManager){
 	AAssetManager* assets=AAssetManager_fromJava(env, jAssetManager);
 	AAsset* nnData=AAssetManager_open(assets, "secureid_ocr_nn.dat", AASSET_MODE_STREAMING);
 	if(!nnData){
@@ -621,7 +621,7 @@ extern "C" JNIEXPORT jstring Java_com_attafitamim_mtproto_client_core_MrzRecogni
 	return env->NewStringUTF(res.c_str());
 }
 
-extern "C" JNIEXPORT void Java_com_attafitamim_mtproto_client_core_MrzRecognizer_setYuvBitmapPixels(JNIEnv* env, jclass clasz, jobject bitmap, jbyteArray jpixels){
+extern "C" JNIEXPORT void Java_org_telegram_messenger_MrzRecognizer_setYuvBitmapPixels(JNIEnv* env, jclass clasz, jobject bitmap, jbyteArray jpixels){
 	jbyte* _pixels=env->GetByteArrayElements(jpixels, NULL);
 	uint8_t* pixels=reinterpret_cast<uint8_t*>(_pixels);
 

@@ -6,7 +6,7 @@
 #include <time.h>
 #include <opusfile.h>
 #include <math.h>
-#include "utils.h"
+#include "c_utils.h"
 
 typedef struct {
     int version;
@@ -219,14 +219,15 @@ static int writeOggPage(ogg_page *page, FILE *os) {
     return written;
 }
 
-const opus_int32 bitrate = 16000;
-const opus_int32 rate = 16000;
+const opus_int32 bitrate = OPUS_BITRATE_MAX;
 const opus_int32 frame_size = 960;
 const int with_cvbr = 1;
 const int max_ogg_delay = 0;
 const int comment_padding = 512;
 
-opus_int32 coding_rate = 16000;
+opus_int32 rate = 48000;
+opus_int32 coding_rate = 48000;
+
 ogg_int32_t _packetId;
 OpusEncoder *_encoder = 0;
 uint8_t *_packet = 0;
@@ -282,15 +283,20 @@ void cleanupRecorder() {
     memset(&og, 0, sizeof(ogg_page));
 }
 
-int initRecorder(const char *path) {
+int initRecorder(const char *path, opus_int32 sampleRate) {
     cleanupRecorder();
-    
+
+    coding_rate = sampleRate;
+    rate = sampleRate;
+
     if (!path) {
+        LOGE("path is null");
         return 0;
     }
     
-    _fileOs = fopen(path, "wb");
+    _fileOs = fopen(path, "w");
     if (!_fileOs) {
+        LOGE("error cannot open file: %s", path);
         return 0;
     }
     
@@ -298,14 +304,13 @@ int initRecorder(const char *path) {
     inopt.gain = 0;
     inopt.endianness = 0;
     inopt.copy_comments = 0;
-    inopt.rawmode = 1;
-    inopt.ignorelength = 1;
+    inopt.rawmode = 0;
+    inopt.ignorelength = 0;
     inopt.samplesize = 16;
     inopt.channels = 1;
     inopt.skip = 0;
     
     comment_init(&inopt.comments, &inopt.comments_length, opus_get_version_string());
-    coding_rate = 16000;
     
     if (rate != coding_rate) {
         LOGE("Invalid rate");
@@ -319,7 +324,7 @@ int initRecorder(const char *path) {
     header.nb_streams = 1;
     
     int result = OPUS_OK;
-    _encoder = opus_encoder_create(coding_rate, 1, OPUS_APPLICATION_AUDIO, &result);
+    _encoder = opus_encoder_create(coding_rate, 1, OPUS_APPLICATION_VOIP, &result);
     if (result != OPUS_OK) {
         LOGE("Error cannot create encoder: %s", opus_strerror(result));
         return 0;
@@ -329,13 +334,14 @@ int initRecorder(const char *path) {
     _packet = malloc(max_frame_bytes);
     
     result = opus_encoder_ctl(_encoder, OPUS_SET_BITRATE(bitrate));
+    //result = opus_encoder_ctl(_encoder, OPUS_SET_COMPLEXITY(10));
     if (result != OPUS_OK) {
         LOGE("Error OPUS_SET_BITRATE returned: %s", opus_strerror(result));
         return 0;
     }
     
 #ifdef OPUS_SET_LSB_DEPTH
-    result = opus_encoder_ctl(_encoder, OPUS_SET_LSB_DEPTH(max(8, min(24, inopt.samplesize))));
+    result = opus_encoder_ctl(_encoder, OPUS_SET_LSB_DEPTH(MAX(8, MIN(24, inopt.samplesize))));
     if (result != OPUS_OK) {
         LOGE("Warning OPUS_SET_LSB_DEPTH returned: %s", opus_strerror(result));
     }
@@ -409,7 +415,6 @@ int initRecorder(const char *path) {
     
     return 1;
 }
-
 int writeFrame(uint8_t *framePcmBytes, uint32_t frameByteCount) {
     size_t cur_frame_size = frame_size;
     _packetId++;
@@ -447,7 +452,7 @@ int writeFrame(uint8_t *framePcmBytes, uint32_t frameByteCount) {
         
         enc_granulepos += cur_frame_size * 48000 / coding_rate;
         size_segments = (nbBytes + 255) / 255;
-        min_bytes = min(nbBytes, min_bytes);
+        min_bytes = MIN(nbBytes, min_bytes);
     }
     
     while ((((size_segments <= 255) && (last_segments + size_segments > 255)) || (enc_granulepos - last_granulepos > max_ogg_delay)) && ogg_stream_flush_fill(&os, &og, 255 * 255)) {
@@ -493,10 +498,10 @@ int writeFrame(uint8_t *framePcmBytes, uint32_t frameByteCount) {
     return 1;
 }
 
-JNIEXPORT jint Java_com_attafitamim_mtproto_client_core_MediaController_startRecord(JNIEnv *env, jclass class, jstring path) {
+JNIEXPORT jint Java_org_telegram_messenger_MediaController_startRecord(JNIEnv *env, jclass class, jstring path, jint sampleRate) {
     const char *pathStr = (*env)->GetStringUTFChars(env, path, 0);
-    
-    int32_t result = initRecorder(pathStr);
+
+    int32_t result = initRecorder(pathStr, sampleRate);
     
     if (pathStr != 0) {
         (*env)->ReleaseStringUTFChars(env, path, pathStr);
@@ -505,16 +510,16 @@ JNIEXPORT jint Java_com_attafitamim_mtproto_client_core_MediaController_startRec
     return result;
 }
 
-JNIEXPORT jint Java_com_attafitamim_mtproto_client_core_MediaController_writeFrame(JNIEnv *env, jclass class, jobject frame, jint len) {
+JNIEXPORT jint Java_org_telegram_messenger_MediaController_writeFrame(JNIEnv *env, jclass class, jobject frame, jint len) {
     jbyte *frameBytes = (*env)->GetDirectBufferAddress(env, frame);
     return writeFrame((uint8_t *) frameBytes, (uint32_t) len);
 }
 
-JNIEXPORT void Java_com_attafitamim_mtproto_client_core_MediaController_stopRecord(JNIEnv *env, jclass class) {
+JNIEXPORT void Java_org_telegram_messenger_MediaController_stopRecord(JNIEnv *env, jclass class) {
     cleanupRecorder();
 }
 
-JNIEXPORT jint Java_com_attafitamim_mtproto_client_core_MediaController_isOpusFile(JNIEnv *env, jclass class, jstring path) {
+JNIEXPORT jint Java_org_telegram_messenger_MediaController_isOpusFile(JNIEnv *env, jclass class, jstring path) {
     const char *pathStr = (*env)->GetStringUTFChars(env, path, 0);
     
     int32_t result = 0;
@@ -540,7 +545,7 @@ static inline void set_bits(uint8_t *bytes, int32_t bitOffset, int32_t value) {
     *((int32_t *) bytes) |= (value << bitOffset);
 }
 
-JNIEXPORT jbyteArray Java_com_attafitamim_mtproto_client_core_MediaController_getWaveform2(JNIEnv *env, jclass class, jshortArray array, jint length) {
+JNIEXPORT jbyteArray Java_org_telegram_messenger_MediaController_getWaveform2(JNIEnv *env, jclass class, jshortArray array, jint length) {
 
     jshort *sampleBuffer = (*env)->GetShortArrayElements(env, array, 0);
 
@@ -548,7 +553,7 @@ JNIEXPORT jbyteArray Java_com_attafitamim_mtproto_client_core_MediaController_ge
     uint16_t *samples = malloc(100 * 2);
     uint64_t sampleIndex = 0;
     uint16_t peakSample = 0;
-    int32_t sampleRate = (int32_t) max(1, length / resultSamples);
+    int32_t sampleRate = (int32_t) MAX(1, length / resultSamples);
     int32_t index = 0;
 
     for (int32_t i = 0; i < length; i++) {
@@ -588,7 +593,7 @@ JNIEXPORT jbyteArray Java_com_attafitamim_mtproto_client_core_MediaController_ge
         uint8_t *bytes = malloc(bitstreamLength + 4);
         memset(bytes, 0, bitstreamLength + 4);
         for (int32_t i = 0; i < resultSamples; i++) {
-            int32_t value = min(31, abs((int32_t) samples[i]) * 31 / peak);
+            int32_t value = MIN(31, abs((int32_t) samples[i]) * 31 / peak);
             set_bits(bytes, i * 5, value & 31);
         }
         (*env)->SetByteArrayRegion(env, result, 0, bitstreamLength, (jbyte *) bytes);
@@ -600,7 +605,7 @@ JNIEXPORT jbyteArray Java_com_attafitamim_mtproto_client_core_MediaController_ge
 
 int16_t *sampleBuffer = NULL;
 
-JNIEXPORT jbyteArray Java_com_attafitamim_mtproto_client_core_MediaController_getWaveform(JNIEnv *env, jclass class, jstring path) {
+JNIEXPORT jbyteArray Java_org_telegram_messenger_MediaController_getWaveform(JNIEnv *env, jclass class, jstring path) {
     const char *pathStr = (*env)->GetStringUTFChars(env, path, 0);
     jbyteArray result = 0;
     
@@ -609,7 +614,7 @@ JNIEXPORT jbyteArray Java_com_attafitamim_mtproto_client_core_MediaController_ge
     if (opusFile != NULL && error == OPUS_OK) {
         int64_t totalSamples = op_pcm_total(opusFile, -1);
         const uint32_t resultSamples = 100;
-        int32_t sampleRate = max(1, (int32_t) (totalSamples / resultSamples));
+        int32_t sampleRate = MAX(1, (int32_t) (totalSamples / resultSamples));
 
         uint16_t *samples = malloc(100 * 2);
 
@@ -667,7 +672,7 @@ JNIEXPORT jbyteArray Java_com_attafitamim_mtproto_client_core_MediaController_ge
             memset(bytes, 0, bitstreamLength + 4);
 
             for (int32_t i = 0; i < resultSamples; i++) {
-                int32_t value = min(31, abs((int32_t) samples[i]) * 31 / peak);
+                int32_t value = MIN(31, abs((int32_t) samples[i]) * 31 / peak);
                 set_bits(bytes, i * 5, value & 31);
             }
 

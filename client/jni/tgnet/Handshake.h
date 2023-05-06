@@ -29,9 +29,10 @@ public:
     void processHandshakeResponse(TLObject *message, int64_t messageId);
     void onHandshakeConnectionConnected();
     void onHandshakeConnectionClosed();
+    static void cleanupServerKeys();
     HandshakeType getType();
-    ByteArray *getAuthKeyTempPending();
-    int64_t getAuthKeyTempPendingId();
+    ByteArray *getPendingAuthKey();
+    int64_t getPendingAuthKeyId();
     TLObject *getCurrentHandshakeRequest();
 
 private:
