@@ -25,6 +25,7 @@ import com.attafitamim.mtproto.client.core.UserConfig;
 import com.attafitamim.mtproto.client.core.Utilities;
 import com.attafitamim.mtproto.core.types.TLObject;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -109,10 +110,11 @@ public class ConnectionsManager {
 
     private int currentAccount;
 
-    public static UpdateHandler updateHandler;
+    @NotNull
+    private static UpdateHandler updateHandler;
 
     @Nullable
-    private IEventListener listener;
+    private static IEventListener eventListener;
 
     public ConnectionsManager(
             int userId,
@@ -126,9 +128,11 @@ public class ConnectionsManager {
             int appId,
             String logPath,
             boolean enablePushConnection,
-            @Nullable IEventListener listener
+            @NotNull UpdateHandler updateHandler,
+            @Nullable IEventListener eventListener
     ) {
-        this.listener = listener;
+        this.eventListener = eventListener;
+        this.updateHandler = updateHandler;
 
         currentAccount = UserConfig.selectedAccount;
         connectionState = native_getConnectionState(currentAccount);
@@ -397,27 +401,28 @@ public class ConnectionsManager {
         else native_resumeNetwork(currentAccount, false);
     }
 
-    private void logRequest(int requestToken, TLMethod<?> request) {
-        if (listener != null) listener.onRequest(requestToken, request);
+    private static void logRequest(int requestToken, TLMethod<?> request) {
+        if (eventListener != null) eventListener.onRequest(requestToken, request);
     }
 
-    private void logResponse(int requestToken, TLMethod<?> request, TLObject response) {
-        if (listener != null) listener.onResponse(requestToken, 0, request, response);
+    private static void logResponse(int requestToken, TLMethod<?> request, TLObject response) {
+        if (eventListener != null) eventListener.onResponse(requestToken, 0, request, response);
     }
 
-    private void logError(int requestToken, TLMethod<?> request, RequestError error) {
-        if (listener != null) listener.onError(requestToken, 0, request, error);
+    private static void logError(int requestToken, TLMethod<?> request, RequestError error) {
+        if (eventListener != null) eventListener.onError(requestToken, 0, request, error);
     }
 
-    private void logUpdate(TLObject update) {
-        if (listener != null) listener.onUpdate(update);
+    private static void logUpdate(TLObject update) {
+        if (eventListener != null) eventListener.onUpdate(update);
     }
 
     public static void onUnparsedMessageReceived(long address, final int currentAccount) {
         try {
             NativeByteBuffer buff = NativeByteBuffer.wrap(address);
             buff.reused = true;
-            updateHandler.onNewUpdate(buff);
+            TLObject update = updateHandler.parseUpdate(buff);
+            logUpdate(update);
         } catch (Exception e) {
         }
     }
@@ -439,11 +444,11 @@ public class ConnectionsManager {
     }
 
     public static void onSessionCreated(final int currentAccount) {
-
+        if (eventListener != null) eventListener.onSessionCreated();
     }
 
     public static void onConnectionStateChanged(final int state, final int currentAccount) {
-
+        if (eventListener != null) eventListener.onConnectionStateChanged(state);
     }
 
     public static void onLogout(final int currentAccount) {

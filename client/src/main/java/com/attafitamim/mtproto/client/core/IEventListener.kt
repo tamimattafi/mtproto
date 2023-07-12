@@ -9,4 +9,6 @@ interface IEventListener {
     fun onResponse(requestToken: Int, messageId: Int, request: TLMethod<*>, response: TLObject)
     fun onError(requestToken: Int, messageId: Int, request: TLMethod<*>, error: RequestError)
     fun onUpdate(update: TLObject)
+    fun onConnectionStateChanged(state: Int)
+    fun onSessionCreated()
 }
