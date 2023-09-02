@@ -233,55 +233,56 @@ public class ConnectionsManager implements IConnectionManager {
     }
 
     @Override
-    public <T extends TLObject> int sendRequest(@NotNull TLMethod<T> method, @NotNull IRequestDelegate<T> onComplete, int flags, int connectionType) throws Exception {
-        return sendRequest(method, onComplete, null, null, flags, ConnectionFlags.DEFAULT_DATACENTER_ID, connectionType, false);
+    public <T extends TLObject> int sendRequest(@NotNull TLMethod<T> method, @NotNull IRequestDelegate<T> requestDelegate, int flags, int connectionType) throws Exception {
+        return sendRequest(method, requestDelegate, null, null, flags, ConnectionFlags.DEFAULT_DATACENTER_ID, connectionType, false);
     }
 
     @Override
-    public <T extends TLObject> int sendRequest(@NotNull TLMethod<T> method, @NotNull IRequestDelegate<T> onComplete, @Nullable IQuickAckDelegate onQuickAck, int flags) throws Exception {
-        return sendRequest(method, onComplete, onQuickAck, null, flags, ConnectionFlags.DEFAULT_DATACENTER_ID, ConnectionFlags.ConnectionTypeGeneric, false);
+    public <T extends TLObject> int sendRequest(@NotNull TLMethod<T> method, @NotNull IRequestDelegate<T> requestDelegate, @Nullable IQuickAckDelegate onQuickAck, int flags) throws Exception {
+        return sendRequest(method, requestDelegate, onQuickAck, null, flags, ConnectionFlags.DEFAULT_DATACENTER_ID, ConnectionFlags.ConnectionTypeGeneric, false);
     }
 
     @Override
-    public <T extends TLObject> int sendRequest(@NotNull TLMethod<T> method, @NotNull IRequestDelegate<T> onComplete, @Nullable IQuickAckDelegate onQuickAck, @Nullable IWriteToSocketDelegate onWriteToSocket, int flags, int datacenterId, int connectionType, boolean immediate) throws Exception {
-        final int requestToken = lastRequestToken.getAndIncrement();
+    public <T extends TLObject> int sendRequest(@NotNull TLMethod<T> method, @NotNull IRequestDelegate<T> requestDelegate, @Nullable IQuickAckDelegate onQuickAck, @Nullable IWriteToSocketDelegate onWriteToSocket, int flags, int datacenterId, int connectionType, boolean immediate) throws Exception {
+        synchronized (this) {
+            try {
+                final int requestToken = lastRequestToken.getAndIncrement();
+                logRequest(requestToken, method);
+                NativeByteBuffer bufferSizeCalculator = new NativeByteBuffer(true);
+                bufferSizeCalculator.rewind();
+                method.serialize(bufferSizeCalculator);
+                int bufferSize = bufferSizeCalculator.length();
+                NativeByteBuffer requestBuffer = new NativeByteBuffer(bufferSize);
+                method.serialize(requestBuffer);
 
-        logRequest(requestToken, method);
-
-        NativeByteBuffer buffer = null;
-
-        NativeByteBuffer bufferSizeCalculator = new NativeByteBuffer(true);
-        bufferSizeCalculator.rewind();
-        method.serialize(bufferSizeCalculator);
-        int bufferSize = bufferSizeCalculator.length();
-        buffer = new NativeByteBuffer(bufferSize);
-        method.serialize(buffer);
-
-        native_sendRequest(currentAccount, buffer.address, (response, errorCode, errorText, networkType) -> {
-            synchronized (this) {
-                T resp = null;
-                RequestError error = null;
-
-                if (response != 0) {
-                    NativeByteBuffer buff = NativeByteBuffer.wrap(response);
-                    buff.reused = true;
-                    try {
-                        resp = method.parse(buff);
-                        logResponse(requestToken, method, resp);
-                    } catch (Exception e) {
-                        error = new RequestError(-1, e.getMessage());
-                        logError(requestToken, method, error);
+                native_sendRequest(currentAccount, requestBuffer.address, (response, errorCode, errorText, networkType) -> {
+                    synchronized (this) {
+                        try {
+                            if (response != 0) {
+                                NativeByteBuffer responseBuffer = NativeByteBuffer.wrap(response);
+                                responseBuffer.reused = true;
+                                T resp = method.parse(responseBuffer);
+                                logResponse(requestToken, method, resp);
+                                requestDelegate.onResponse(resp);
+                            } else if (errorText != null) {
+                                RequestError error = new RequestError(errorCode, errorText);
+                                logError(requestToken, method, error);
+                                requestDelegate.onError(error);
+                            }
+                        } catch (Exception e) {
+                            logException(requestToken, method, e);
+                            requestDelegate.onException(e);
+                        }
                     }
-                } else if (errorText != null) {
-                    error = new RequestError(errorCode, errorText);
-                    logError(requestToken, method, error);
-                }
+                }, onQuickAck, onWriteToSocket, flags, datacenterId, connectionType, immediate, requestToken);
 
-                onComplete.run(resp, error);
+                return requestToken;
+            } catch (Exception e) {
+                logException(-1, method, e);
+                requestDelegate.onException(e);
+                return -1;
             }
-        }, onQuickAck, onWriteToSocket, flags, datacenterId, connectionType, immediate, requestToken);
-
-        return requestToken;
+        }
     }
 
     @Override
@@ -402,6 +403,10 @@ public class ConnectionsManager implements IConnectionManager {
 
     private static void logError(int requestToken, TLMethod<?> request, RequestError error) {
         if (eventListener != null) eventListener.onError(requestToken, 0, request, error);
+    }
+
+    private static void logException(int requestToken, TLMethod<?> request, Exception exception) {
+        if (eventListener != null) eventListener.onException(requestToken, 0, request, exception);
     }
 
     private static void logUpdate(TLObject update) {

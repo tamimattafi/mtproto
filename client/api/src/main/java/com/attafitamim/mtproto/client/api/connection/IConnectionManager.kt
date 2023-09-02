@@ -8,7 +8,7 @@ interface IConnectionManager {
     @Throws(Exception::class)
     fun <T : TLObject> sendRequest(
         method: TLMethod<T>,
-        onComplete: IRequestDelegate<T>,
+        requestDelegate: IRequestDelegate<T>,
         flags: Int,
         connectionType: Int
     ): Int
@@ -16,7 +16,7 @@ interface IConnectionManager {
     @Throws(Exception::class)
     fun <T : TLObject> sendRequest(
         method: TLMethod<T>,
-        onComplete: IRequestDelegate<T>,
+        requestDelegate: IRequestDelegate<T>,
         onQuickAck: IQuickAckDelegate?,
         flags: Int
     ): Int
@@ -24,7 +24,7 @@ interface IConnectionManager {
     @Throws(Exception::class)
     fun <T : TLObject> sendRequest(
         method: TLMethod<T>,
-        onComplete: IRequestDelegate<T>,
+        requestDelegate: IRequestDelegate<T>,
         onQuickAck: IQuickAckDelegate?,
         onWriteToSocket: IWriteToSocketDelegate?,
         flags: Int,
