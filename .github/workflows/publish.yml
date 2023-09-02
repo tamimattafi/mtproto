@@ -24,8 +24,11 @@ jobs:
       - name: Build Generator
         run: ./gradlew :generator:assemble
 
-      - name: Build Client
-        run: ./gradlew :client:assemble
+      - name: Build Client API
+        run: ./gradlew :client:api:assemble
+
+      - name: Build Android Client
+        run: ./gradlew :client:android:assemble
 
       - name: Source jar
         run: ./gradlew projectSourcesJar javadocJar

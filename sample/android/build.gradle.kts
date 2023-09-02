@@ -51,5 +51,5 @@ android {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.4.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("com.attafitamim.mtproto:core:1.0.0-beta04")
+    implementation("com.attafitamim.mtproto:core:1.1.9")
 }

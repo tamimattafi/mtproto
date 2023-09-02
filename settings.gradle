@@ -18,4 +18,5 @@ rootProject.name = "mtproto"
 include ':server'
 include ':core'
 include ':generator'
-include ':client'
+include ':client:api'
+include ':client:android'
