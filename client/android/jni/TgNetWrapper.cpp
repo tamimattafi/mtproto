@@ -493,7 +493,7 @@ static JNINativeMethod ConnectionsManagerMethods[] = {
         {"native_getCurrentTimeMillis", "(I)J", (void *) getCurrentTimeMillis},
         {"native_getCurrentTime", "(I)I", (void *) getCurrentTime},
         {"native_getTimeDifference", "(I)I", (void *) getTimeDifference},
-        {"native_sendRequest", "(IJLcom/attafitamim/mtproto/client/android/tgnet/RequestDelegateInternal;Lcom/attafitamim/mtproto/client/android/tgnet/IQuickAckDelegate;Lcom/attafitamim/mtproto/client/android/tgnet/IWriteToSocketDelegate;IIIZI)V", (void *) sendRequest},
+        {"native_sendRequest", "(IJLcom/attafitamim/mtproto/client/android/tgnet/RequestDelegateInternal;Lcom/attafitamim/mtproto/client/api/connection/IQuickAckDelegate;Lcom/attafitamim/mtproto/client/api/connection/IWriteToSocketDelegate;IIIZI)V", (void *) sendRequest},
         {"native_cancelRequest", "(IIZ)V", (void *) cancelRequest},
         {"native_cleanUp", "(IZ)V", (void *) cleanUp},
         {"native_cancelRequestsForGuid", "(II)V", (void *) cancelRequestsForGuid},
@@ -513,7 +513,7 @@ static JNINativeMethod ConnectionsManagerMethods[] = {
         {"native_setPushConnectionEnabled", "(IZ)V", (void *) setPushConnectionEnabled},
         {"native_setJava", "(Z)V", (void *) setJava},
         {"native_applyDnsConfig", "(IJLjava/lang/String;)V", (void *) applyDnsConfig},
-        {"native_checkProxy", "(ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/attafitamim/mtproto/client/android/tgnet/RequestTimeDelegate;)J", (void *) checkProxy}
+        {"native_checkProxy", "(ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/attafitamim/mtproto/client/api/connection/IRequestTimeDelegate;)J", (void *) checkProxy}
 };
 
 inline int registerNativeMethods(JNIEnv *env, const char *className, JNINativeMethod *methods, int methodsCount) {
@@ -552,7 +552,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
         return JNI_FALSE;
     }
 
-    jclass_RequestTimeDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/android/tgnet/RequestTimeDelegate"));
+    jclass_RequestTimeDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/api/connection/IRequestTimeDelegate"));
     if (jclass_RequestTimeDelegate == 0) {
         return JNI_FALSE;
     }
@@ -561,7 +561,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
         return JNI_FALSE;
     }
 
-    jclass_QuickAckDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/android/tgnet/IQuickAckDelegate"));
+    jclass_QuickAckDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/api/connection/IQuickAckDelegate"));
     if (jclass_RequestDelegateInternal == 0) {
         return JNI_FALSE;
     }
@@ -570,7 +570,7 @@ extern "C" int registerNativeTgNetFunctions(JavaVM *vm, JNIEnv *env) {
         return JNI_FALSE;
     }
 
-    jclass_WriteToSocketDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/android/tgnet/IWriteToSocketDelegate"));
+    jclass_WriteToSocketDelegate = (jclass) env->NewGlobalRef(env->FindClass("com/attafitamim/mtproto/client/api/connection/IWriteToSocketDelegate"));
     if (jclass_WriteToSocketDelegate == 0) {
         return JNI_FALSE;
     }

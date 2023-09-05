@@ -26,7 +26,7 @@ import com.attafitamim.mtproto.client.api.connection.IConnectionManager;
 import com.attafitamim.mtproto.client.api.connection.IQuickAckDelegate;
 import com.attafitamim.mtproto.client.api.connection.IRequestDelegate;
 import com.attafitamim.mtproto.client.api.connection.IWriteToSocketDelegate;
-import com.attafitamim.mtproto.client.api.connection.RequestTimeDelegate;
+import com.attafitamim.mtproto.client.api.connection.IRequestTimeDelegate;
 import com.attafitamim.mtproto.client.api.events.IEventListener;
 import com.attafitamim.mtproto.client.api.handlers.IUpdateHandler;
 import com.attafitamim.mtproto.core.types.TLMethod;
@@ -360,7 +360,7 @@ public class ConnectionsManager implements IConnectionManager {
     }
 
     @Override
-    public long checkProxy(@Nullable String address, int port, @Nullable String username, @Nullable String password, @Nullable String secret, @Nullable RequestTimeDelegate requestTimeDelegate) {
+    public long checkProxy(@Nullable String address, int port, @Nullable String username, @Nullable String password, @Nullable String secret, @Nullable IRequestTimeDelegate IRequestTimeDelegate) {
         if (TextUtils.isEmpty(address)) {
             return 0;
         }
@@ -376,7 +376,7 @@ public class ConnectionsManager implements IConnectionManager {
         if (secret == null) {
             secret = "";
         }
-        return native_checkProxy(currentAccount, address, port, username, password, secret, requestTimeDelegate);
+        return native_checkProxy(currentAccount, address, port, username, password, secret, IRequestTimeDelegate);
     }
 
     @Override
@@ -602,7 +602,7 @@ public class ConnectionsManager implements IConnectionManager {
     public static native void native_setJava(boolean useJavaByteBuffers);
     public static native void native_setPushConnectionEnabled(int currentAccount, boolean value);
     public static native void native_applyDnsConfig(int currentAccount, long address, String phone);
-    public static native long native_checkProxy(int currentAccount, String address, int port, String username, String password, String secret, RequestTimeDelegate requestTimeDelegate);
+    public static native long native_checkProxy(int currentAccount, String address, int port, String username, String password, String secret, IRequestTimeDelegate IRequestTimeDelegate);
 
     public static int generateClassGuid() {
         return lastClassGuid++;

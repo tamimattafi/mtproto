@@ -52,7 +52,7 @@ interface IConnectionManager {
         username: String?,
         password: String?,
         secret: String?,
-        requestTimeDelegate: RequestTimeDelegate?
+        IRequestTimeDelegate: IRequestTimeDelegate?
     ): Long
     fun setAppPaused(isAppPaused: Boolean)
 }
