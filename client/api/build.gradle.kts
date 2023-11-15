@@ -4,11 +4,12 @@ plugins {
 }
 
 ext.set("PUBLISH_ARTIFACT_ID", "client-api")
+
 apply(from = "${rootProject.projectDir}/scripts/publish-module.gradle")
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 dependencies {

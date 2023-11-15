@@ -8,6 +8,7 @@ ext {
 }
 
 task projectSourcesJar(type: Jar) {
+    //archiveBaseName = PUBLISH_ARTIFACT_ID
     archiveClassifier.set('sources')
     if (project.plugins.findPlugin("com.android.library")) {
         // For Android libraries
@@ -22,6 +23,7 @@ task projectSourcesJar(type: Jar) {
 }
 
 task javadocJar(type: Jar, dependsOn: dokkaJavadoc) {
+    //archiveBaseName = PUBLISH_ARTIFACT_ID
     archiveClassifier.set('javadoc')
     from dokkaJavadoc.outputDirectory
 }

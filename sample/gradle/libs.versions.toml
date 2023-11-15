@@ -18,6 +18,7 @@ androidx_core = "1.13.0-alpha01"
 
 # Lib
 mtproto-generator = { module = "com.attafitamim.mtproto:generator", version.ref = "mtproto" }
+mtproto-client-sockets = { module = "com.attafitamim.mtproto:client-sockets", version.ref = "mtproto" }
 
 # Android
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle-runtime-ktx" }
