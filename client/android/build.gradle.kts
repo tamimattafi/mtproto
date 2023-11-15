@@ -1,17 +1,14 @@
 plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+    alias(libs.plugins.android.gradle.library)
+    alias(libs.plugins.kotlin.android)
 }
 
-ext {
-    PUBLISH_ARTIFACT_ID = 'client-android'
-}
-
-apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
+ext.set("PUBLISH_ARTIFACT_ID", "client-android")
+apply(from = "${rootProject.projectDir}/scripts/publish-module.gradle")
 
 android {
-    compileSdk 32
-    namespace
+    compileSdk = 34
+    namespace = "com.attafitamim.mtproto.client"
 
     ndkVersion = "16.1.4479499"
     externalNativeBuild {
@@ -20,7 +17,10 @@ android {
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 32
+        targetSdk = 34
+
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
 
         externalNativeBuild {
@@ -41,14 +41,6 @@ android {
         }
     }
 
-    defaultConfig {
-        minSdk 21
-        targetSdk 32
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
-    }
-
     buildTypes {
         release {
             proguardFiles(
@@ -59,12 +51,16 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = "17"
+    }
+
+    kotlin {
+        jvmToolchain(17)
     }
 
     sourceSets {
@@ -76,5 +72,5 @@ android {
 
 dependencies {
     api(project(":core"))
-    api(project(':client:api'))
+    api(project(":client:api"))
 }

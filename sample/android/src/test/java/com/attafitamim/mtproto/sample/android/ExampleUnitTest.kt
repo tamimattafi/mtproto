@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.sample
+package com.attafitamim.mtproto.sample.android
 
 import org.junit.Test
 

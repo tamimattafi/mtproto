@@ -1,10 +1,10 @@
-apply plugin: 'maven-publish'
+apply plugin: libs.plugins.maven.publish.get().pluginId
 apply plugin: 'signing'
-apply plugin: 'org.jetbrains.dokka'
+apply plugin: libs.plugins.dokka.get().pluginId
 
 ext {
     PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '2.1.1'
+    PUBLISH_VERSION = '3.0.0-local01'
 }
 
 task projectSourcesJar(type: Jar) {
@@ -98,6 +98,7 @@ afterEvaluate {
     }
 }
 
+/*
 signing {
     useInMemoryPgpKeys(
             rootProject.ext["signing.keyId"],
@@ -106,3 +107,4 @@ signing {
     )
     sign publishing.publications
 }
+*/

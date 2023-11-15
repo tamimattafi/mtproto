@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.sample.ui.theme
+package com.attafitamim.mtproto.sample.android.ui.theme
 
 import android.app.Activity
 import android.os.Build
