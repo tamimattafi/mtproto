@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.konan.properties.Properties
+
 plugins {
     alias(libs.plugins.android.gradle.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,15 @@ plugins {
 android {
     namespace = "com.attafitamim.mtproto.sample.android"
     compileSdk = 34
+
+    // TODO: move reading properties to extensions
+    val backendProperties = Properties()
+    val backendPropertiesFile = File("$rootDir/config/properties/backend.properties")
+    if (backendPropertiesFile.exists()) {
+        backendProperties.load(backendPropertiesFile.reader())
+    } else {
+        println("${backendPropertiesFile.absolutePath} not found")
+    }
 
     defaultConfig {
         applicationId = "com.attafitamim.mtproto.sample.android"
@@ -18,6 +29,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField(
+            String::class.java.simpleName,
+            "BACKEND_SOCKET_URL",
+            backendProperties.getProperty("backend.websocket.url")
+        )
     }
 
     buildTypes {
@@ -38,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"
@@ -52,6 +70,12 @@ android {
 dependencies {
     // Lib
     implementation(libs.mtproto.client.sockets)
+
+    // Ktor
+    implementation(libs.ktor.logger)
+    implementation(libs.ktor.core)
+    implementation(libs.ktor.cio)
+    implementation(libs.ktor.webscokets)
 
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.activity.compose)

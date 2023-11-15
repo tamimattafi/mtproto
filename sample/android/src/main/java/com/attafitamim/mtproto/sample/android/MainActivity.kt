@@ -10,9 +10,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.attafitamim.mtproto.client.api.connection.IConnectionManager
+import com.attafitamim.mtproto.client.sockets.connection.SocketConnectionManager
 import com.attafitamim.mtproto.sample.android.ui.theme.MTProtoSampleTheme
 
 class MainActivity : ComponentActivity() {
+
+    lateinit var connectionManager: IConnectionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +31,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        connectionManager = ConnectionHelper.createConnectionManager()
     }
 }
 

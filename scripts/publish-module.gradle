@@ -4,7 +4,7 @@ apply plugin: libs.plugins.dokka.get().pluginId
 
 ext {
     PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '3.0.0-local01'
+    PUBLISH_VERSION = '3.0.0-local02'
 }
 
 task projectSourcesJar(type: Jar) {
