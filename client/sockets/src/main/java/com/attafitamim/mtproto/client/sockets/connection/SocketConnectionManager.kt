@@ -5,8 +5,12 @@ import com.attafitamim.mtproto.client.api.connection.IQuickAckDelegate
 import com.attafitamim.mtproto.client.api.connection.IRequestDelegate
 import com.attafitamim.mtproto.client.api.connection.IRequestTimeDelegate
 import com.attafitamim.mtproto.client.api.connection.IWriteToSocketDelegate
+import com.attafitamim.mtproto.client.sockets.buffer.CalculationByteBuffer
+import com.attafitamim.mtproto.client.sockets.buffer.JavaByteBuffer
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocket
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocketProvider
+import com.attafitamim.mtproto.client.sockets.stream.TLBufferedInputStream
+import com.attafitamim.mtproto.client.sockets.stream.TLBufferedOutputStream
 import com.attafitamim.mtproto.core.types.TLMethod
 import com.attafitamim.mtproto.core.types.TLObject
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +40,19 @@ class SocketConnectionManager(
         flags: Int,
         connectionType: Int
     ): Int {
-        TODO("Not yet implemented")
+        val calculationBuffer = CalculationByteBuffer()
+        val calculationStream = TLBufferedOutputStream(calculationBuffer)
+        method.serialize(calculationStream)
+
+        val serializationBuffer = JavaByteBuffer.allocate(calculationBuffer.position)
+        val serializationStream = TLBufferedOutputStream(serializationBuffer)
+        method.serialize(serializationStream)
+        serializationBuffer.rewind()
+
+        val bytes = serializationBuffer.getByteArray()
+        socket.writeBytes(bytes)
+
+        return 0
     }
 
     override fun <T : TLObject> sendRequest(

@@ -1,6 +1,6 @@
 package com.attafitamim.mtproto.client.sockets.ktor
 
-import com.attafitamim.mtproto.client.sockets.core.Endpoint
+import com.attafitamim.mtproto.client.sockets.core.endpoint.Endpoint
 import com.attafitamim.mtproto.client.sockets.core.endpoint.IEndpointProvider
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocket
 import com.attafitamim.mtproto.client.sockets.core.socket.SocketEvent
@@ -107,7 +107,7 @@ class KtorWebSocket(
 
         forceClose()
 
-        // Keep retrying to create a socket
+        // Keep retrying to connect to the socket
         val endpoint = endpointProvider.provideEndpoint()
         var newSession = tryCreateSession(endpoint)
         while (newSession == null) {
@@ -119,7 +119,7 @@ class KtorWebSocket(
         retryCount.set(0)
         currentSession = newSession
         newSession.handlePostInit()
-        emitEvent(SocketEvent.Open)
+        emitEvent(SocketEvent.Connected)
         return newSession
     }
 
@@ -127,9 +127,9 @@ class KtorWebSocket(
         kotlin.runCatching {
             createSession(endpoint)
         }.onFailure { error ->
-            val errorEvent = SocketEvent.OpenError(
-                retryCount.get(),
-                error
+            val errorEvent = SocketEvent.Error.NoConnection(
+                error,
+                retryCount.get()
             )
 
             emitEvent(errorEvent)
@@ -162,15 +162,15 @@ class KtorWebSocket(
     private fun Deferred<CloseReason?>.awaitClose() = scope.launch {
         val reason = await()
 
-        val type = when (reason?.knownReason) {
-            CloseReason.Codes.NORMAL -> SocketEvent.Close.Type.GRACEFUL
-            else -> SocketEvent.Close.Type.ABNORMAL
+        val closeEvent = when (val knownReason = reason?.knownReason) {
+            null -> SocketEvent.Close.Unspecified
+            CloseReason.Codes.NORMAL -> SocketEvent.Close.Graceful
+            else -> SocketEvent.Close.Abnormal(
+                knownReason.code,
+                knownReason.name,
+                reason.message
+            )
         }
-
-        val closeEvent = SocketEvent.Close(
-            type,
-            reason?.message
-        )
 
         emitEvent(closeEvent)
     }

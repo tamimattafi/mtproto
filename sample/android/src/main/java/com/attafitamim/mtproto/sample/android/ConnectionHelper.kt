@@ -2,7 +2,7 @@ package com.attafitamim.mtproto.sample.android
 
 import com.attafitamim.mtproto.client.api.connection.IConnectionManager
 import com.attafitamim.mtproto.client.sockets.connection.SocketConnectionManager
-import com.attafitamim.mtproto.client.sockets.core.Endpoint
+import com.attafitamim.mtproto.client.sockets.core.endpoint.Endpoint
 import com.attafitamim.mtproto.client.sockets.core.endpoint.IEndpointProvider
 import com.attafitamim.mtproto.client.sockets.ktor.KtorWebSocketProvider
 import kotlin.time.Duration.Companion.seconds

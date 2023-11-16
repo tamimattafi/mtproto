@@ -3,6 +3,13 @@ import org.jetbrains.kotlin.konan.properties.Properties
 plugins {
     alias(libs.plugins.android.gradle.application)
     alias(libs.plugins.kotlin.android)
+    id("mtproto-generator")
+}
+
+tasks.generateProtoClasses {
+    schemeFilesDir = "${rootDir}/schemes"
+    outputDir = "${buildDir.absolutePath}/generated/mtproto"
+    basePackage = "com.attafitamim.scheme.mtproto"
 }
 
 android {
@@ -63,6 +70,11 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            java.srcDirs(tasks.generateProtoClasses.get().outputDir)
         }
     }
 }

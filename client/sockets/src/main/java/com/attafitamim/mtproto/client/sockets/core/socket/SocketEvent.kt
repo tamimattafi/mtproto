@@ -2,21 +2,27 @@ package com.attafitamim.mtproto.client.sockets.core.socket
 
 sealed interface SocketEvent {
 
-    object Open : SocketEvent
+    data object Connected : SocketEvent
 
-    data class OpenError(
-        val retryCount: Int,
-        val throwable: Throwable?
-    ) : SocketEvent
+    sealed interface Error : SocketEvent {
+        val cause: Throwable?
 
-    data class Close(
-        val type: Type,
-        val message: String?
-    ) : SocketEvent {
+        data class NoConnection(
+            override val cause: Throwable?,
+            val retryCount: Int
+        ) : Error
+    }
 
-        enum class Type {
-            GRACEFUL,
-            ABNORMAL
-        }
+    sealed interface Close : SocketEvent {
+
+        data object Unspecified : Close
+
+        data object Graceful : Close
+
+        data class Abnormal(
+            val errorCode: Short,
+            val errorName: String,
+            val message: String
+        ) : Close
     }
 }
