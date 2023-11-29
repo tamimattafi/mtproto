@@ -2,11 +2,13 @@ package com.attafitamim.mtproto.client.sockets.stream
 
 import com.attafitamim.mtproto.client.sockets.buffer.ByteOrder
 import com.attafitamim.mtproto.client.sockets.buffer.IByteBuffer
+import com.attafitamim.mtproto.client.sockets.buffer.IByteBufferProvider
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BOOLEAN_CONSTRUCTOR_FALSE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BOOLEAN_CONSTRUCTOR_TRUE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_BITS_COUNT
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_SIZE_DIVISOR
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_SLOT_SIZE
+import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.INT_SLOT_SIZE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.WRAPPED_BYTES_MAX_LENGTH
 import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
@@ -14,6 +16,8 @@ import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 class TLBufferedOutputStream(
     private val buffer: IByteBuffer
 ) : TLOutputStream {
+
+    override var position: Int by buffer::position
 
     override fun writeByte(value: Byte): Int = writeToBuffer {
         putByte(value)
@@ -24,6 +28,7 @@ class TLBufferedOutputStream(
         putInt(value)
         order(ByteOrder.BIG_ENDIAN)
     }
+
     override fun writeLong(value: Long): Int = writeToBuffer {
         order(ByteOrder.LITTLE_ENDIAN)
         putLong(value)
@@ -47,7 +52,7 @@ class TLBufferedOutputStream(
 
     override fun writeString(value: String): Int {
         val stringBytes = value.toByteArray()
-        return writeWrappedBytes(stringBytes)
+        return writeWrappedByteArray(stringBytes)
     }
 
     override fun writeByteArray(value: ByteArray): Int = writeToBuffer {
@@ -59,41 +64,62 @@ class TLBufferedOutputStream(
         return writeByteArray(bytes)
     }
 
-    private fun writeIntAsBytes(
+    override fun rewind() {
+        buffer.rewind()
+    }
+
+    override fun flip() {
+        buffer.flip()
+    }
+
+    override fun toByteArray(clip: Boolean): ByteArray {
+        if (clip) {
+            flip()
+        } else {
+            rewind()
+        }
+
+        return buffer.getByteArray()
+    }
+
+    override fun writeIntAsBytes(
         value: Int,
-        limit: Int = BYTE_SLOT_SIZE
+        limit: Int
     ) = writeToBuffer {
         var writtenBytes = 0
 
         while (writtenBytes < limit) {
             val bitsPosition = writtenBytes * BYTE_BITS_COUNT
-            val byte = (value shr bitsPosition).toByte()
-            writtenBytes += writeByte(byte)
+            val byte = (value shr bitsPosition) and 0xFF
+            writtenBytes += writeByte(byte.toByte())
         }
     }
 
     /**
      * @see <a href="https://core.telegram.org/mtproto/serialize#base-types">Base Types</a>
      */
-    private fun writeWrappedBytes(value: ByteArray) = writeToBuffer {
+    override fun writeWrappedByteArray(value: ByteArray, includePadding: Boolean) = writeToBuffer {
         val oldPosition = buffer.position
 
-        val size = value.size
+        /*val size = value.size
         if (size >= WRAPPED_BYTES_MAX_LENGTH) {
-            writeIntAsBytes(WRAPPED_BYTES_MAX_LENGTH)
-            writeIntAsBytes(size, limit = 3)
+            writeIntAsBytes(WRAPPED_BYTES_MAX_LENGTH, limit = BYTE_SLOT_SIZE)
+            writeIntAsBytes(size, limit = INT_SLOT_SIZE - BYTE_SLOT_SIZE)
         } else {
-            writeIntAsBytes(size)
-        }
+            writeIntAsBytes(size, limit = BYTE_SLOT_SIZE)
+        }*/
 
+        writeInt(value.size)
         writeByteArray(value)
 
-        val writtenBytes = buffer.position - oldPosition
-        val writtenBytesRemainder = writtenBytes % BYTE_SIZE_DIVISOR
-        if (writtenBytesRemainder > 0) {
-            val offsetBytesSize = BYTE_SIZE_DIVISOR - writtenBytesRemainder
-            val offsetBytes = ByteArray(offsetBytesSize)
-            writeByteArray(offsetBytes)
+        if (includePadding) {
+            val writtenBytes = buffer.position - oldPosition
+            val writtenBytesRemainder = writtenBytes % BYTE_SIZE_DIVISOR
+            if (writtenBytesRemainder > 0) {
+                val offsetBytesSize = BYTE_SIZE_DIVISOR - writtenBytesRemainder
+                val offsetBytes = ByteArray(offsetBytesSize)
+                writeByteArray(offsetBytes)
+            }
         }
     }
 
@@ -101,5 +127,19 @@ class TLBufferedOutputStream(
         val oldPosition = buffer.position
         buffer.onWrite()
         return buffer.position - oldPosition
+    }
+
+    class Provider(
+        private val byteBufferProvider: IByteBufferProvider
+    ) : IOutputStreamProvider {
+        override fun allocate(capacity: Int): TLOutputStream {
+            val buffer = byteBufferProvider.allocate(capacity)
+            return TLBufferedOutputStream(buffer)
+        }
+
+        override fun wrap(byteArray: ByteArray): TLOutputStream {
+            val buffer = byteBufferProvider.wrap(byteArray)
+            return TLBufferedOutputStream(buffer)
+        }
     }
 }

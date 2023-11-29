@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.konan.properties.Properties
 plugins {
     alias(libs.plugins.android.gradle.application)
     alias(libs.plugins.kotlin.android)
-    id("mtproto-generator")
+    id(libs.plugins.mtproto.generator.get().pluginId)
 }
 
 tasks.generateProtoClasses {
@@ -76,6 +76,10 @@ android {
         getByName("main") {
             java.srcDirs(tasks.generateProtoClasses.get().outputDir)
         }
+    }
+    val tlGenerator = tasks.getByName("generateProtoClasses")
+    applicationVariants.all {
+        registerResGeneratingTask(tlGenerator)
     }
 }
 

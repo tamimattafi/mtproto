@@ -11,6 +11,9 @@ interface IByteBuffer {
     fun putByteArray(byteArray: ByteArray)
 
     fun putInt(value: Int)
+    fun putShort(value: Short)
+
+    fun putInt(position: Int, value: Int)
 
     fun putLong(value: Long)
 
@@ -29,4 +32,6 @@ interface IByteBuffer {
     fun order(byteOrder: ByteOrder)
 
     fun wrap(byteArray: ByteArray): IByteBuffer
+
+    fun flip()
 }

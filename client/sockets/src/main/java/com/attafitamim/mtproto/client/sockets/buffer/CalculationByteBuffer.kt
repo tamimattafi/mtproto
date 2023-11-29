@@ -3,6 +3,7 @@ package com.attafitamim.mtproto.client.sockets.buffer
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_SLOT_SIZE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.INT_SLOT_SIZE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.LONG_SLOT_SIZE
+import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.SHORT_SLOT_SIZE
 import kotlin.math.max
 
 class CalculationByteBuffer(
@@ -27,6 +28,14 @@ class CalculationByteBuffer(
 
     override fun putInt(value: Int) {
         write(INT_SLOT_SIZE)
+    }
+
+    override fun putInt(position: Int, value: Int) {
+        putInt(value)
+    }
+
+    override fun putShort(value: Short) {
+        write(SHORT_SLOT_SIZE)
     }
 
     override fun putLong(value: Long) {
@@ -68,6 +77,10 @@ class CalculationByteBuffer(
 
     override fun wrap(byteArray: ByteArray): IByteBuffer =
         CalculationByteBuffer(byteArray.size)
+
+    override fun flip() {
+        position = 0
+    }
 
     private fun read(length: Int) {
         position += length

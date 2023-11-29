@@ -31,6 +31,14 @@ class JavaByteBuffer(
         byteBuffer.putInt(value)
     }
 
+    override fun putShort(value: Short) {
+        byteBuffer.putShort(value)
+    }
+
+    override fun putInt(position: Int, value: Int) {
+        byteBuffer.putInt(position, value)
+    }
+
     override fun putLong(value: Long) {
         byteBuffer.putLong(value)
     }
@@ -64,16 +72,23 @@ class JavaByteBuffer(
         }
     }
 
-    override fun wrap(byteArray: ByteArray): IByteBuffer {
-        val newBuffer = ByteBuffer.wrap(byteArray)
-        return JavaByteBuffer(newBuffer)
+    override fun wrap(byteArray: ByteArray): IByteBuffer =
+        Companion.wrap(byteArray)
+
+    override fun flip() {
+        byteBuffer.flip()
     }
 
-    companion object {
+    companion object : IByteBufferProvider {
 
-        fun allocate(capacity: Int): IByteBuffer {
+        override fun allocate(capacity: Int): IByteBuffer {
             val byteBuffer = ByteBuffer.allocate(capacity)
             return JavaByteBuffer(byteBuffer)
+        }
+
+        override fun wrap(byteArray: ByteArray): IByteBuffer {
+            val newBuffer = ByteBuffer.wrap(byteArray)
+            return JavaByteBuffer(newBuffer)
         }
     }
 }

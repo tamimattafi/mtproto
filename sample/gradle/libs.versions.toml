@@ -37,8 +37,7 @@ androidx_core = { module = "androidx.core:core", version.ref = "androidx_core" }
 # WebSockets
 ktor_webscokets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 
-# HTTP
-ktor_mock_client = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+# Ktor
 ktor_core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor_cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor_logger = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
@@ -46,3 +45,4 @@ ktor_logger = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 [plugins]
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 android-gradle-application = { id = "com.android.application", version.ref = "android-gradle" }
+mtproto-generator = { id = "mtproto-generator" }

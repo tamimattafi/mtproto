@@ -1,6 +1,7 @@
 package com.attafitamim.mtproto.core.serialization.streams
 
 interface TLInputStream {
+    var position: Int
     fun readByte(): Byte
     fun readInt(): Int
     fun readLong(): Long
@@ -10,4 +11,6 @@ interface TLInputStream {
     fun readByteArray(): ByteArray
     fun readBytes(limit: Int): ByteArray
     fun readInputStream(): TLInputStream
+    fun rewind()
+    fun flip()
 }

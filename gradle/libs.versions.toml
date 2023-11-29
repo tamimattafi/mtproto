@@ -1,9 +1,12 @@
 [versions]
+# Lib
+mtproto = "3.0.0-local04"
+
 # Plugins
 android-gradle = "8.1.3"
 kotlinpoet = "1.14.2"
 
-# HTTP
+# Ktor
 ktor = "2.3.5"
 
 # Kotlin
@@ -17,10 +20,14 @@ nexus-publish = "1.1.0"
 # Docs
 dokka = "1.9.10"
 
+# Testing
+junit = "4.13.2"
+
 [libraries]
 # Local (Use as implementation(project(...))
 # Usage Example: implementation(project(libs.mtproto.client.api.get().module.name))
 mtproto_client_api = { group = "_", name = ":client:api" }
+mtproto-generator = { module = "com.attafitamim.mtproto:generator", version.ref = "mtproto" }
 
 # Plugins
 android-gradle = { module = "com.android.tools.build:gradle", version.ref = "android-gradle" }
@@ -30,13 +37,22 @@ nexus-publish = { module = "io.github.gradle-nexus:publish-plugin", version.ref 
 
 # WebSockets
 ktor_webscokets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
+ktor_network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 
-# HTTP
+# Ktor
+ktor_core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor_cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor_logger = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 
-#IO
+# IO
 kotlinx-io = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
+
+# Testing
+junit = { module = "junit:junit", version.ref = "junit" }
+
+# Kotlin
+kotlin_coroutines_core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin_coroutines" }
+kotlin_coroutines_test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin_coroutines" }
 
 [plugins]
 java-library = { id = "java-library" }
@@ -50,3 +66,4 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 android-gradle-application = { id = "com.android.application", version.ref = "android-gradle" }
 android-gradle-library = { id = "com.android.library", version.ref = "android-gradle" }
 signing = { id = "signing" }
+mtproto-generator = { id = "mtproto-generator" }

@@ -2,6 +2,7 @@ package com.attafitamim.mtproto.client.sockets.stream
 
 import com.attafitamim.mtproto.client.sockets.buffer.ByteOrder
 import com.attafitamim.mtproto.client.sockets.buffer.IByteBuffer
+import com.attafitamim.mtproto.client.sockets.buffer.IByteBufferProvider
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BOOLEAN_CONSTRUCTOR_FALSE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BOOLEAN_CONSTRUCTOR_TRUE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_SIZE_DIVISOR
@@ -13,6 +14,8 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 class TLBufferedInputStream(
     private val buffer: IByteBuffer
 ) : TLInputStream {
+
+    override var position: Int by buffer::position
 
     override fun readByte(): Byte =
         buffer.getByte()
@@ -58,6 +61,14 @@ class TLBufferedInputStream(
     override fun readInputStream(): TLInputStream =
         TLBufferedInputStream(buffer)
 
+    override fun rewind() {
+        buffer.rewind()
+    }
+
+    override fun flip() {
+        buffer.flip()
+    }
+
     private fun readIntFromBytes(
         limit: Int = BYTE_SLOT_SIZE
     ): Int {
@@ -98,5 +109,20 @@ class TLBufferedInputStream(
         }
 
         return bytes
+    }
+
+    class Provider(
+        private val byteBufferProvider: IByteBufferProvider
+    ) : IInputStreamProvider {
+
+        override fun allocate(capacity: Int): TLInputStream {
+            val buffer = byteBufferProvider.allocate(capacity)
+            return TLBufferedInputStream(buffer)
+        }
+
+        override fun wrap(byteArray: ByteArray): TLInputStream {
+            val buffer = byteBufferProvider.wrap(byteArray)
+            return TLBufferedInputStream(buffer)
+        }
     }
 }

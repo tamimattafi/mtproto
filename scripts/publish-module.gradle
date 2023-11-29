@@ -4,7 +4,6 @@ apply plugin: libs.plugins.dokka.get().pluginId
 
 ext {
     PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '3.0.0-local04'
 }
 
 task projectSourcesJar(type: Jar) {
@@ -45,7 +44,7 @@ artifacts {
 }
 
 group = PUBLISH_GROUP_ID
-version = PUBLISH_VERSION
+version = libs.versions.mtproto.get()
 
 afterEvaluate {
     publishing {
@@ -53,7 +52,7 @@ afterEvaluate {
             release(MavenPublication) {
                 groupId PUBLISH_GROUP_ID
                 artifactId PUBLISH_ARTIFACT_ID
-                version PUBLISH_VERSION
+                version libs.versions.mtproto.get()
 
                 if (project.plugins.findPlugin("com.android.library")) {
                     from components.release
