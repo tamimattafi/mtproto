@@ -1,106 +1,418 @@
 package com.attafitamim.mtproto.client.sockets.test.helpers
 
-import com.attafitamim.mtproto.client.sockets.buffer.CalculationByteBuffer
 import com.attafitamim.mtproto.client.sockets.buffer.JavaByteBuffer
-import com.attafitamim.mtproto.client.sockets.core.socket.ISocket
+import com.attafitamim.mtproto.client.sockets.connection.IConnection
+import com.attafitamim.mtproto.client.sockets.connection.SocketConnection
 import com.attafitamim.mtproto.client.sockets.obfuscation.DefaultObfuscator
 import com.attafitamim.mtproto.client.sockets.obfuscation.IObfuscator
 import com.attafitamim.mtproto.client.sockets.obfuscation.ISecureRandom
-import com.attafitamim.mtproto.client.sockets.obfuscation.JavaCipherFactory
-import com.attafitamim.mtproto.client.sockets.obfuscation.toHex
+import com.attafitamim.mtproto.client.sockets.obfuscation.cipher.JavaCipherFactory
+import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.AES256IGEDecrypt
+import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.AES256IGEEncrypt
+import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.align
+import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.alignKeyZero
+import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.loadBigInt
+import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.substring
+import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.xor
+import com.attafitamim.mtproto.client.sockets.serialization.PQSolver
 import com.attafitamim.mtproto.client.sockets.stream.TLBufferedInputStream
-import com.attafitamim.mtproto.client.sockets.stream.TLBufferedOutputStream
-import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
-import com.attafitamim.mtproto.core.types.TLMethod
-import com.attafitamim.mtproto.core.types.TLObject
+import com.attafitamim.mtproto.client.sockets.utils.serializeData
+import com.attafitamim.scheme.mtproto.containers.global.TLInt128
+import com.attafitamim.scheme.mtproto.containers.global.TLInt256
+import com.attafitamim.scheme.mtproto.methods.global.TLReqDHParams
+import com.attafitamim.scheme.mtproto.methods.global.TLReqPq
+import com.attafitamim.scheme.mtproto.methods.global.TLSetClientDHParams
+import com.attafitamim.scheme.mtproto.types.global.TLClientDHInnerData
+import com.attafitamim.scheme.mtproto.types.global.TLPQInnerData
+import com.attafitamim.scheme.mtproto.types.global.TLResPQ
+import com.attafitamim.scheme.mtproto.types.global.TLServerDHInnerData
+import com.attafitamim.scheme.mtproto.types.global.TLServerDHParams
+import com.attafitamim.scheme.mtproto.types.global.TLSetClientDHParamsAnswer
+import com.attafitamim.scheme.mtproto.types.global.TLVector
+import java.math.BigInteger
+import java.security.KeyFactory
+import java.security.MessageDigest
 import java.security.SecureRandom
+import java.security.spec.RSAPublicKeySpec
+import javax.crypto.Cipher
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 object Playground {
 
     private const val WEB_SOCKET_URL = "wss://localhost:2047/ws"
-    private const val TCP_IP = "127.0.0.1"
-    private const val TCP_PORT = 2045
+    private const val SERVER_IP = "127.0.0.1"
+    private const val SERVER_PORT = 2047
 
-    suspend fun <R : TLObject> sendRequest(method: TLMethod<R>): R {
-        // Prepare socket factory
-        val endpointProvider = ConnectionHelper.createdEndpointProvider(TCP_IP, TCP_PORT)
+    suspend fun connectToSocket() {
+        val endpointProvider = ConnectionHelper.createdEndpointProvider(SERVER_IP, SERVER_PORT)
         val socketProvider = ConnectionHelper.createSocketProvider(endpointProvider)
 
-        // Create Socket
-        val socket = socketProvider.provideSocket()
-        socket.start()
+        val obfuscator = createObfuscator()
+        val connection: IConnection = SocketConnection(
+            obfuscator,
+            socketProvider
+        )
 
-        ConnectionHelper.scope.launch {
-            socket.readBytes().collect { bytes ->
-                println("RECEIVED_BYTES: ${bytes.size}")
+        // Step 0
+        connection.connect()
+        delay(1000)
+
+        // Step 1
+        val resPq = connection.sendReqPQ()
+        if (resPq !is TLResPQ.ResPQ) {
+            error("resPQ variant not supported $resPq")
+        }
+
+        // Step 2
+        val newNonce = generateNewNonce()
+
+        // Step 3
+        val serverDhParams = connection.sendReqDhParams(resPq, newNonce)
+        if (serverDhParams !is TLServerDHParams.ServerDHParamsOk) {
+            error("TLServerDHParams variant not supported $serverDhParams")
+        }
+
+        // Step 4
+        val tempAesCredentials = generateAesIgeCredentials(
+            newNonce,
+            resPq.serverNonce
+        )
+
+        // Step 5
+        val serverDhInner = serverDhParams.getDecryptedData(tempAesCredentials)
+        if (serverDhInner !is TLServerDHInnerData.ServerDHInnerData) {
+            error("TLServerDHInnerData variant not supported $serverDhInner")
+        }
+
+        // Step 6
+        val authKey = generateAuthKey(serverDhInner)
+
+        // Step 7
+        repeat(5) { retryId ->
+            val response = connection.sendReqSetDhClientParams(
+                resPq,
+                tempAesCredentials,
+                authKey,
+                retryId
+            )
+
+            val authAuxHash = digestSha1(authKey.key).sliceArray(0 ..< 8)
+
+            when (response) {
+                is TLSetClientDHParamsAnswer.DhGenOk -> {
+                    val newNonceHash = substring(digestSha1(
+                        newNonce.bytes,
+                        byteArrayOf(1),
+                        authAuxHash
+                    ),4, 16)
+
+                    if (!response.newNonceHash1.bytes.contentEquals(newNonceHash)) {
+                        throw SecurityException()
+                    }
+
+                    val serverSalt = xor(substring(newNonce.bytes, 0, 8), substring(resPq.serverNonce.bytes, 0, 8))
+                    val authCredentials = AuthCredentials(authKey.key, serverSalt)
+
+                    println("AUTH_SUCCESS: $authCredentials")
+
+                    return
+                }
+
+                is TLSetClientDHParamsAnswer.DhGenRetry -> {
+                    val newNonceHash = substring(digestSha1(newNonce.bytes, byteArrayOf(2), authAuxHash), 4, 16)
+
+                    if (!response.newNonceHash2.bytes.contentEquals(newNonceHash)) {
+                        throw SecurityException()
+                    }
+                }
+
+                is TLSetClientDHParamsAnswer.DhGenFail -> {
+                    val newNonceHash = substring(digestSha1(newNonce.bytes, byteArrayOf(3), authAuxHash), 4, 16)
+
+                    if (!response.newNonceHash3.bytes.contentEquals(newNonceHash)) {
+                        throw SecurityException()
+                    }
+
+                    return@repeat
+                }
             }
         }
 
-        // Serialize data to bytes
-        val requestBytes = method.toPublicMessage()
-
-        // Send request and get response
-        socket.writeMessage(requestBytes)
-
-        // Use bytes from response
-        return method.parseResponse(ByteArray(1000))
+        error("AUTH_FAILED")
     }
 
-    private fun <R : Any> TLMethod<R>.parseResponse(responseBytes: ByteArray): R {
-        val responseBuffer = JavaByteBuffer.wrap(responseBytes)
-        val inputStream = TLBufferedInputStream(responseBuffer)
+    // Step 1
+    private suspend fun IConnection.sendReqPQ(): TLResPQ {
+        val nonceBytes = ByteArray(16)
+        SecureRandom().nextBytes(nonceBytes)
 
-        val messageId = inputStream.readLong()
-        val responseSize = inputStream.readInt()
+        val nonce = TLInt128(nonceBytes)
+        val request = TLReqPq(nonce)
 
-        return parse(inputStream)
+        return sendRequest(request)
     }
 
-    private fun <R : Any> TLMethod<R>.toPublicMessage(): ByteArray {
-        val authKeyId = 0L
-        val requestMessageId = generateMessageId()
-        val methodBytesSize = calculateData(::serialize)
-        val methodBytes = serializeData(methodBytesSize, ::serialize)
+    // Step 2
+    private fun generateNewNonce(): TLInt256 {
+        val newNonceBytes = ByteArray(32)
+        SecureRandom().nextBytes(newNonceBytes)
+        return TLInt256(newNonceBytes)
+    }
 
-        return serializeData {
-            writeLong(authKeyId)
-            writeLong(requestMessageId)
-            writeInt(methodBytesSize)
-            writeByteArray(methodBytes)
+    // Step 3
+    private suspend fun IConnection.sendReqDhParams(
+        resPq: TLResPQ.ResPQ,
+        newNonce: TLInt256
+    ): TLServerDHParams {
+
+
+        val serverFingerPrints = resPq.serverPublicKeyFingerprints.toList()
+        val fingerPrintSupported = serverFingerPrints.contains(fingerprint)
+        if (!fingerPrintSupported) {
+            error("No finger prints from the list are supported by the client: $serverFingerPrints")
+        }
+
+        val solvedPQ = PQSolver.solve(BigInteger(1, resPq.pq))
+
+        val solvedP = fromBigInt(solvedPQ.p)
+        val solvedQ = fromBigInt(solvedPQ.q)
+        val pqData = TLPQInnerData.PQInnerData(
+            resPq.pq,
+            solvedP,
+            solvedQ,
+            resPq.nonce,
+            resPq.serverNonce,
+            newNonce
+        )
+
+        val pqDataBytes = serializeData {
+            pqData.serialize(this)
+        }
+
+        val pqDataHash = digestSha1(pqDataBytes)
+        val paddingSize = 255 - (pqDataBytes.size + pqDataHash.size)
+        val padding = if (paddingSize > 0) RandomUtils.randomByteArray(paddingSize) else ByteArray(0)
+        val dataWithHash = pqDataHash + pqDataBytes + padding
+        val encryptedData = rsa(publicKey, exponent, dataWithHash)
+
+        val request = TLReqDHParams(
+            resPq.nonce,
+            resPq.serverNonce,
+            solvedP,
+            solvedQ,
+            fingerprint,
+            encryptedData
+        )
+
+        return sendRequest(request)
+    }
+
+
+    // Step 5
+    private fun TLServerDHParams.ServerDHParamsOk.getDecryptedData(
+        aesIgeCredentials: AesIgeCredentials
+    ): TLServerDHInnerData {
+        val answer = AES256IGEDecrypt(
+            encryptedAnswer,
+            aesIgeCredentials.iv,
+            aesIgeCredentials.key
+        )
+
+        val stream = TLBufferedInputStream
+            .Provider(JavaByteBuffer)
+            .wrap(answer)
+
+        val answerHash = stream.readBytes(20) // Hash
+        val dhInner = TLServerDHInnerData.parse(stream)
+        println("DH_INNER: $dhInner")
+
+        val serializedDhInner = serializeData {
+            dhInner.serialize(this)
+        }
+
+        val serializedHash = digestSha1(serializedDhInner)
+        if (!answerHash.contentEquals(serializedHash)) {
+            throw SecurityException()
+        }
+
+        println("DH_INNER: security passed")
+
+        return dhInner
+    }
+
+    // Step 6
+    private fun generateAuthKey(
+        serverDHInnerData: TLServerDHInnerData.ServerDHInnerData,
+        size: Int = 256
+    ): AuthKey {
+        val b = loadBigInt(RandomUtils.randomByteArray(256))
+        val g = BigInteger(serverDHInnerData.g.toString())
+        val dhPrime = loadBigInt(serverDHInnerData.dhPrime)
+        val gb = g.modPow(b, dhPrime)
+
+        val authKeyVal = loadBigInt(serverDHInnerData.gA).modPow(b, dhPrime)
+        val authKey =  alignKeyZero(fromBigInt(authKeyVal), size)
+
+        val gbBytes = fromBigInt(gb)
+        return AuthKey(authKey, gbBytes)
+    }
+
+    // Step 7
+    private suspend fun IConnection.sendReqSetDhClientParams(
+        resPq: TLResPQ.ResPQ,
+        aesIgeCredentials: AesIgeCredentials,
+        authKey: AuthKey,
+        retryId: Int
+    ): TLSetClientDHParamsAnswer {
+        val clientDHInner = TLClientDHInnerData.ClientDHInnerData(
+            resPq.nonce,
+            resPq.serverNonce,
+            retryId.toLong(),
+            authKey.gb
+        )
+
+        val innerDataBytes = serializeData {
+            clientDHInner.serialize(this)
+        }
+
+        val innerDataWithHash = align(digestSha1(innerDataBytes) + innerDataBytes, 16)
+        val dataWithHashEnc = AES256IGEEncrypt(innerDataWithHash, aesIgeCredentials.iv, aesIgeCredentials.key)
+
+        val request = TLSetClientDHParams(resPq.nonce, resPq.serverNonce, dataWithHashEnc)
+        return sendRequest(request)
+    }
+
+    // Step 4
+    private fun generateAesIgeCredentials(
+        newNonce: TLInt256,
+        serverNonce: TLInt128
+    ): AesIgeCredentials {
+        val key = digestSha1(
+            newNonce.bytes,
+            serverNonce.bytes
+        ) + digestSha1(
+            serverNonce.bytes,
+            newNonce.bytes
+        ).sliceArray(0..<12)
+
+
+        val iv = digestSha1(
+            serverNonce.bytes,
+            newNonce.bytes
+        ).sliceArray(12..<20) + digestSha1(
+            newNonce.bytes,
+            newNonce.bytes
+        ) + newNonce.bytes.sliceArray(0..<4)
+
+        return AesIgeCredentials(key, iv)
+    }
+
+    data class AesIgeCredentials(
+        val key: ByteArray,
+        val iv: ByteArray
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as AesIgeCredentials
+
+            if (!key.contentEquals(other.key)) return false
+            if (!iv.contentEquals(other.iv)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = key.contentHashCode()
+            result = 31 * result + iv.contentHashCode()
+            return result
         }
     }
 
-    private fun calculateData(onWrite: TLOutputStream.() -> Unit): Int {
-        val calculationBuffer = CalculationByteBuffer()
-        val calculationStream = TLBufferedOutputStream(calculationBuffer)
-        calculationStream.onWrite()
-        calculationBuffer.flip()
+    data class AuthKey(
+        val key: ByteArray,
+        val gb: ByteArray
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
 
-        return calculationBuffer.remaining
+            other as AuthKey
+
+            if (!key.contentEquals(other.key)) return false
+            if (!gb.contentEquals(other.gb)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = key.contentHashCode()
+            result = 31 * result + gb.contentHashCode()
+            return result
+        }
     }
 
-    private fun serializeData(
-        onWrite: TLOutputStream.() -> Unit
+    data class AuthCredentials(
+        val key: ByteArray,
+        val salt: ByteArray
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as AuthCredentials
+
+            if (!key.contentEquals(other.key)) return false
+            if (!salt.contentEquals(other.salt)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = key.contentHashCode()
+            result = 31 * result + salt.contentHashCode()
+            return result
+        }
+    }
+
+    fun digestSha1(vararg src: ByteArray): ByteArray {
+        val crypt: MessageDigest = MessageDigest.getInstance("SHA-1")
+
+        src.forEach { source ->
+            crypt.update(source)
+        }
+
+        return crypt.digest()
+    }
+
+    fun rsa(
+        publicKey: String,
+        exponent: String,
+        src: ByteArray
     ): ByteArray {
-        val size = calculateData(onWrite)
-        return serializeData(size, onWrite)
+        val keyFactory = KeyFactory.getInstance("RSA")
+        val cipher = Cipher.getInstance("RSA/ECB/NoPadding")
+        val keySpec = keyFactory.generatePublic(RSAPublicKeySpec(BigInteger(publicKey, 16), BigInteger(exponent, 16)))
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec)
+        return cipher.doFinal(src)
     }
 
-    private fun serializeData(
-        size: Int,
-        onWrite: TLOutputStream.() -> Unit
-    ): ByteArray {
-        val javaBuffer = JavaByteBuffer.allocate(size)
-        val outputStream = TLBufferedOutputStream(javaBuffer)
-        outputStream.onWrite()
-        javaBuffer.flip()
-
-        return javaBuffer.getByteArray()
+    private fun fromBigInt(value: BigInteger): ByteArray {
+        val res = value.toByteArray()
+        return if (res[0].toInt() == 0) {
+            val res2 = ByteArray(res.size - 1)
+            System.arraycopy(res, 1, res2, 0, res2.size)
+            res2
+        } else {
+            res
+        }
     }
 
-    private fun generateMessageId() = System.currentTimeMillis()
+    private fun <T : Any> TLVector<T>.toList() = when (this) {
+        is TLVector.Vector -> elements
+    }
 
     fun createSecureRandom(): ISecureRandom {
         val secureRandom = SecureRandom()
@@ -124,33 +436,5 @@ object Playground {
             JavaByteBuffer.Companion,
             cipherFactory
         )
-    }
-
-    private suspend fun ISocket.writeMessage(request: ByteArray) {
-        val obfuscator = createObfuscator()
-
-        val initBytes = obfuscator.init(ByteArray(0))
-        writeBytes(initBytes)
-        println("FINAL_INIT: ${initBytes.toHex()}")
-
-        delay(3000)
-
-
-        // writeBytes(initBytes)
-        delay(2000)
-
-        val packetBytes = serializeData {
-            writeWrappedByteArray(request, includePadding = false)
-        }
-
-        println("REQUEST: ${packetBytes.toHex()}")
-
-        delay(1000)
-
-        val obfuscatedBytes = obfuscator.obfuscate(packetBytes)
-        println("OBFUSCATED: ${obfuscatedBytes.toHex()}")
-        writeBytes(obfuscatedBytes)
-
-        delay(10000)
     }
 }

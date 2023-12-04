@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.client.sockets.obfuscation
+package com.attafitamim.mtproto.client.sockets.obfuscation.cipher
 
 import io.ktor.util.moveToByteArray
 import java.nio.ByteBuffer
@@ -8,7 +8,7 @@ import javax.crypto.spec.SecretKeySpec
 import org.apache.commons.crypto.cipher.CryptoCipherFactory
 
 
-class JavaCipher(
+class RSACipher(
     algorithm: String,
     private val keyAlgorithm: String
 ) : ICipher {
@@ -42,7 +42,8 @@ class JavaCipher(
     }
 
     companion object {
-        const val ALGORITHM_CTR = "AES/CTR/NoPadding"
-        const val KEY_ALGORITHM_AES = "AES"
+        const val ALGORITHM_RSA_CTR = "RSA/ECB/NoPadding"
+
+        const val KEY_ALGORITHM_RSA = "RSA"
     }
 }

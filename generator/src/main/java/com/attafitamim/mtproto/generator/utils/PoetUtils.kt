@@ -13,13 +13,11 @@ import com.attafitamim.mtproto.generator.syntax.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.math.pow
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction2
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.valueParameters
-import kotlin.reflect.KFunction2
-
 import kotlin.reflect.jvm.javaType
 
 fun TypeSpec.Builder.addPrimaryConstructor(properties: List<PropertySpec>): TypeSpec.Builder {
@@ -362,7 +360,7 @@ fun FunSpec.Builder.addBytesParseStatement(
         append(
             INPUT_STREAM_NAME,
             INSTANCE_ACCESS_KEY,
-            TLInputStream::readByteArray.name,
+            TLInputStream::readWrappedBytes.name,
             PARAMETER_OPEN_PARENTHESIS,
             PARAMETER_CLOSE_PARENTHESIS
         )
@@ -642,7 +640,7 @@ fun FunSpec.Builder.addBytesSerializeStatement(
     typeSpec: TLTypeSpec.Structure.Bytes,
     flag: Int?
 ): FunSpec.Builder = this.addSerializeFlagCheckStatement(name, flag) {
-    if (typeSpec.fixedSize != null) {
+    val serializeMethod = if (typeSpec.fixedSize != null) {
         val byteArraySizeName = buildString {
             append(
                 name,
@@ -663,13 +661,17 @@ fun FunSpec.Builder.addBytesSerializeStatement(
         }
 
         addStatement(sizeValidationStatement)
+
+        TLOutputStream::writeByteArray.name
+    } else {
+        TLOutputStream::writeWrappedByteArray.name
     }
 
     val serializeStatement = buildString {
         append(
             OUTPUT_STREAM_NAME,
             INSTANCE_ACCESS_KEY,
-            TLOutputStream::writeByteArray.name,
+            serializeMethod,
             PARAMETER_OPEN_PARENTHESIS,
             name,
             PARAMETER_CLOSE_PARENTHESIS
@@ -791,7 +793,12 @@ fun createTypeParserAsParameter(
             KEYWORD_SEPARATOR,
             CURLY_BRACE_CLOSE
         )
-    } else createTypeParserAsParameter(TLTypeSpec.Primitive(ByteArray::class), typeNameFactory)
+    } else {
+        createTypeParserAsParameter(
+            TLTypeSpec.Primitive(ByteArray::class),
+            typeNameFactory
+        )
+    }
 
     is TLTypeSpec.TLType.Container -> buildString {
         append(
@@ -825,7 +832,7 @@ fun getTypeParseMethod(type: KClass<out Any>) = when(type) {
     Long::class -> TLInputStream::readLong
     Double::class -> TLInputStream::readDouble
     String::class -> TLInputStream::readString
-    ByteArray::class -> TLInputStream::readByteArray
+    ByteArray::class -> TLInputStream::readWrappedBytes
     TLInputStream::class -> TLInputStream::readInputStream
     else -> throw Exception()
 }
@@ -837,7 +844,7 @@ fun getTypeSerializeMethod(type: KClass<out Any>) = when(type) {
     Long::class -> TLOutputStream::writeLong
     Double::class -> TLOutputStream::writeDouble
     String::class -> TLOutputStream::writeString
-    ByteArray::class -> TLOutputStream::writeByteArray
+    ByteArray::class -> TLOutputStream::writeWrappedByteArray
     TLInputStream::class -> TLOutputStream::writeInputStream
     else -> throw Exception()
 }

@@ -6,10 +6,6 @@ import com.attafitamim.mtproto.client.sockets.buffer.IByteBufferProvider
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BOOLEAN_CONSTRUCTOR_FALSE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BOOLEAN_CONSTRUCTOR_TRUE
 import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_BITS_COUNT
-import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_SIZE_DIVISOR
-import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.BYTE_SLOT_SIZE
-import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.INT_SLOT_SIZE
-import com.attafitamim.mtproto.client.sockets.serialization.SerializationUtils.WRAPPED_BYTES_MAX_LENGTH
 import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 
@@ -98,29 +94,28 @@ class TLBufferedOutputStream(
     /**
      * @see <a href="https://core.telegram.org/mtproto/serialize#base-types">Base Types</a>
      */
-    override fun writeWrappedByteArray(value: ByteArray, includePadding: Boolean) = writeToBuffer {
-        val oldPosition = buffer.position
+    override fun writeWrappedByteArray(value: ByteArray, appendPadding: Boolean) = writeToBuffer {
 
-        /*val size = value.size
-        if (size >= WRAPPED_BYTES_MAX_LENGTH) {
-            writeIntAsBytes(WRAPPED_BYTES_MAX_LENGTH, limit = BYTE_SLOT_SIZE)
-            writeIntAsBytes(size, limit = INT_SLOT_SIZE - BYTE_SLOT_SIZE)
+        if (value.size <= 253) {
+            buffer.putByte(value.size.toByte())
         } else {
-            writeIntAsBytes(size, limit = BYTE_SLOT_SIZE)
-        }*/
-
-        writeInt(value.size)
-        writeByteArray(value)
-
-        if (includePadding) {
-            val writtenBytes = buffer.position - oldPosition
-            val writtenBytesRemainder = writtenBytes % BYTE_SIZE_DIVISOR
-            if (writtenBytesRemainder > 0) {
-                val offsetBytesSize = BYTE_SIZE_DIVISOR - writtenBytesRemainder
-                val offsetBytes = ByteArray(offsetBytesSize)
-                writeByteArray(offsetBytes)
-            }
+            buffer.putByte(254.toByte())
+            buffer.putByte(value.size.toByte())
+            buffer.putByte((value.size shr 8).toByte())
+            buffer.putByte((value.size shr 16).toByte())
         }
+
+        buffer.putByteArray(value)
+
+        var i = if (value.size <= 253) 1 else 4
+        while ((value.size + i) % 4 != 0) {
+            buffer.putByte(0.toByte())
+            i++
+        }
+
+        /*
+        writeInt(value.size)
+        writeByteArray(value)*/
     }
 
     private fun writeToBuffer(onWrite: IByteBuffer.() -> Unit): Int {

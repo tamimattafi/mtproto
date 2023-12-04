@@ -1,6 +1,9 @@
 package com.attafitamim.mtproto.client.sockets.obfuscation
 
 import com.attafitamim.mtproto.client.sockets.buffer.IByteBufferProvider
+import com.attafitamim.mtproto.client.sockets.obfuscation.cipher.CipherMode
+import com.attafitamim.mtproto.client.sockets.obfuscation.cipher.ICipher
+import com.attafitamim.mtproto.client.sockets.obfuscation.cipher.ICipherFactory
 
 /**
  * The default obfuscator, check telegram docs for more info:
@@ -19,8 +22,8 @@ class DefaultObfuscator(
     private var encryptionCipher: ICipher? = null
     private var decryptionCipher: ICipher? = null
 
-    override fun init(input: ByteArray): ByteArray {
-        val initBytes = byteArrayOf(42, -44, 29, -109, -89, -37, 115, -36, -12, 61, -77, 45, -107, -113, -15, 69, -41, -22, -28, 2, 84, -18, -53, -74, 125, -23, 94, -31, -72, 12, 47, 61, 4, 69, -96, -8, -7, -54, -116, -39, -27, 16, 117, 2, -68, -91, -17, -61, -80, -99, 59, 55, 79, -105, 116, 37, -18, -18, -18, -18, -4, -1, 41, -32) // generateInitBytes()
+    override fun init(): ByteArray {
+        val initBytes = generateInitBytes()
         println("INIT: ${initBytes.toHex()}")
 
         val encryptionKey = initBytes.getKey()
@@ -36,14 +39,13 @@ class DefaultObfuscator(
         val decryptionKey = initBytesReversed.getKey()
         val decryptionIV = initBytesReversed.getIV()
         val decryptionCipher = cipherProvider.createAESCTRCipher().apply {
-            init(CipherMode.DECRYPT, encryptionKey, encryptionIV)
+            init(CipherMode.DECRYPT, decryptionKey, decryptionIV)
         }
 
-        val bytes = initBytes + input
-        val encryptedInitBytes = encryptionCipher.updateData(bytes)
+        val encryptedInitBytes = encryptionCipher.updateData(initBytes)
         println("ENCRYPTED_INIT: ${encryptedInitBytes.toHex()}")
 
-        val encryptedFooter = encryptedInitBytes.sliceArray(PROTOCOL_POSITION..< bytes.size)
+        val encryptedFooter = encryptedInitBytes.sliceArray(PROTOCOL_POSITION..< initBytes.size)
 
         this.encryptionCipher = encryptionCipher
         this.decryptionCipher = decryptionCipher

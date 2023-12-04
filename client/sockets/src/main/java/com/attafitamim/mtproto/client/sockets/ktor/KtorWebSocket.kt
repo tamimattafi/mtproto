@@ -87,6 +87,7 @@ class KtorWebSocket(
     }
 
     private suspend fun handleIncomingFrame(frame: Frame) {
+        println("WEB_SOCKET: incoming frame $frame")
         when (frame) {
             is Frame.Binary -> bytesFlow.emit(frame.data)
             is Frame.Text -> {

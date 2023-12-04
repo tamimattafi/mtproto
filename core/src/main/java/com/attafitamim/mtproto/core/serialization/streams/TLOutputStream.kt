@@ -10,7 +10,7 @@ interface TLOutputStream {
     fun writeBoolean(value: Boolean): Int
     fun writeString(value: String): Int
     fun writeByteArray(value: ByteArray): Int
-    fun writeWrappedByteArray(value: ByteArray, includePadding: Boolean = true): Int
+    fun writeWrappedByteArray(value: ByteArray, appendPadding: Boolean = false): Int
     fun writeInputStream(value: TLInputStream): Int
     fun rewind()
     fun flip()

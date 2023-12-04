@@ -10,6 +10,7 @@ interface TLInputStream {
     fun readString(): String
     fun readByteArray(): ByteArray
     fun readBytes(limit: Int): ByteArray
+    fun readWrappedBytes(): ByteArray
     fun readInputStream(): TLInputStream
     fun rewind()
     fun flip()

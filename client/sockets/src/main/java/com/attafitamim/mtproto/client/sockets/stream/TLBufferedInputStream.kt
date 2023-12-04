@@ -69,26 +69,10 @@ class TLBufferedInputStream(
         buffer.flip()
     }
 
-    private fun readIntFromBytes(
-        limit: Int = BYTE_SLOT_SIZE
-    ): Int {
-        val values = ByteArray(INT_SLOT_SIZE).apply {
-            fill(0, limit, lastIndex)
-        }
-
-        buffer.fillByteArray(values, offset = 0, limit = limit)
-
-        val valueBuffer = buffer.wrap(values).apply {
-            order(ByteOrder.LITTLE_ENDIAN)
-        }
-
-        return valueBuffer.getInt()
-    }
-
     /**
      * @see <a href="https://core.telegram.org/mtproto/serialize#base-types">Base Types</a>
      */
-    private fun readWrappedBytes(): ByteArray {
+    override fun readWrappedBytes(): ByteArray {
         var readBytesSize = 0
         var length = readIntFromBytes(limit = BYTE_SLOT_SIZE)
         readBytesSize += BYTE_SLOT_SIZE
@@ -109,6 +93,22 @@ class TLBufferedInputStream(
         }
 
         return bytes
+    }
+
+    private fun readIntFromBytes(
+        limit: Int = BYTE_SLOT_SIZE
+    ): Int {
+        val values = ByteArray(INT_SLOT_SIZE).apply {
+            fill(0, limit, lastIndex)
+        }
+
+        buffer.fillByteArray(values, offset = 0, limit = limit)
+
+        val valueBuffer = buffer.wrap(values).apply {
+            order(ByteOrder.LITTLE_ENDIAN)
+        }
+
+        return valueBuffer.getInt()
     }
 
     class Provider(
