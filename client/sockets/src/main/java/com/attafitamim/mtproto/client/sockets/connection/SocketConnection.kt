@@ -1,9 +1,11 @@
 package com.attafitamim.mtproto.client.sockets.connection
 
+import com.attafitamim.mtproto.client.sockets.core.TimeManager
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocket
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocketProvider
 import com.attafitamim.mtproto.client.sockets.obfuscation.IObfuscator
 import com.attafitamim.mtproto.client.sockets.obfuscation.toHex
+import com.attafitamim.mtproto.client.sockets.utils.generateMessageId
 import com.attafitamim.mtproto.client.sockets.utils.parseResponse
 import com.attafitamim.mtproto.client.sockets.utils.serializeData
 import com.attafitamim.mtproto.client.sockets.utils.toPublicMessage
@@ -11,6 +13,7 @@ import com.attafitamim.mtproto.core.types.TLMethod
 import kotlinx.coroutines.flow.first
 
 class SocketConnection(
+    private val timeManager: TimeManager,
     private val obfuscator: IObfuscator,
     private val socketProvider: ISocketProvider
 ) : IConnection {
@@ -29,17 +32,23 @@ class SocketConnection(
     override suspend fun <R : Any> sendRequest(request: TLMethod<R>): R {
         println("SOCKET_MESSAGE: sending request $request")
 
-        val requestBytes = request.toPublicMessage()
+        val requestBytes = request.toPublicMessage(timeManager.generateMessageId())
         println("SOCKET_MESSAGE: sending message ${requestBytes.toHex()}")
-        writeMessage(requestBytes)
+
+        val clearBytes = sendRawRequest(requestBytes)
+        val response = request.parseResponse(clearBytes)
+        println("SOCKET_MESSAGE: received $response")
+        return response
+    }
+
+    override suspend fun sendRawRequest(request: ByteArray): ByteArray {
+        writeMessage(request)
 
         val obfuscatedBytes = readResponse()
         val clearBytes = obfuscator.clarify(obfuscatedBytes)
         println("SOCKET_MESSAGE: received ${clearBytes.toHex()}")
 
-        val response = request.parseResponse(clearBytes)
-        println("SOCKET_MESSAGE: received $response")
-        return response
+        return clearBytes
     }
 
 

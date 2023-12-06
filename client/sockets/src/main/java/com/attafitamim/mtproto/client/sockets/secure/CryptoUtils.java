@@ -213,10 +213,14 @@ public final class CryptoUtils {
         return crypt.digest();
     }
 
-    public static byte[] SHA256(byte[] src) {
+    public static byte[] SHA256(byte[]... src1) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(src);
+
+            for (int i = 0; i < src1.length; i++) {
+                md.update(src1[i]);
+            }
+
             return md.digest();
         } catch (Exception e) {
         }

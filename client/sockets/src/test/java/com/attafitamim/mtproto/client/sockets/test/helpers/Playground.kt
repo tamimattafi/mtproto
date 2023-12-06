@@ -2,11 +2,14 @@ package com.attafitamim.mtproto.client.sockets.test.helpers
 
 import com.attafitamim.mtproto.client.sockets.buffer.JavaByteBuffer
 import com.attafitamim.mtproto.client.sockets.connection.IConnection
+import com.attafitamim.mtproto.client.sockets.connection.Session
 import com.attafitamim.mtproto.client.sockets.connection.SocketConnection
+import com.attafitamim.mtproto.client.sockets.core.TimeManager
 import com.attafitamim.mtproto.client.sockets.obfuscation.DefaultObfuscator
 import com.attafitamim.mtproto.client.sockets.obfuscation.IObfuscator
 import com.attafitamim.mtproto.client.sockets.obfuscation.ISecureRandom
 import com.attafitamim.mtproto.client.sockets.obfuscation.cipher.JavaCipherFactory
+import com.attafitamim.mtproto.client.sockets.obfuscation.toHex
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.AES256IGEDecrypt
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.AES256IGEEncrypt
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.align
@@ -14,14 +17,20 @@ import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.alignKeyZero
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.loadBigInt
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.substring
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.xor
+import com.attafitamim.mtproto.client.sockets.secure.MTProtoMessageEncryption
 import com.attafitamim.mtproto.client.sockets.serialization.PQSolver
 import com.attafitamim.mtproto.client.sockets.stream.TLBufferedInputStream
+import com.attafitamim.mtproto.client.sockets.utils.calculateData
 import com.attafitamim.mtproto.client.sockets.utils.serializeData
 import com.attafitamim.scheme.mtproto.containers.global.TLInt128
 import com.attafitamim.scheme.mtproto.containers.global.TLInt256
+import com.attafitamim.scheme.mtproto.containers.global.TLMessage
+import com.attafitamim.scheme.mtproto.methods.global.TLInitConnection
+import com.attafitamim.scheme.mtproto.methods.global.TLInvokeWithLayer
 import com.attafitamim.scheme.mtproto.methods.global.TLReqDHParams
 import com.attafitamim.scheme.mtproto.methods.global.TLReqPq
 import com.attafitamim.scheme.mtproto.methods.global.TLSetClientDHParams
+import com.attafitamim.scheme.mtproto.methods.help.TLHelpGetServerConfig
 import com.attafitamim.scheme.mtproto.types.global.TLClientDHInnerData
 import com.attafitamim.scheme.mtproto.types.global.TLPQInnerData
 import com.attafitamim.scheme.mtproto.types.global.TLResPQ
@@ -43,12 +52,14 @@ object Playground {
     private const val SERVER_IP = "127.0.0.1"
     private const val SERVER_PORT = 2047
 
-    suspend fun connectToSocket() {
+    suspend fun initConnection() {
         val endpointProvider = ConnectionHelper.createdEndpointProvider(SERVER_IP, SERVER_PORT)
         val socketProvider = ConnectionHelper.createSocketProvider(endpointProvider)
 
+        val timeManager = TimeManager()
         val obfuscator = createObfuscator()
         val connection: IConnection = SocketConnection(
+            timeManager,
             obfuscator,
             socketProvider
         )
@@ -58,90 +69,120 @@ object Playground {
         delay(1000)
 
         // Step 1
-        val resPq = connection.sendReqPQ()
+        val authResult = connection.generateAuthKey()
+        timeManager.setServerTime(authResult.serverTimeInSeconds * 1000L)
+
+        // Step 2
+        val session = Session(timeManager)
+
+        // Step 3
+        val getServerConfig = TLHelpGetServerConfig
+
+        // Step 4
+        val initConnection = TLInitConnection(
+            apiId = 123,
+            apiHash = "",
+            deviceModel = "desktop",
+            systemVersion = "1.2.3",
+            appVersion = "playground-1",
+            systemLangCode = "en",
+            langPack = "en",
+            langCode = "en",
+            proxy = null,
+            query = getServerConfig,
+            parseX = getServerConfig::parse
+        )
+
+        // Step 5
+        val initWithLayer = TLInvokeWithLayer(
+            layer = 130,
+            initConnection,
+            initConnection::parse
+        )
+
+        // Step 6
+        val requestSize = calculateData {
+            initWithLayer.serialize(this)
+        }
+
+        val message = TLMessage(
+            session.generateMessageId(),
+            session.generateSeqNo(contentRelated = false),
+            requestSize,
+            initWithLayer
+        )
+
+        val encryptedMessage = MTProtoMessageEncryption.encrypt(
+            authResult.credentials.key,
+            authResult.credentials.keyId,
+            session.id,
+            authResult.credentials.serverSalt,
+            message
+        )
+
+        val response = connection.sendRawRequest(encryptedMessage)
+        println("RESPONSE_INIT_CONNECTION: ${response.toHex()}")
+    }
+
+    private suspend fun IConnection.generateAuthKey(): AuthResult {
+        // Step 0
+        val resPq = sendReqPQ()
         if (resPq !is TLResPQ.ResPQ) {
             error("resPQ variant not supported $resPq")
         }
 
-        // Step 2
+        // Step 1
         val newNonce = generateNewNonce()
 
-        // Step 3
-        val serverDhParams = connection.sendReqDhParams(resPq, newNonce)
+        // Step 2
+        val serverDhParams = sendReqDhParams(resPq, newNonce)
         if (serverDhParams !is TLServerDHParams.ServerDHParamsOk) {
             error("TLServerDHParams variant not supported $serverDhParams")
         }
 
-        // Step 4
+        // Step 3
         val tempAesCredentials = generateAesIgeCredentials(
             newNonce,
             resPq.serverNonce
         )
 
-        // Step 5
+        // Step 4
         val serverDhInner = serverDhParams.getDecryptedData(tempAesCredentials)
         if (serverDhInner !is TLServerDHInnerData.ServerDHInnerData) {
             error("TLServerDHInnerData variant not supported $serverDhInner")
         }
 
-        // Step 6
+        // Step 5
         val authKey = generateAuthKey(serverDhInner)
 
-        // Step 7
         repeat(5) { retryId ->
-            val response = connection.sendReqSetDhClientParams(
+            // Step 6
+            val response = sendReqSetDhClientParams(
                 resPq,
                 tempAesCredentials,
                 authKey,
                 retryId
             )
 
-            val authAuxHash = digestSha1(authKey.key).sliceArray(0 ..< 8)
 
-            when (response) {
-                is TLSetClientDHParamsAnswer.DhGenOk -> {
-                    val newNonceHash = substring(digestSha1(
-                        newNonce.bytes,
-                        byteArrayOf(1),
-                        authAuxHash
-                    ),4, 16)
+            // Step 7
+            val authCredentials = response.toAuthCredentials(
+                resPq,
+                newNonce,
+                authKey
+            )
 
-                    if (!response.newNonceHash1.bytes.contentEquals(newNonceHash)) {
-                        throw SecurityException()
-                    }
-
-                    val serverSalt = xor(substring(newNonce.bytes, 0, 8), substring(resPq.serverNonce.bytes, 0, 8))
-                    val authCredentials = AuthCredentials(authKey.key, serverSalt)
-
-                    println("AUTH_SUCCESS: $authCredentials")
-
-                    return
-                }
-
-                is TLSetClientDHParamsAnswer.DhGenRetry -> {
-                    val newNonceHash = substring(digestSha1(newNonce.bytes, byteArrayOf(2), authAuxHash), 4, 16)
-
-                    if (!response.newNonceHash2.bytes.contentEquals(newNonceHash)) {
-                        throw SecurityException()
-                    }
-                }
-
-                is TLSetClientDHParamsAnswer.DhGenFail -> {
-                    val newNonceHash = substring(digestSha1(newNonce.bytes, byteArrayOf(3), authAuxHash), 4, 16)
-
-                    if (!response.newNonceHash3.bytes.contentEquals(newNonceHash)) {
-                        throw SecurityException()
-                    }
-
-                    return@repeat
-                }
+            if (authCredentials != null) {
+                return AuthResult(
+                    authCredentials,
+                    serverDhInner.serverTime
+                )
             }
         }
 
         error("AUTH_FAILED")
     }
 
-    // Step 1
     private suspend fun IConnection.sendReqPQ(): TLResPQ {
         val nonceBytes = ByteArray(16)
         SecureRandom().nextBytes(nonceBytes)
@@ -152,14 +193,12 @@ object Playground {
         return sendRequest(request)
     }
 
-    // Step 2
     private fun generateNewNonce(): TLInt256 {
         val newNonceBytes = ByteArray(32)
         SecureRandom().nextBytes(newNonceBytes)
         return TLInt256(newNonceBytes)
     }
 
-    // Step 3
     private suspend fun IConnection.sendReqDhParams(
         resPq: TLResPQ.ResPQ,
         newNonce: TLInt256
@@ -207,8 +246,30 @@ object Playground {
         return sendRequest(request)
     }
 
+    private fun generateAesIgeCredentials(
+        newNonce: TLInt256,
+        serverNonce: TLInt128
+    ): AesIgeCredentials {
+        val key = digestSha1(
+            newNonce.bytes,
+            serverNonce.bytes
+        ) + digestSha1(
+            serverNonce.bytes,
+            newNonce.bytes
+        ).sliceArray(0..<12)
 
-    // Step 5
+
+        val iv = digestSha1(
+            serverNonce.bytes,
+            newNonce.bytes
+        ).sliceArray(12..<20) + digestSha1(
+            newNonce.bytes,
+            newNonce.bytes
+        ) + newNonce.bytes.sliceArray(0..<4)
+
+        return AesIgeCredentials(key, iv)
+    }
+
     private fun TLServerDHParams.ServerDHParamsOk.getDecryptedData(
         aesIgeCredentials: AesIgeCredentials
     ): TLServerDHInnerData {
@@ -240,7 +301,6 @@ object Playground {
         return dhInner
     }
 
-    // Step 6
     private fun generateAuthKey(
         serverDHInnerData: TLServerDHInnerData.ServerDHInnerData,
         size: Int = 256
@@ -252,12 +312,12 @@ object Playground {
 
         val authKeyVal = loadBigInt(serverDHInnerData.gA).modPow(b, dhPrime)
         val authKey =  alignKeyZero(fromBigInt(authKeyVal), size)
+        val keyId = substring(digestSha1(authKey), 12, 8)
 
         val gbBytes = fromBigInt(gb)
-        return AuthKey(authKey, gbBytes)
+        return AuthKey(authKey, keyId, gbBytes)
     }
 
-    // Step 7
     private suspend fun IConnection.sendReqSetDhClientParams(
         resPq: TLResPQ.ResPQ,
         aesIgeCredentials: AesIgeCredentials,
@@ -282,29 +342,76 @@ object Playground {
         return sendRequest(request)
     }
 
-    // Step 4
-    private fun generateAesIgeCredentials(
+    private fun TLSetClientDHParamsAnswer.toAuthCredentials(
+        resPq: TLResPQ.ResPQ,
         newNonce: TLInt256,
-        serverNonce: TLInt128
-    ): AesIgeCredentials {
-        val key = digestSha1(
-            newNonce.bytes,
-            serverNonce.bytes
-        ) + digestSha1(
-            serverNonce.bytes,
-            newNonce.bytes
-        ).sliceArray(0..<12)
+        authKey: AuthKey
+    ): AuthCredentials? {
+        val authAuxHash = digestSha1(authKey.key).sliceArray(0 ..< 8)
 
+        return when (this) {
+            is TLSetClientDHParamsAnswer.DhGenOk -> {
+                val newNonceHash = substring(digestSha1(
+                    newNonce.bytes,
+                    byteArrayOf(1),
+                    authAuxHash
+                ),4, 16)
 
-        val iv = digestSha1(
-            serverNonce.bytes,
-            newNonce.bytes
-        ).sliceArray(12..<20) + digestSha1(
-            newNonce.bytes,
-            newNonce.bytes
-        ) + newNonce.bytes.sliceArray(0..<4)
+                if (!newNonceHash1.bytes.contentEquals(newNonceHash)) {
+                    throw SecurityException()
+                }
 
-        return AesIgeCredentials(key, iv)
+                val serverSalt = readLong(xor(substring(newNonce.bytes, 0, 8), substring(resPq.serverNonce.bytes, 0, 8)), 0)
+
+                val authCredentials = AuthCredentials(authKey.key, authKey.id, serverSalt)
+
+                println("AUTH_SUCCESS: $authCredentials")
+
+                authCredentials
+            }
+
+            is TLSetClientDHParamsAnswer.DhGenRetry -> {
+                val newNonceHash = substring(digestSha1(
+                    newNonce.bytes,
+                    byteArrayOf(2),
+                    authAuxHash
+                ), 4, 16)
+
+                if (!newNonceHash2.bytes.contentEquals(newNonceHash)) {
+                    throw SecurityException()
+                }
+
+                null
+            }
+
+            is TLSetClientDHParamsAnswer.DhGenFail -> {
+                val newNonceHash = substring(digestSha1(
+                    newNonce.bytes,
+                    byteArrayOf(3),
+                    authAuxHash
+                ), 4, 16)
+
+                if (!newNonceHash3.bytes.contentEquals(newNonceHash)) {
+                    throw SecurityException()
+                }
+
+                error("Auth error")
+            }
+        }
+    }
+
+    fun readUInt(src: ByteArray, offset: Int): Long {
+        val a = (src[offset].toInt() and 0xFF).toLong()
+        val b = (src[offset + 1].toInt() and 0xFF).toLong()
+        val c = (src[offset + 2].toInt() and 0xFF).toLong()
+        val d = (src[offset + 3].toInt() and 0xFF).toLong()
+        return a + (b shl 8) + (c shl 16) + (d shl 24)
+    }
+
+    fun readLong(src: ByteArray, offset: Int): Long {
+        val a: Long = readUInt(src, offset)
+        val b: Long = readUInt(src, offset + 4)
+        return (a and 0xFFFFFFFFL) + (b and 0xFFFFFFFFL shl 32)
     }
 
     data class AesIgeCredentials(
@@ -332,6 +439,7 @@ object Playground {
 
     data class AuthKey(
         val key: ByteArray,
+        val id: ByteArray,
         val gb: ByteArray
     ) {
         override fun equals(other: Any?): Boolean {
@@ -341,6 +449,7 @@ object Playground {
             other as AuthKey
 
             if (!key.contentEquals(other.key)) return false
+            if (!id.contentEquals(other.id)) return false
             if (!gb.contentEquals(other.gb)) return false
 
             return true
@@ -348,14 +457,21 @@ object Playground {
 
         override fun hashCode(): Int {
             var result = key.contentHashCode()
+            result = 31 * result + id.contentHashCode()
             result = 31 * result + gb.contentHashCode()
             return result
         }
     }
 
+    data class AuthResult(
+        val credentials: AuthCredentials,
+        val serverTimeInSeconds: Int
+    )
+
     data class AuthCredentials(
         val key: ByteArray,
-        val salt: ByteArray
+        val keyId: ByteArray,
+        val serverSalt: Long
     ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -364,14 +480,16 @@ object Playground {
             other as AuthCredentials
 
             if (!key.contentEquals(other.key)) return false
-            if (!salt.contentEquals(other.salt)) return false
+            if (!keyId.contentEquals(other.keyId)) return false
+            if (serverSalt != other.serverSalt) return false
 
             return true
         }
 
         override fun hashCode(): Int {
             var result = key.contentHashCode()
-            result = 31 * result + salt.contentHashCode()
+            result = 31 * result + keyId.contentHashCode()
+            result = 31 * result + serverSalt.hashCode()
             return result
         }
     }

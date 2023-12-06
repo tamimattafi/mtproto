@@ -5,4 +5,6 @@ import com.attafitamim.mtproto.core.types.TLMethod
 interface IConnection {
     suspend fun connect()
     suspend fun <R : Any> sendRequest(request: TLMethod<R>): R
+
+    suspend fun sendRawRequest(request: ByteArray): ByteArray
 }

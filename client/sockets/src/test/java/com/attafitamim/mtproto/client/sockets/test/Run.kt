@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 
 fun main() {
     ConnectionHelper.scope.launch {
-        Playground.connectToSocket()
+        Playground.initConnection()
     }
 
     while (ConnectionHelper.scope.isActive) {

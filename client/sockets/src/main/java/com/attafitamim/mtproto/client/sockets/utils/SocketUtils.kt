@@ -28,11 +28,10 @@ fun <R : Any> TLMethod<R>.parseResponse(responseBytes: ByteArray): R {
     return parse(inputStream)
 }
 
-fun generateMessageId() = System.currentTimeMillis()
-
-fun <R : Any> TLMethod<R>.toPublicMessage(): ByteArray {
+fun <R : Any> TLMethod<R>.toPublicMessage(
+    requestMessageId: Long
+): ByteArray {
     val authKeyId = 0L
-    val requestMessageId = generateMessageId()
     val methodBytesSize = calculateData(::serialize)
     val methodBytes = serializeData(methodBytesSize, ::serialize)
 
