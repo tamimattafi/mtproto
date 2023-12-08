@@ -1,11 +1,11 @@
 package com.attafitamim.mtproto.client.sockets.utils
 
-import com.attafitamim.mtproto.client.sockets.buffer.CalculationByteBuffer
-import com.attafitamim.mtproto.client.sockets.buffer.JavaByteBuffer
-import com.attafitamim.mtproto.client.sockets.stream.TLBufferedInputStream
-import com.attafitamim.mtproto.client.sockets.stream.TLBufferedOutputStream
+import com.attafitamim.mtproto.buffer.calculation.CalculationByteBuffer
+import com.attafitamim.mtproto.buffer.jvm.JavaByteBuffer
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLMethod
+import com.attafitamim.mtproto.serialization.stream.TLBufferedInputStream
+import com.attafitamim.mtproto.serialization.stream.TLBufferedOutputStream
 
 
 fun <R : Any> TLMethod<R>.parseResponse(responseBytes: ByteArray): R {

@@ -3,13 +3,13 @@ package com.attafitamim.mtproto.client.sockets.connection
 import com.attafitamim.mtproto.client.sockets.core.TimeManager
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocket
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocketProvider
-import com.attafitamim.mtproto.client.sockets.obfuscation.IObfuscator
-import com.attafitamim.mtproto.client.sockets.obfuscation.toHex
 import com.attafitamim.mtproto.client.sockets.utils.generateMessageId
 import com.attafitamim.mtproto.client.sockets.utils.parseResponse
 import com.attafitamim.mtproto.client.sockets.utils.serializeData
+import com.attafitamim.mtproto.client.sockets.utils.toHex
 import com.attafitamim.mtproto.client.sockets.utils.toPublicMessage
 import com.attafitamim.mtproto.core.types.TLMethod
+import com.attafitamim.mtproto.security.obfuscation.IObfuscator
 import kotlinx.coroutines.flow.first
 
 class SocketConnection(

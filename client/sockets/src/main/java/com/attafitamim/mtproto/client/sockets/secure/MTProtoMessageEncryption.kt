@@ -1,7 +1,7 @@
 package com.attafitamim.mtproto.client.sockets.secure
 
-import com.attafitamim.mtproto.client.sockets.obfuscation.toHex
-import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.AES256IGEEncrypt
+import com.attafitamim.mtproto.buffer.jvm.JavaByteBuffer
+import com.attafitamim.mtproto.client.sockets.utils.toHex
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.SHA1
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.SHA256
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.align
@@ -9,9 +9,12 @@ import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.concat
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.substring
 import com.attafitamim.mtproto.client.sockets.utils.serializeData
 import com.attafitamim.mtproto.core.serialization.behavior.TLSerializable
-import com.attafitamim.mtproto.core.types.TLObject
+import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
+import com.attafitamim.mtproto.serialization.stream.TLBufferedInputStream
 import com.attafitamim.scheme.mtproto.containers.global.TLMessage
 import java.io.IOException
+import java.io.InputStream
+import java.math.BigInteger
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
@@ -43,7 +46,7 @@ class MTProtoMessageEncryption {
         @JvmStatic fun generateMsgKey(
             serverSalt: ByteArray,
             sessionId: ByteArray,
-            message: TLMessage<out TLObject>
+            message: TLMessage<out TLSerializable>
         ): ByteArray? {
             try {
                 val crypt = MessageDigest.getInstance("SHA-1")
@@ -134,10 +137,10 @@ class MTProtoMessageEncryption {
             println("AES_KEY: ${aesKeyIvPair.first.toHex()}")
             println("AES_IV: ${aesKeyIvPair.second.toHex()}")
 
-            val encryptedData = AES256IGEEncrypt(
-                align(unencryptedData, 16),
+            val encryptedData = encryptAesIge(
+                aesKeyIvPair.first,
                 aesKeyIvPair.second,
-                aesKeyIvPair.first
+                align(unencryptedData, 16)
             )
 
             println("ENCRYPTED_DATA: ${encryptedData.toHex()}")
@@ -150,10 +153,8 @@ class MTProtoMessageEncryption {
 
             return data
         }
-/*
 
-        */
-/**
+        /**
          * Decrypt a message following the MTProto description
          * @see [MTProto description](https://core.telegram.org/mtproto/description)
 
@@ -162,52 +163,52 @@ class MTProtoMessageEncryption {
          * @param data message to be decrypted
          * @return decrypted message
          * @throws IOException
-         *//*
-
+         */
         @Throws(IOException::class)
         @JvmStatic
-        fun decrypt(authKey: AuthKey, sessionId: ByteArray, data: ByteArray): MTMessage {
-            val stream = ByteArrayInputStream(data)
+        inline fun <reified T : TLSerializable> decrypt(
+            authKey: ByteArray,
+            keyId: ByteArray,
+            sessionId: ByteArray,
+            data: ByteArray,
+            parseT: (inputStream: TLInputStream) -> T
+        ): TLMessage<T> {
+            val stream = TLBufferedInputStream
+                .Provider(JavaByteBuffer)
+                .wrap(data)
 
             // Retrieve and check authKey
-            val msgAuthKeyId = readBytes(8, stream)
-            if (!Arrays.equals(authKey.keyId, msgAuthKeyId))
-                throw RuntimeException("Message's authKey doesn't match given authKey")
+            val size = stream.readInt()
+            val msgAuthKeyId = stream.readBytes(8)
+            if (!keyId.contentEquals(msgAuthKeyId))
+                throw RuntimeException("Message's authKey ${keyId.toHex()} doesn't match given authKey ${msgAuthKeyId.toHex()}")
 
             // Message key
-            val msgKey = readBytes(16, stream)
-            val aesKeyIvPair = computeAESKeyAndInitVector(authKey, msgKey, 8)
+            val msgKey = stream.readBytes(16)
+            val aesKeyIvPair = computeAESKeyAndInitVector(authKey, msgKey, isOutgoing = false)
 
             // Read encrypted data
-            val encryptedDataLength = data.size - 24 // Subtract authKey(8) + msgKey(16) length
-            val encryptedData = ByteArray(encryptedDataLength)
-            readBytes(encryptedData, 0, encryptedDataLength, stream)
+            val encryptedDataLength = size - 24 // Subtract authKey(8) + msgKey(16) length
+            val encryptedData = stream.readBytes(encryptedDataLength)
 
             // Decrypt
-            val unencryptedData = ByteArray(encryptedDataLength) // AES input/output have the same size
-            AES256IGEDecryptBig(encryptedData, unencryptedData, encryptedDataLength, aesKeyIvPair.iv, aesKeyIvPair.key)
+            val unencryptedData = decryptAesIge(aesKeyIvPair.first, aesKeyIvPair.second, encryptedData)
+
+            val unencryptedStream = TLBufferedInputStream.Provider(JavaByteBuffer).wrap(unencryptedData)
+
 
             // Decompose
-            val unencryptedStream = ByteArrayInputStream(unencryptedData)
-            val serverSalt = readBytes(8, unencryptedStream)
-            val session = readBytes(8, unencryptedStream)
+            val serverSalt = unencryptedStream.readBytes(8)
+            val session = unencryptedStream.readBytes(8)
             // Payload starts here
-            val msgId = readLong(unencryptedStream)
-            val seqNo = StreamUtils.readInt(unencryptedStream)
-            val msgLength = StreamUtils.readInt(unencryptedStream)
-            val paddingSize = encryptedDataLength - 32 - msgLength // serverSalt(8) + sessionId(8) + messageId(8) + seqNo(4) + msgLen(4)
+            val mtMessage = TLMessage.parse(unencryptedStream, parseT)
+            val paddingSize = encryptedDataLength - 32 - mtMessage.bytes // serverSalt(8) + sessionId(8) + messageId(8) + seqNo(4) + msgLen(4)
 
             // Security checks
-            if (msgId % 2 == 0L) throw SecurityException("Message id of messages sent be the server must be odd, found $msgId")
-            if (msgLength % 4 != 0) throw SecurityException("Message length must be a multiple of 4, found $msgLength")
+            if (mtMessage.msgId % 2 == 0L) throw SecurityException("Message id of messages sent be the server must be odd, found ${mtMessage.msgId}")
+            if (mtMessage.bytes % 4 != 0) throw SecurityException("Message length must be a multiple of 4, found ${mtMessage.bytes}")
             if (paddingSize > 15 || paddingSize < 0) throw SecurityException("Padding must be between 0 and 15 included, found $paddingSize")
             if (!Arrays.equals(session, sessionId)) throw SecurityException("The message was not intended for this session, expected ${BigInteger(sessionId).toLong()}, found ${BigInteger(session).toLong()}")
-
-            // Read message
-            val message = ByteArray(msgLength)
-            readBytes(message, 0, msgLength, unencryptedStream)
-
-            val mtMessage = MTMessage(msgId, seqNo, message, message.size)
 
             // Check that msgKey is equal to the 128 lower-order bits of the SHA1 hash of the previously encrypted portion
             val checkMsgKey = generateMsgKey(serverSalt, session, mtMessage)
@@ -216,7 +217,61 @@ class MTProtoMessageEncryption {
 
             return mtMessage
         }
-*/
+
+
+        @Throws(IOException::class)
+        fun readInt(stream: InputStream): Int {
+            val a = stream.read()
+            if (a < 0) throw IOException()
+            val b = stream.read()
+            if (b < 0) throw IOException()
+            val c = stream.read()
+            if (c < 0) throw IOException()
+            val d = stream.read()
+            if (d < 0) throw IOException()
+            return a + (b shl 8) + (c shl 16) + (d shl 24)
+        }
+
+        @Throws(IOException::class)
+        fun readUInt(stream: InputStream): Long {
+            val a = stream.read().toLong()
+            if (a < 0) {
+                throw IOException()
+            }
+            val b = stream.read().toLong()
+            if (b < 0) {
+                throw IOException()
+            }
+            val c = stream.read().toLong()
+            if (c < 0) {
+                throw IOException()
+            }
+            val d = stream.read().toLong()
+            if (d < 0) {
+                throw IOException()
+            }
+            return a + (b shl 8) + (c shl 16) + (d shl 24)
+        }
+
+        @Throws(IOException::class)
+        fun readLong(stream: InputStream): Long {
+            val a = readUInt(stream)
+            val b = readUInt(stream)
+            return a + (b shl 32)
+        }
+        fun readUInt(src: ByteArray, offset: Int): Long {
+            val a = (src[offset].toInt() and 0xFF).toLong()
+            val b = (src[offset + 1].toInt() and 0xFF).toLong()
+            val c = (src[offset + 2].toInt() and 0xFF).toLong()
+            val d = (src[offset + 3].toInt() and 0xFF).toLong()
+            return a + (b shl 8) + (c shl 16) + (d shl 24)
+        }
+
+        fun readLong(src: ByteArray, offset: Int): Long {
+            val a: Long = readUInt(src, offset)
+            val b: Long = readUInt(src, offset + 4)
+            return (a and 0xFFFFFFFFL) + (b and 0xFFFFFFFFL shl 32)
+        }
 
         /**
          * Compute the AES Key and the Initialization Vector
@@ -225,7 +280,7 @@ class MTProtoMessageEncryption {
          * @see [Defining AES Key and Initialization Vector](https://core.telegram.org/mtproto/description.defining-aes-key-and-initialization-vector)
          */
         @JvmStatic
-        private fun computeAESKeyAndInitVector(
+        fun computeAESKeyAndInitVector(
             authKey: ByteArray,
             msgKey: ByteArray,
             isOutgoing: Boolean = true

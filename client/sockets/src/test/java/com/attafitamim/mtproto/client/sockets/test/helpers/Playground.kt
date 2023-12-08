@@ -1,27 +1,27 @@
 package com.attafitamim.mtproto.client.sockets.test.helpers
 
-import com.attafitamim.mtproto.client.sockets.buffer.JavaByteBuffer
+import com.attafitamim.mtproto.buffer.jvm.JavaByteBuffer
 import com.attafitamim.mtproto.client.sockets.connection.IConnection
 import com.attafitamim.mtproto.client.sockets.connection.Session
 import com.attafitamim.mtproto.client.sockets.connection.SocketConnection
 import com.attafitamim.mtproto.client.sockets.core.TimeManager
-import com.attafitamim.mtproto.client.sockets.obfuscation.DefaultObfuscator
-import com.attafitamim.mtproto.client.sockets.obfuscation.IObfuscator
-import com.attafitamim.mtproto.client.sockets.obfuscation.ISecureRandom
-import com.attafitamim.mtproto.client.sockets.obfuscation.cipher.JavaCipherFactory
-import com.attafitamim.mtproto.client.sockets.obfuscation.toHex
-import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.AES256IGEDecrypt
-import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.AES256IGEEncrypt
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.align
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.alignKeyZero
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.loadBigInt
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.substring
 import com.attafitamim.mtproto.client.sockets.secure.CryptoUtils.xor
 import com.attafitamim.mtproto.client.sockets.secure.MTProtoMessageEncryption
+import com.attafitamim.mtproto.client.sockets.secure.decryptAesIge
+import com.attafitamim.mtproto.client.sockets.secure.encryptAesIge
 import com.attafitamim.mtproto.client.sockets.serialization.PQSolver
-import com.attafitamim.mtproto.client.sockets.stream.TLBufferedInputStream
 import com.attafitamim.mtproto.client.sockets.utils.calculateData
 import com.attafitamim.mtproto.client.sockets.utils.serializeData
+import com.attafitamim.mtproto.client.sockets.utils.toHex
+import com.attafitamim.mtproto.security.core.jvm.CipherFactory
+import com.attafitamim.mtproto.security.obfuscation.DefaultObfuscator
+import com.attafitamim.mtproto.security.obfuscation.IObfuscator
+import com.attafitamim.mtproto.security.utils.ISecureRandom
+import com.attafitamim.mtproto.serialization.stream.TLBufferedInputStream
 import com.attafitamim.scheme.mtproto.containers.global.TLInt128
 import com.attafitamim.scheme.mtproto.containers.global.TLInt256
 import com.attafitamim.scheme.mtproto.containers.global.TLMessage
@@ -30,7 +30,7 @@ import com.attafitamim.scheme.mtproto.methods.global.TLInvokeWithLayer
 import com.attafitamim.scheme.mtproto.methods.global.TLReqDHParams
 import com.attafitamim.scheme.mtproto.methods.global.TLReqPq
 import com.attafitamim.scheme.mtproto.methods.global.TLSetClientDHParams
-import com.attafitamim.scheme.mtproto.methods.help.TLHelpGetServerConfig
+import com.attafitamim.scheme.mtproto.methods.help.TLHelpGetConfig
 import com.attafitamim.scheme.mtproto.types.global.TLClientDHInnerData
 import com.attafitamim.scheme.mtproto.types.global.TLPQInnerData
 import com.attafitamim.scheme.mtproto.types.global.TLResPQ
@@ -48,12 +48,12 @@ import kotlinx.coroutines.delay
 
 object Playground {
 
-    private const val WEB_SOCKET_URL = "wss://localhost:2047/ws"
+    private const val WEB_SOCKET_URL =
     private const val SERVER_IP = "127.0.0.1"
     private const val SERVER_PORT = 2047
 
     suspend fun initConnection() {
-        val endpointProvider = ConnectionHelper.createdEndpointProvider(SERVER_IP, SERVER_PORT)
+        val endpointProvider = ConnectionHelper.createdEndpointProvider(WEB_SOCKET_URL)
         val socketProvider = ConnectionHelper.createSocketProvider(endpointProvider)
 
         val timeManager = TimeManager()
@@ -76,13 +76,13 @@ object Playground {
         val session = Session(timeManager)
 
         // Step 3
-        val getServerConfig = TLHelpGetServerConfig
+        val getServerConfig = TLHelpGetConfig
 
         // Step 4
         val initConnection = TLInitConnection(
-            apiId = 123,
-            apiHash = "",
-            deviceModel = "desktop",
+            apiId = ,
+            apiHash = ,
+            deviceModel = "android",
             systemVersion = "1.2.3",
             appVersion = "playground-1",
             systemLangCode = "en",
@@ -101,27 +101,76 @@ object Playground {
         )
 
         // Step 6
-        val requestSize = calculateData {
+        val firstRequestSize = calculateData {
             initWithLayer.serialize(this)
         }
 
-        val message = TLMessage(
+        val firstMessage = TLMessage(
             session.generateMessageId(),
             session.generateSeqNo(contentRelated = false),
-            requestSize,
+            firstRequestSize,
             initWithLayer
         )
 
-        val encryptedMessage = MTProtoMessageEncryption.encrypt(
+        val firstMessageEncrypted = MTProtoMessageEncryption.encrypt(
             authResult.credentials.key,
             authResult.credentials.keyId,
             session.id,
             authResult.credentials.serverSalt,
-            message
+            firstMessage
         )
 
-        val response = connection.sendRawRequest(encryptedMessage)
-        println("RESPONSE_INIT_CONNECTION: ${response.toHex()}")
+        kotlin.runCatching {
+            val rawResponse = connection.sendRawRequest(firstMessageEncrypted)
+            println("RESPONSE_INIT_CONNECTION: ${rawResponse.toHex()}")
+
+            val decryptedResponse = MTProtoMessageEncryption.decrypt(
+                authResult.credentials.key,
+                authResult.credentials.keyId,
+                session.id,
+                rawResponse,
+                initWithLayer::parse
+            )
+
+            println("RESPONSE_INIT_CONNECTION: $decryptedResponse")
+        }
+
+        delay(1000)
+
+        val secondRequestSize = calculateData {
+            initWithLayer.serialize(this)
+        }
+
+        val secondMessage = TLMessage(
+            session.generateMessageId(),
+            session.generateSeqNo(contentRelated = false),
+            secondRequestSize,
+            getServerConfig
+        )
+
+        val secondEncryptedMessage = MTProtoMessageEncryption.encrypt(
+            authResult.credentials.key,
+            authResult.credentials.keyId,
+            session.id,
+            authResult.credentials.serverSalt,
+            secondMessage
+        )
+
+        kotlin.runCatching {
+            val rawResponse = connection.sendRawRequest(secondEncryptedMessage)
+            println("RESPONSE_GET_CONFIG: ${rawResponse.toHex()}")
+
+            val decryptedResponse = MTProtoMessageEncryption.decrypt(
+                authResult.credentials.key,
+                authResult.credentials.keyId,
+                session.id,
+                rawResponse,
+                getServerConfig::parse
+            )
+
+            println("RESPONSE_GET_CONFIG: $decryptedResponse")
+        }
+
     }
 
     private suspend fun IConnection.generateAuthKey(): AuthResult {
@@ -273,10 +322,10 @@ object Playground {
     private fun TLServerDHParams.ServerDHParamsOk.getDecryptedData(
         aesIgeCredentials: AesIgeCredentials
     ): TLServerDHInnerData {
-        val answer = AES256IGEDecrypt(
-            encryptedAnswer,
+        val answer = decryptAesIge(
+            aesIgeCredentials.key,
             aesIgeCredentials.iv,
-            aesIgeCredentials.key
+            encryptedAnswer
         )
 
         val stream = TLBufferedInputStream
@@ -336,7 +385,7 @@ object Playground {
         }
 
         val innerDataWithHash = align(digestSha1(innerDataBytes) + innerDataBytes, 16)
-        val dataWithHashEnc = AES256IGEEncrypt(innerDataWithHash, aesIgeCredentials.iv, aesIgeCredentials.key)
+        val dataWithHashEnc = encryptAesIge(aesIgeCredentials.key, aesIgeCredentials.iv, innerDataWithHash)
 
         val request = TLSetClientDHParams(resPq.nonce, resPq.serverNonce, dataWithHashEnc)
         return sendRequest(request)
@@ -547,11 +596,11 @@ object Playground {
 
     private fun createObfuscator(): IObfuscator {
         val secureRandom = createSecureRandom()
-        val cipherFactory = JavaCipherFactory()
+        val cipherFactory = CipherFactory()
 
         return DefaultObfuscator(
             secureRandom,
-            JavaByteBuffer.Companion,
+            JavaByteBuffer,
             cipherFactory
         )
     }

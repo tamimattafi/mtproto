@@ -1,9 +1,5 @@
 package com.attafitamim.mtproto.client.sockets.secure;
 
-import com.attafitamim.mtproto.client.sockets.secure.aes.AESImplementation;
-import com.attafitamim.mtproto.client.sockets.secure.aes.DefaultAESImplementation;
-
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,12 +63,6 @@ public final class CryptoUtils {
         }
     };
 
-    private static AESImplementation currentImplementation = new DefaultAESImplementation();
-
-    public static void setAESImplementation(AESImplementation implementation) {
-        currentImplementation = implementation;
-    }
-
     public static byte[] RSA(byte[] src, BigInteger key, BigInteger exponent) {
         try {
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
@@ -96,29 +86,6 @@ public final class CryptoUtils {
         return null;
     }
 
-    public static void AES256IGEDecryptBig(byte[] src, byte[] dest, int len, byte[] iv, byte[] key) {
-        currentImplementation.AES256IGEDecrypt(src, dest, len, iv, key);
-    }
-
-    public static byte[] AES256IGEDecrypt(byte[] src, byte[] iv, byte[] key) {
-        byte[] res = new byte[src.length];
-        currentImplementation.AES256IGEDecrypt(src, res, src.length, iv, key);
-        return res;
-    }
-
-    public static void AES256IGEDecrypt(File src, File dest, byte[] iv, byte[] key) throws IOException {
-        currentImplementation.AES256IGEDecrypt(src.getAbsolutePath(), dest.getAbsolutePath(), iv, key);
-    }
-
-    public static void AES256IGEEncrypt(File src, File dest, byte[] iv, byte[] key) throws IOException {
-        currentImplementation.AES256IGEEncrypt(src.getAbsolutePath(), dest.getAbsolutePath(), iv, key);
-    }
-
-    public static byte[] AES256IGEEncrypt(byte[] src, byte[] iv, byte[] key) {
-        byte[] res = new byte[src.length];
-        currentImplementation.AES256IGEEncrypt(src, res, src.length, iv, key);
-        return res;
-    }
 
     public static String MD5(byte[] src) {
         try {

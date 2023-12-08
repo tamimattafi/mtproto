@@ -26,8 +26,19 @@ junit = "4.13.2"
 [libraries]
 # Local (Use as implementation(project(...))
 # Usage Example: implementation(project(libs.mtproto.client.api.get().module.name))
-mtproto_client_api = { group = "_", name = ":client:api" }
-mtproto-generator = { module = "com.attafitamim.mtproto:generator", version.ref = "mtproto" }
+mtproto-core = { group = "_", name = ":core" }
+mtproto-buffer = { group = "_", name = ":buffer" }
+mtproto-serialization = { group = "_", name = ":serialization" }
+
+mtproto-security-cipher = { group = "_", name = ":security:cipher" }
+mtproto-security-ige = { group = "_", name = ":security:ige" }
+mtproto-security-obfuscation = { group = "_", name = ":security:obfuscation" }
+mtproto-security-utils = { group = "_", name = ":security:utils" }
+
+mtproto-client_api = { group = "_", name = ":client:api" }
+mtproto-client_sockets_infrastructure = { group = "_", name = ":client:sockets:infrastructure" }
+
+mtproto_generator = { module = "com.attafitamim.mtproto:generator", version.ref = "mtproto" }
 
 # Plugins
 android-gradle = { module = "com.android.tools.build:gradle", version.ref = "android-gradle" }

@@ -2,7 +2,7 @@ package com.attafitamim.mtproto.client.sockets.ktor
 
 import com.attafitamim.mtproto.client.sockets.core.endpoint.Endpoint
 import com.attafitamim.mtproto.client.sockets.core.endpoint.IEndpointProvider
-import com.attafitamim.mtproto.client.sockets.obfuscation.toHex
+import com.attafitamim.mtproto.client.sockets.utils.toHex
 import io.ktor.network.selector.ActorSelectorManager
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.aSocket

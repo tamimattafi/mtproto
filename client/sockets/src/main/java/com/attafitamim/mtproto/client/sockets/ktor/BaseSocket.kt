@@ -82,7 +82,7 @@ abstract class BaseSocket<S : CoroutineScope>(
         forceClose()
 
         // Keep retrying to connect to the socket
-        val endpoint = endpointProvider.provideEndpoint()
+        val endpoint = endpointProvider.provideEndpoint(retryCount.get())
         var newSession = tryCreateSession(endpoint)
         while (newSession == null) {
             retryCount.incrementAndGet()

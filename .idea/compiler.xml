@@ -3,8 +3,20 @@
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel target="1.8">
       <module name="mtproto.client.android" target="17" />
+      <module name="mtproto.client.sockets.core.main" target="17" />
+      <module name="mtproto.client.sockets.core.test" target="17" />
       <module name="MTProto.sample" target="11" />
       <module name="mtproto.sample" target="11" />
+      <module name="mtproto.security.core.main" target="17" />
+      <module name="mtproto.security.core.test" target="17" />
+      <module name="mtproto.security.main" target="1.7" />
+      <module name="mtproto.security.security" target="1.7" />
+      <module name="mtproto.security.security.main" target="1.7" />
+      <module name="mtproto.security.security.test" target="1.7" />
+      <module name="mtproto.security.test" target="1.7" />
+      <module name="mtproto.stream" target="1.7" />
+      <module name="mtproto.stream.main" target="1.7" />
+      <module name="mtproto.stream.test" target="1.7" />
     </bytecodeTargetLevel>
   </component>
 </project>

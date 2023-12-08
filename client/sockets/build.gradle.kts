@@ -25,8 +25,12 @@ java {
 }
 
 dependencies {
-    // Local
+    // MTProto
     api(project(libs.mtproto.client.api.get().module.name))
+    api(project(libs.mtproto.client.sockets.infrastructure.get().module.name))
+    api(project(libs.mtproto.serialization.get().module.name))
+    api(project(libs.mtproto.security.ige.get().module.name))
+    api(project(libs.mtproto.security.obfuscation.get().module.name))
 
     // Ktor
     implementation(libs.ktor.webscokets)
@@ -34,7 +38,6 @@ dependencies {
 
     // IO
     implementation(libs.kotlinx.io)
-    implementation("org.apache.commons:commons-crypto:1.2.0")
 
     // Testing
     testImplementation(libs.junit)

@@ -1,18 +1,17 @@
 package com.attafitamim.mtproto.client.sockets.connection
 
+import com.attafitamim.mtproto.buffer.calculation.CalculationByteBuffer
+import com.attafitamim.mtproto.buffer.jvm.JavaByteBuffer
 import com.attafitamim.mtproto.client.api.connection.IConnectionManager
 import com.attafitamim.mtproto.client.api.connection.IQuickAckDelegate
 import com.attafitamim.mtproto.client.api.connection.IRequestDelegate
 import com.attafitamim.mtproto.client.api.connection.IRequestTimeDelegate
 import com.attafitamim.mtproto.client.api.connection.IWriteToSocketDelegate
-import com.attafitamim.mtproto.client.sockets.buffer.CalculationByteBuffer
-import com.attafitamim.mtproto.client.sockets.buffer.JavaByteBuffer
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocket
 import com.attafitamim.mtproto.client.sockets.core.socket.ISocketProvider
-import com.attafitamim.mtproto.client.sockets.stream.TLBufferedInputStream
-import com.attafitamim.mtproto.client.sockets.stream.TLBufferedOutputStream
 import com.attafitamim.mtproto.core.types.TLMethod
 import com.attafitamim.mtproto.core.types.TLObject
+import com.attafitamim.mtproto.serialization.stream.TLBufferedOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
