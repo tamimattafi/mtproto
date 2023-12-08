@@ -17,7 +17,7 @@ import com.attafitamim.mtproto.client.sockets.serialization.PQSolver
 import com.attafitamim.mtproto.client.sockets.utils.calculateData
 import com.attafitamim.mtproto.client.sockets.utils.serializeData
 import com.attafitamim.mtproto.client.sockets.utils.toHex
-import com.attafitamim.mtproto.security.core.jvm.CipherFactory
+import com.attafitamim.mtproto.security.cipher.jvm.AesCipher
 import com.attafitamim.mtproto.security.obfuscation.DefaultObfuscator
 import com.attafitamim.mtproto.security.obfuscation.IObfuscator
 import com.attafitamim.mtproto.security.utils.ISecureRandom
@@ -48,7 +48,7 @@ import kotlinx.coroutines.delay
 
 object Playground {
 
-    private const val WEB_SOCKET_URL =
+    private const val WEB_SOCKET_URL = "wss://dev-api.tezro.com/ws"
     private const val SERVER_IP = "127.0.0.1"
     private const val SERVER_PORT = 2047
 
@@ -252,8 +252,7 @@ object Playground {
         resPq: TLResPQ.ResPQ,
         newNonce: TLInt256
     ): TLServerDHParams {
-
-
+  
         val serverFingerPrints = resPq.serverPublicKeyFingerprints.toList()
         val fingerPrintSupported = serverFingerPrints.contains(fingerprint)
         if (!fingerPrintSupported) {
@@ -596,12 +595,11 @@ object Playground {
 
     private fun createObfuscator(): IObfuscator {
         val secureRandom = createSecureRandom()
-        val cipherFactory = CipherFactory()
 
         return DefaultObfuscator(
             secureRandom,
             JavaByteBuffer,
-            cipherFactory
+            AesCipher
         )
     }
 }

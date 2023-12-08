@@ -1,10 +1,10 @@
 package com.attafitamim.mtproto.security.obfuscation
 
 import com.attafitamim.mtproto.buffer.core.IByteBufferProvider
-import com.attafitamim.mtproto.security.core.cipher.CipherMode
-import com.attafitamim.mtproto.security.core.cipher.ICipher
-import com.attafitamim.mtproto.security.core.cipher.ICipherFactory
-import com.attafitamim.mtproto.security.core.cipher.algorithm.AlgorithmMode
+import com.attafitamim.mtproto.security.cipher.aes.IAesCipherFactory
+import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmMode
+import com.attafitamim.mtproto.security.cipher.core.CipherMode
+import com.attafitamim.mtproto.security.cipher.core.ICipher
 import com.attafitamim.mtproto.security.utils.ISecureRandom
 
 /**
@@ -16,7 +16,7 @@ import com.attafitamim.mtproto.security.utils.ISecureRandom
 class DefaultObfuscator(
     private val secureRandom: ISecureRandom,
     private val bufferProvider: IByteBufferProvider,
-    private val cipherProvider: ICipherFactory,
+    private val cipherProvider: IAesCipherFactory,
     private val protocol: Int = DEFAULT_PROTOCOL,
     private val dataCenter: Int = DEFAULT_DATA_CENTER
 ) : IObfuscator {
@@ -30,7 +30,7 @@ class DefaultObfuscator(
         val encryptionKey = initBytes.getKey()
         val encryptionIV = initBytes.getIV()
 
-        val encryptionCipher = cipherProvider.createAesCipher(
+        val encryptionCipher = cipherProvider.createCipher(
             CipherMode.ENCRYPT,
             AlgorithmMode.CTR
         ).apply {
@@ -40,7 +40,7 @@ class DefaultObfuscator(
         val initBytesReversed = initBytes.reversedArray()
         val decryptionKey = initBytesReversed.getKey()
         val decryptionIV = initBytesReversed.getIV()
-        val decryptionCipher = cipherProvider.createAesCipher(
+        val decryptionCipher = cipherProvider.createCipher(
             CipherMode.DECRYPT,
             AlgorithmMode.CTR
         ).apply {

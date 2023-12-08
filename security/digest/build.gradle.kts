@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 }
 
-ext.set("PUBLISH_ARTIFACT_ID", "security-cipher")
+ext.set("PUBLISH_ARTIFACT_ID", "security-digest")
 apply(from = "${rootProject.projectDir}/scripts/publish-module.gradle")
 
 java {

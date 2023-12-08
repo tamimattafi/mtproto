@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.security.core.cipher
+package com.attafitamim.mtproto.security.cipher.core
 
 interface ICipher {
     fun updateData(data: ByteArray): ByteArray

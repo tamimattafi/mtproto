@@ -34,6 +34,7 @@ mtproto-security-cipher = { group = "_", name = ":security:cipher" }
 mtproto-security-ige = { group = "_", name = ":security:ige" }
 mtproto-security-obfuscation = { group = "_", name = ":security:obfuscation" }
 mtproto-security-utils = { group = "_", name = ":security:utils" }
+mtproto-security-digest = { group = "_", name = ":security:digest" }
 
 mtproto-client_api = { group = "_", name = ":client:api" }
 mtproto-client_sockets_infrastructure = { group = "_", name = ":client:sockets:infrastructure" }

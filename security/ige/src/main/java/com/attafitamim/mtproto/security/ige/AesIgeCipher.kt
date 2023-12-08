@@ -1,7 +1,7 @@
 package com.attafitamim.mtproto.security.ige
 
-import com.attafitamim.mtproto.security.core.cipher.CipherMode
-import com.attafitamim.mtproto.security.core.cipher.aes.IAesCipher
+import com.attafitamim.mtproto.security.cipher.core.CipherMode
+import com.attafitamim.mtproto.security.cipher.aes.IAesCipher
 import kotlin.experimental.xor
 
 class AesIgeCipher(

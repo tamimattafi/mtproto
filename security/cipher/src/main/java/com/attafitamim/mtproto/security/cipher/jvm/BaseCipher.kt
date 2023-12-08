@@ -1,10 +1,10 @@
-package com.attafitamim.mtproto.security.core.jvm
+package com.attafitamim.mtproto.security.cipher.jvm
 
-import com.attafitamim.mtproto.security.core.cipher.CipherMode
-import com.attafitamim.mtproto.security.core.cipher.ICipher
-import com.attafitamim.mtproto.security.core.cipher.algorithm.Algorithm
-import com.attafitamim.mtproto.security.core.cipher.algorithm.AlgorithmMode
-import com.attafitamim.mtproto.security.core.cipher.algorithm.AlgorithmPadding
+import com.attafitamim.mtproto.security.cipher.algorithm.Algorithm
+import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmMode
+import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmPadding
+import com.attafitamim.mtproto.security.cipher.core.CipherMode
+import com.attafitamim.mtproto.security.cipher.core.ICipher
 import javax.crypto.Cipher
 
 abstract class BaseCipher(

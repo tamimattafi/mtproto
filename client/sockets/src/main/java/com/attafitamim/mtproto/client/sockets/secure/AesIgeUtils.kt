@@ -1,6 +1,6 @@
 package com.attafitamim.mtproto.client.sockets.secure
 
-import com.attafitamim.mtproto.security.core.cipher.CipherMode
+import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.ige.AesIgeCipher
 
 
@@ -9,15 +9,6 @@ fun decryptAesIge(
     iv: ByteArray,
     data: ByteArray
 ): ByteArray {
-    /*val res = ByteArray(data.size)
-    DefaultAESImplementation().AES256IGEDecrypt(
-        data,
-        res,
-        data.size,
-        iv,
-        key
-    )
-    return res*/
     val cipher = AesIgeCipher(CipherMode.DECRYPT).apply {
         init(key, iv)
     }
@@ -35,15 +26,4 @@ fun encryptAesIge(
 
 
     return cipher.finalize(data)
-/*
-    val res = ByteArray(data.size)
-
-
-    DefaultAESImplementation().AES256IGEEncrypt(
-        CryptoUtils.align(data, 16),
-        res,
-        data.size,
-        iv,
-        key
-    )*/
 }

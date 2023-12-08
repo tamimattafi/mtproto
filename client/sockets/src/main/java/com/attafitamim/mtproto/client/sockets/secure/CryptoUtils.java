@@ -1,209 +1,69 @@
 package com.attafitamim.mtproto.client.sockets.secure;
 
+import com.attafitamim.mtproto.security.digest.core.DigestMode;
+import com.attafitamim.mtproto.security.digest.core.IDigest;
+import com.attafitamim.mtproto.security.digest.jvm.Digest;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.RandomAccessFile;
 import java.math.BigInteger;
-import java.security.InvalidKeyException;
-import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 public final class CryptoUtils {
 
-    private CryptoUtils() {
-
-    }
-
-    private static final ThreadLocal<MessageDigest> md5 = new ThreadLocal<MessageDigest>() {
-        @Override
-        protected MessageDigest initialValue() {
-            MessageDigest crypt = null;
-            try {
-                crypt = MessageDigest.getInstance("MD5");
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            }
-            return crypt;
-        }
-    };
-
-    private static final ThreadLocal<MessageDigest> sha1 = new ThreadLocal<MessageDigest>() {
-        @Override
-        protected MessageDigest initialValue() {
-            MessageDigest crypt = null;
-            try {
-                crypt = MessageDigest.getInstance("SHA-1");
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            }
-            return crypt;
-        }
-    };
-
-    private static final ThreadLocal<MessageDigest> sha256 = new ThreadLocal<MessageDigest>() {
-        @Override
-        protected MessageDigest initialValue() {
-            MessageDigest crypt = null;
-            try {
-                crypt = MessageDigest.getInstance("SHA-256");
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            }
-            return crypt;
-        }
-    };
-
-    public static byte[] RSA(byte[] src, BigInteger key, BigInteger exponent) {
-        try {
-            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            PublicKey publicKey = keyFactory.generatePublic(new RSAPublicKeySpec(key, exponent));
-            Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-            return cipher.doFinal(src);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (InvalidKeySpecException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-
-    public static String MD5(byte[] src) {
-        try {
-            MessageDigest crypt = MessageDigest.getInstance("MD5");
-            crypt.reset();
-            crypt.update(src);
-            return ToHex(crypt.digest());
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    public static String MD5(RandomAccessFile randomAccessFile) {
-        try {
-            MessageDigest crypt = md5.get();
-            crypt.reset();
-            byte[] block = new byte[8 * 1024];
-            for (int i = 0; i < randomAccessFile.length(); i += 8 * 1024) {
-                int len = (int) Math.min(block.length, randomAccessFile.length() - i);
-                randomAccessFile.readFully(block, 0, len);
-                crypt.update(block, 0, len);
-            }
-            return ToHex(crypt.digest());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    public static byte[] MD5Raw(byte[] src) {
-        MessageDigest crypt = md5.get();
-        crypt.reset();
-        crypt.update(src);
-        return crypt.digest();
-    }
-
-    public static String ToHex(byte[] src) {
-        String res = "";
-        for (int i = 0; i < src.length; i++) {
-            res += String.format("%02X", src[i] & 0xFF);
-        }
-        return res.toLowerCase();
-    }
-
     public static byte[] SHA1(InputStream in) throws IOException {
-        MessageDigest crypt = sha1.get();
+        IDigest crypt = Digest.Companion.createDigest(DigestMode.SHA1);;
         crypt.reset();
         // Transfer bytes from in to out
         byte[] buf = new byte[4 * 1024];
-        int len;
-        while ((len = in.read(buf)) > 0) {
+        while (in.read(buf) > 0) {
             Thread.yield();
-            // out.write(buf, 0, len);
-            crypt.update(buf, 0, len);
+            crypt.update(buf);
         }
         in.close();
-        return crypt.digest();
+        return crypt.digest(null);
     }
 
     public static byte[] SHA1(String fileName) throws IOException {
-        MessageDigest crypt = sha1.get();
+        IDigest crypt = Digest.Companion.createDigest(DigestMode.SHA1);;
         crypt.reset();
         FileInputStream in = new FileInputStream(fileName);
         // Transfer bytes from in to out
         byte[] buf = new byte[4 * 1024];
-        int len;
-        while ((len = in.read(buf)) > 0) {
+        while (in.read(buf) > 0) {
             Thread.yield();
             // out.write(buf, 0, len);
-            crypt.update(buf, 0, len);
+            crypt.update(buf);
         }
         in.close();
-        return crypt.digest();
+        return crypt.digest(null);
     }
 
     public static byte[] SHA1(byte[] src) {
-        MessageDigest crypt = sha1.get();
+        IDigest crypt = Digest.Companion.createDigest(DigestMode.SHA1);;
         crypt.reset();
-        crypt.update(src);
-        return crypt.digest();
+        return crypt.digest(src);
     }
 
     public static byte[] SHA1(byte[]... src1) {
-        MessageDigest crypt = sha1.get();
+        IDigest crypt = Digest.Companion.createDigest(DigestMode.SHA1);;
         crypt.reset();
-        for (int i = 0; i < src1.length; i++) {
-            crypt.update(src1[i]);
+        for (byte[] bytes : src1) {
+            crypt.update(bytes);
         }
-        return crypt.digest();
+        return crypt.digest(null);
     }
 
     public static byte[] SHA256(byte[]... src1) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
+        IDigest crypt = Digest.Companion.createDigest(DigestMode.SHA256);;
 
-            for (int i = 0; i < src1.length; i++) {
-                md.update(src1[i]);
-            }
-
-            return md.digest();
-        } catch (Exception e) {
+        for (byte[] bytes : src1) {
+            crypt.update(bytes);
         }
-        return null;
-    }
 
-    public static byte[] encodePasswordHash(byte[] salt, String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(salt);
-            md.update(password.getBytes("UTF-8"));
-            md.update(salt);
-            return md.digest();
-        } catch (Exception e) {
-        }
-        return null;
+        return crypt.digest(null);
     }
 
     public static byte[] concat(byte[]... v) {
@@ -260,25 +120,5 @@ public final class CryptoUtils {
 
     public static BigInteger loadBigInt(byte[] data) {
         return new BigInteger(1, data);
-    }
-
-    public static byte[] fromBigInt(BigInteger val) {
-        byte[] res = val.toByteArray();
-        if (res[0] == 0) {
-            byte[] res2 = new byte[res.length - 1];
-            System.arraycopy(res, 1, res2, 0, res2.length);
-            return res2;
-        } else {
-            return res;
-        }
-    }
-
-    public static boolean isZero(byte[] src) {
-        for (int i = 0; i < src.length; i++) {
-            if (src[i] != 0) {
-                return false;
-            }
-        }
-        return true;
     }
 }

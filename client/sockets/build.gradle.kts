@@ -31,6 +31,7 @@ dependencies {
     api(project(libs.mtproto.serialization.get().module.name))
     api(project(libs.mtproto.security.ige.get().module.name))
     api(project(libs.mtproto.security.obfuscation.get().module.name))
+    api(project(libs.mtproto.security.digest.get().module.name))
 
     // Ktor
     implementation(libs.ktor.webscokets)
