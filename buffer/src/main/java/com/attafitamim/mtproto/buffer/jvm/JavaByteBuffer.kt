@@ -56,7 +56,7 @@ class JavaByteBuffer(
     }
 
     override fun getByteArray(): ByteArray =
-        byteBuffer.array()
+        getByteArray(remaining)
 
     override fun fillByteArray(destination: ByteArray, offset: Int, limit: Int) {
         byteBuffer[destination, offset, limit]

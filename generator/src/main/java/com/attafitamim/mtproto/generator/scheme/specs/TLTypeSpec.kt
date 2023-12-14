@@ -39,7 +39,11 @@ sealed interface TLTypeSpec {
         ) : Structure
 
         data class Bytes(
-            val fixedSize: Int?
+            val size: String?
+        ) : Structure
+
+        data class ByteArray(
+            val size: String?
         ) : Structure
     }
 

@@ -4,4 +4,5 @@ import com.attafitamim.mtproto.security.cipher.core.ICipher
 
 interface IAesCipher : ICipher {
     fun init(key: ByteArray, iv: ByteArray)
+    fun init(aesKey: AesKey)
 }

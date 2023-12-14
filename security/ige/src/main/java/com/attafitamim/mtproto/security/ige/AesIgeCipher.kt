@@ -1,7 +1,8 @@
 package com.attafitamim.mtproto.security.ige
 
-import com.attafitamim.mtproto.security.cipher.core.CipherMode
+import com.attafitamim.mtproto.security.cipher.aes.AesKey
 import com.attafitamim.mtproto.security.cipher.aes.IAesCipher
+import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import kotlin.experimental.xor
 
 class AesIgeCipher(
@@ -24,6 +25,10 @@ class AesIgeCipher(
         this.key = key
 
         reset()
+    }
+
+    override fun init(aesKey: AesKey) {
+        init(aesKey.key, aesKey.iv)
     }
 
     override fun updateData(data: ByteArray): ByteArray =
@@ -120,4 +125,6 @@ class AesIgeCipher(
 
         processedBlocks += blocksCount
     }
+
+    companion object
 }

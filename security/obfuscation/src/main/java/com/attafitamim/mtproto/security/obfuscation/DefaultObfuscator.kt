@@ -1,11 +1,14 @@
 package com.attafitamim.mtproto.security.obfuscation
 
 import com.attafitamim.mtproto.buffer.core.IByteBufferProvider
-import com.attafitamim.mtproto.security.cipher.aes.IAesCipherFactory
-import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmMode
+import com.attafitamim.mtproto.security.cipher.aes.AesKey
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
+import com.attafitamim.mtproto.security.cipher.jvm.AesCipher
+import com.attafitamim.mtproto.security.cipher.utils.ctr
 import com.attafitamim.mtproto.security.utils.ISecureRandom
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The default obfuscator, check telegram docs for more info:
@@ -16,36 +19,33 @@ import com.attafitamim.mtproto.security.utils.ISecureRandom
 class DefaultObfuscator(
     private val secureRandom: ISecureRandom,
     private val bufferProvider: IByteBufferProvider,
-    private val cipherProvider: IAesCipherFactory,
     private val protocol: Int = DEFAULT_PROTOCOL,
     private val dataCenter: Int = DEFAULT_DATA_CENTER
 ) : IObfuscator {
 
+    @Volatile
     private var encryptionCipher: ICipher? = null
+
+    @Volatile
     private var decryptionCipher: ICipher? = null
 
-    override fun init(): ByteArray {
+    private var mutex = Mutex()
+
+    override suspend fun init(): ByteArray = mutex.withLock {
         val initBytes = generateInitBytes()
 
-        val encryptionKey = initBytes.getKey()
-        val encryptionIV = initBytes.getIV()
-
-        val encryptionCipher = cipherProvider.createCipher(
+        val encryptionKey = initBytes.getAesKey()
+        val encryptionCipher = AesCipher.ctr(
             CipherMode.ENCRYPT,
-            AlgorithmMode.CTR
-        ).apply {
-            init(encryptionKey, encryptionIV)
-        }
+            encryptionKey
+        )
 
         val initBytesReversed = initBytes.reversedArray()
-        val decryptionKey = initBytesReversed.getKey()
-        val decryptionIV = initBytesReversed.getIV()
-        val decryptionCipher = cipherProvider.createCipher(
+        val decryptionKey = initBytesReversed.getAesKey()
+        val decryptionCipher = AesCipher.ctr(
             CipherMode.DECRYPT,
-            AlgorithmMode.CTR
-        ).apply {
-            init(decryptionKey, decryptionIV)
-        }
+            decryptionKey
+        )
 
         val encryptedInitBytes = encryptionCipher.updateData(initBytes)
 
@@ -57,7 +57,7 @@ class DefaultObfuscator(
         return initBytes.sliceArray(0..< PROTOCOL_POSITION) + encryptedFooter
     }
 
-    override fun obfuscate(data: ByteArray): ByteArray {
+    override suspend fun obfuscate(data: ByteArray): ByteArray = mutex.withLock {
         val encryptionCipher = requireNotNull(encryptionCipher) {
             "Obfuscator not initialized"
         }
@@ -65,12 +65,17 @@ class DefaultObfuscator(
         return encryptionCipher.updateData(data)
     }
 
-    override fun clarify(data: ByteArray): ByteArray {
+    override suspend fun clarify(data: ByteArray): ByteArray = mutex.withLock {
         val decryptionCipher = requireNotNull(decryptionCipher) {
             "Obfuscator not initialized"
         }
 
         return decryptionCipher.updateData(data)
+    }
+
+    override suspend fun release() {
+        decryptionCipher = null
+        encryptionCipher = null
     }
 
     private fun generateInitBytes(): ByteArray {
@@ -101,6 +106,13 @@ class DefaultObfuscator(
             bytesBuffer.rewind()
             return bytesBuffer.getByteArray()
         }
+    }
+
+    private fun ByteArray.getAesKey(): AesKey {
+        val key = getKey()
+        val iv = getIV()
+
+        return AesKey(key, iv)
     }
 
     private fun ByteArray.getKey(): ByteArray = sliceArray(8..< 40)

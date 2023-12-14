@@ -63,11 +63,9 @@ fun KFunction2<*, *, *>.asParseFunctionBuilder(
         .addParameters(valueParameters.asParameterSpecs())
 
     val actualReturnType = if (!superTypeVariables.isNullOrEmpty() && returnType is ClassName) {
-        builder.addModifiers(KModifier.INLINE)
-
         superTypeVariables.forEach { typeName ->
             if (typeName is TypeVariableName) {
-                val reifiedTypeName = typeName.copy(reified = true)
+                val reifiedTypeName = typeName.copy(reified = false)
                 builder.addTypeVariable(reifiedTypeName)
                 val parserClass = createTypeParseFunctionTypeName(typeName)
                 val parserName = createTypeParserParameterName(typeName.name)
@@ -347,13 +345,13 @@ fun FunSpec.Builder.addBytesParseStatement(
     flag: Int?,
     typeNameFactory: TypeNameFactory
 ): FunSpec.Builder = this.apply {
-    val parseStatement = if (typeSpec.fixedSize != null) buildString {
+    val parseStatement = if (typeSpec.size != null) buildString {
         append(
             INPUT_STREAM_NAME,
             INSTANCE_ACCESS_KEY,
             TLInputStream::readBytes.name,
             PARAMETER_OPEN_PARENTHESIS,
-            typeSpec.fixedSize,
+            typeSpec.size,
             PARAMETER_CLOSE_PARENTHESIS
         )
     } else buildString {
@@ -375,6 +373,39 @@ fun FunSpec.Builder.addBytesParseStatement(
     )
 }
 
+fun FunSpec.Builder.addByteArrayParseStatement(
+    name: String,
+    typeSpec: TLTypeSpec.Structure.ByteArray,
+    flag: Int?,
+    typeNameFactory: TypeNameFactory
+): FunSpec.Builder = this.apply {
+    val parseStatement = if (typeSpec.size != null) buildString {
+        append(
+            INPUT_STREAM_NAME,
+            INSTANCE_ACCESS_KEY,
+            TLInputStream::readBytes.name,
+            PARAMETER_OPEN_PARENTHESIS,
+            typeSpec.size,
+            PARAMETER_CLOSE_PARENTHESIS
+        )
+    } else buildString {
+        append(
+            INPUT_STREAM_NAME,
+            INSTANCE_ACCESS_KEY,
+            TLInputStream::readByteArray.name,
+            PARAMETER_OPEN_PARENTHESIS,
+            PARAMETER_CLOSE_PARENTHESIS
+        )
+    }
+
+    val typeName = typeNameFactory.createTypeName(typeSpec)
+    addPropertyParseStatement(
+        name,
+        parseStatement,
+        flag,
+        typeName
+    )
+}
 
 fun FunSpec.Builder.addPropertySerializeStatement(
     name: String,
@@ -391,6 +422,7 @@ fun FunSpec.Builder.addPropertySerializeStatement(
         is TLTypeSpec.Primitive -> addLocalPropertySerializeStatement(name, typeSpec.clazz, flag)
         is TLTypeSpec.Structure.Collection -> addCollectionSerializeStatement(name, typeSpec.elementGeneric, flag)
         is TLTypeSpec.Structure.Bytes -> addBytesSerializeStatement(name, typeSpec, flag)
+        is TLTypeSpec.Structure.ByteArray -> addByteArraySerializeStatement(name, typeSpec, flag)
         TLTypeSpec.Flag -> { /* Do not serialize to stream */}
         TLTypeSpec.Type -> addGenericSerializeStatement(name, flag)
     }
@@ -429,6 +461,7 @@ fun FunSpec.Builder.addPropertyParseStatement(
         is TLTypeSpec.Generic.Variable -> addGenericParseStatement(name, typeSpec, flag, typeNameFactory)
         is TLTypeSpec.Primitive -> addLocalPropertyParseStatement(name, typeSpec.clazz, flag)
         is TLTypeSpec.Structure.Bytes -> addBytesParseStatement(name, typeSpec, flag, typeNameFactory)
+        is TLTypeSpec.Structure.ByteArray -> addByteArrayParseStatement(name, typeSpec, flag, typeNameFactory)
         is TLTypeSpec.Structure.Collection -> addCollectionParseStatement(
             name,
             typeSpec.elementGeneric,
@@ -640,7 +673,7 @@ fun FunSpec.Builder.addBytesSerializeStatement(
     typeSpec: TLTypeSpec.Structure.Bytes,
     flag: Int?
 ): FunSpec.Builder = this.addSerializeFlagCheckStatement(name, flag) {
-    val serializeMethod = if (typeSpec.fixedSize != null) {
+    val serializeMethod = if (typeSpec.size != null) {
         val byteArraySizeName = buildString {
             append(
                 name,
@@ -655,7 +688,7 @@ fun FunSpec.Builder.addBytesSerializeStatement(
                 PARAMETER_OPEN_PARENTHESIS,
                 byteArraySizeName,
                 EQUAL_SIGN,
-                typeSpec.fixedSize,
+                typeSpec.size,
                 PARAMETER_CLOSE_PARENTHESIS
             )
         }
@@ -672,6 +705,49 @@ fun FunSpec.Builder.addBytesSerializeStatement(
             OUTPUT_STREAM_NAME,
             INSTANCE_ACCESS_KEY,
             serializeMethod,
+            PARAMETER_OPEN_PARENTHESIS,
+            name,
+            PARAMETER_CLOSE_PARENTHESIS
+        )
+    }
+
+    addStatement(serializeStatement)
+}
+
+
+fun FunSpec.Builder.addByteArraySerializeStatement(
+    name: String,
+    typeSpec: TLTypeSpec.Structure.ByteArray,
+    flag: Int?
+): FunSpec.Builder = this.addSerializeFlagCheckStatement(name, flag) {
+    if (typeSpec.size != null) {
+        val byteArraySizeName = buildString {
+            append(
+                name,
+                INSTANCE_ACCESS_KEY,
+                ByteArray::size.name
+            )
+        }
+
+        val sizeValidationStatement = buildString {
+            append(
+                REQUIRE_METHOD,
+                PARAMETER_OPEN_PARENTHESIS,
+                byteArraySizeName,
+                EQUAL_SIGN,
+                typeSpec.size,
+                PARAMETER_CLOSE_PARENTHESIS
+            )
+        }
+
+        addStatement(sizeValidationStatement)
+    }
+
+    val serializeStatement = buildString {
+        append(
+            OUTPUT_STREAM_NAME,
+            INSTANCE_ACCESS_KEY,
+            TLOutputStream::writeByteArray.name,
             PARAMETER_OPEN_PARENTHESIS,
             name,
             PARAMETER_CLOSE_PARENTHESIS
@@ -780,7 +856,7 @@ fun createTypeParserAsParameter(
         )
     }
 
-    is TLTypeSpec.Structure.Bytes -> if (typeSpec.fixedSize != null) buildString {
+    is TLTypeSpec.Structure.Bytes -> if (typeSpec.size != null) buildString {
         append(
             CURLY_BRACE_OPEN,
             KEYWORD_SEPARATOR,
@@ -788,7 +864,27 @@ fun createTypeParserAsParameter(
             INSTANCE_ACCESS_KEY,
             TLInputStream::readBytes.name,
             PARAMETER_OPEN_PARENTHESIS,
-            typeSpec.fixedSize,
+            typeSpec.size,
+            PARAMETER_CLOSE_PARENTHESIS,
+            KEYWORD_SEPARATOR,
+            CURLY_BRACE_CLOSE
+        )
+    } else {
+        createTypeParserAsParameter(
+            TLTypeSpec.Primitive(ByteArray::class),
+            typeNameFactory
+        )
+    }
+
+    is TLTypeSpec.Structure.ByteArray -> if (typeSpec.size != null) buildString {
+        append(
+            CURLY_BRACE_OPEN,
+            KEYWORD_SEPARATOR,
+            IT_KEYWORD,
+            INSTANCE_ACCESS_KEY,
+            TLInputStream::readBytes.name,
+            PARAMETER_OPEN_PARENTHESIS,
+            typeSpec.size,
             PARAMETER_CLOSE_PARENTHESIS,
             KEYWORD_SEPARATOR,
             CURLY_BRACE_CLOSE

@@ -1,7 +1,8 @@
 package com.attafitamim.mtproto.security.obfuscation
 
 interface IObfuscator {
-    fun init(): ByteArray
-    fun obfuscate(data: ByteArray): ByteArray
-    fun clarify(data: ByteArray): ByteArray
+    suspend fun init(): ByteArray
+    suspend fun obfuscate(data: ByteArray): ByteArray
+    suspend fun clarify(data: ByteArray): ByteArray
+    suspend fun release()
 }

@@ -9,7 +9,7 @@ class Digest(mode: DigestMode) : IDigest {
 
     private val messageDigest = MessageDigest.getInstance(mode.toJavaMode())
 
-    override fun update(data: ByteArray) {
+    override fun updateData(data: ByteArray) {
         messageDigest.update(data)
     }
 

@@ -3,11 +3,20 @@ package com.attafitamim.mtproto.generator.poet.factories
 import com.attafitamim.mtproto.core.types.TLContainer
 import com.attafitamim.mtproto.core.types.TLObject
 import com.attafitamim.mtproto.generator.scheme.specs.TLTypeSpec
-import com.attafitamim.mtproto.generator.syntax.*
+import com.attafitamim.mtproto.generator.syntax.CONTAINERS_FOLDER_NAME
+import com.attafitamim.mtproto.generator.syntax.GLOBAL_NAMESPACE
+import com.attafitamim.mtproto.generator.syntax.METHODS_FOLDER_NAME
+import com.attafitamim.mtproto.generator.syntax.PACKAGE_SEPARATOR
+import com.attafitamim.mtproto.generator.syntax.TYPES_FOLDER_NAME
+import com.attafitamim.mtproto.generator.syntax.TYPES_PREFIX
 import com.attafitamim.mtproto.generator.utils.camelToTitleCase
 import com.attafitamim.mtproto.generator.utils.snakeToTitleCase
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeVariableName
+import com.squareup.kotlinpoet.asClassName
+import com.squareup.kotlinpoet.asTypeName
 
 class TypeNameFactory(private val basePackage: String) {
 
@@ -96,6 +105,7 @@ class TypeNameFactory(private val basePackage: String) {
 
     private fun TLTypeSpec.Structure.toTypeName(): TypeName = when(this) {
         is TLTypeSpec.Structure.Collection -> toTypeName()
+        is TLTypeSpec.Structure.ByteArray,
         is TLTypeSpec.Structure.Bytes -> ByteArray::class.asTypeName()
     }
 

@@ -16,4 +16,7 @@ dependencies {
     api(project(libs.mtproto.buffer.get().module.name))
     api(project(libs.mtproto.security.cipher.get().module.name))
     api(project(libs.mtproto.security.utils.get().module.name))
+
+    // Coroutines
+    implementation(libs.kotlin.coroutines.core)
 }

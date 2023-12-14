@@ -2,7 +2,20 @@ package com.attafitamim.mtproto.generator.scheme.parsers
 
 import com.attafitamim.mtproto.generator.scheme.specs.TLContainerSpec
 import com.attafitamim.mtproto.generator.scheme.specs.TLTypeSpec
-import com.attafitamim.mtproto.generator.syntax.*
+import com.attafitamim.mtproto.generator.syntax.ANY_TYPE_SIGNATURE
+import com.attafitamim.mtproto.generator.syntax.BOOLEAN_FLAG_SIGNATURE
+import com.attafitamim.mtproto.generator.syntax.BYTES_SIGNATURE
+import com.attafitamim.mtproto.generator.syntax.BYTE_ARRAY_SIGNATURE
+import com.attafitamim.mtproto.generator.syntax.GENERIC_PARAMETER_CLOSING_QUOTATION
+import com.attafitamim.mtproto.generator.syntax.GENERIC_PARAMETER_OPENING_QUOTATION
+import com.attafitamim.mtproto.generator.syntax.GENERIC_SEPARATOR
+import com.attafitamim.mtproto.generator.syntax.LIST_CLOSING_BRACKET
+import com.attafitamim.mtproto.generator.syntax.LIST_OPENING_BRACKET
+import com.attafitamim.mtproto.generator.syntax.NAMESPACE_SEPARATOR
+import com.attafitamim.mtproto.generator.syntax.SUPER_CONTAINER_SIGNATURE
+import com.attafitamim.mtproto.generator.syntax.SUPER_OBJECT_SIGNATURE
+import com.attafitamim.mtproto.generator.syntax.TYPE_INDICATOR
+import com.attafitamim.mtproto.generator.syntax.primitiveTypes
 import com.attafitamim.mtproto.generator.utils.snakeToTitleCase
 
 object TLTypeParser {
@@ -106,20 +119,35 @@ object TLTypeParser {
         // is a true-flag (boolean)
         typeScheme == BOOLEAN_FLAG_SIGNATURE -> TLTypeSpec.Flag
 
-        // is byteArray with dynamic size
+        // is bytes with dynamic size
         typeScheme == BYTES_SIGNATURE -> TLTypeSpec.Structure.Bytes(null)
 
-        // is byteArray with fixed size
+        // is byteArray with dynamic size
+        typeScheme == BYTE_ARRAY_SIGNATURE -> TLTypeSpec.Structure.ByteArray(null)
+
+        // is bytes with fixed size
         typeScheme.contains(BYTES_SIGNATURE)
                 && typeScheme.contains(LIST_OPENING_BRACKET)
                 && typeScheme.contains(LIST_CLOSING_BRACKET) -> {
-                    val fixedSize = typeScheme.substringAfter(LIST_OPENING_BRACKET)
+                    val size = typeScheme.substringAfter(LIST_OPENING_BRACKET)
                         .removeSuffix(LIST_CLOSING_BRACKET)
                         .trim()
-                        .toInt()
+                        .takeIf(String::isNotBlank)
 
-                    TLTypeSpec.Structure.Bytes(fixedSize)
+                    TLTypeSpec.Structure.Bytes(size)
                 }
+
+        // is byteArray with fixed size
+        typeScheme.contains(BYTE_ARRAY_SIGNATURE)
+                && typeScheme.contains(LIST_OPENING_BRACKET)
+                && typeScheme.contains(LIST_CLOSING_BRACKET) -> {
+            val size = typeScheme.substringAfter(LIST_OPENING_BRACKET)
+                .removeSuffix(LIST_CLOSING_BRACKET)
+                .trim()
+                .takeIf(String::isNotBlank)
+
+            TLTypeSpec.Structure.ByteArray(size)
+        }
 
         // is a list of types
         typeScheme.startsWith(LIST_OPENING_BRACKET)

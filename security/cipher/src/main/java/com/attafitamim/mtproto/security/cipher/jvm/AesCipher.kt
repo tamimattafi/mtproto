@@ -1,5 +1,6 @@
 package com.attafitamim.mtproto.security.cipher.jvm
 
+import com.attafitamim.mtproto.security.cipher.aes.AesKey
 import com.attafitamim.mtproto.security.cipher.aes.IAesCipher
 import com.attafitamim.mtproto.security.cipher.aes.IAesCipherFactory
 import com.attafitamim.mtproto.security.cipher.algorithm.Algorithm
@@ -30,6 +31,10 @@ class AesCipher(
             keySpec,
             ivSpec
         )
+    }
+
+    override fun init(aesKey: AesKey) {
+        init(aesKey.key, aesKey.iv)
     }
 
     companion object : IAesCipherFactory {

@@ -15,4 +15,3 @@ dependencies {
     // Coroutines
     implementation(libs.kotlin.coroutines.core)
 }
-

@@ -46,6 +46,7 @@ const val SUPER_CONTAINER_SIGNATURE = "Container"
 
 const val BOOLEAN_FLAG_SIGNATURE = "true"
 const val BYTES_SIGNATURE = "bytes"
+const val BYTE_ARRAY_SIGNATURE = "byteArray"
 
 const val FLAG_INITIAL_VALUE = 0
 const val FLAG_BASE = 2.0

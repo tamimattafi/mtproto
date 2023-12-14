@@ -1,18 +1,26 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    alias(libs.plugins.android.gradle.application) apply false
-    alias(libs.plugins.kotlin.android) apply false
+    id(libs.plugins.java.library.get().pluginId)
+    alias(libs.plugins.kotlin.jvm)
 }
 
-buildscript {
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 
-    repositories {
-        mavenLocal()
-        google()
-        mavenCentral()
-    }
+dependencies {
+    // MTProto
+    api(project(libs.mtproto.client.connection.get().module.name))
+    api(project(libs.mtproto.client.sockets.ktor.get().module.name))
+    api(project(libs.mtproto.client.sockets.connect.get().module.name))
 
-    dependencies {
-        classpath(libs.mtproto.generator)
-    }
+    // Ktor
+    implementation(libs.ktor.webscokets)
+    implementation(libs.ktor.network)
+    implementation(libs.ktor.cio)
+    implementation(libs.ktor.logger)
+    implementation(libs.ktor.core)
+
+    // IO
+    implementation(libs.kotlinx.io)
 }

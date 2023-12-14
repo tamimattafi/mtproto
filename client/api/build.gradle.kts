@@ -13,5 +13,6 @@ java {
 }
 
 dependencies {
-    api(project(":core"))
+    // MTProto
+    api(project(libs.mtproto.core.get().module.name))
 }
