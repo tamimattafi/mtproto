@@ -15,4 +15,7 @@ java {
 dependencies {
     // MTProto
     api(project(libs.mtproto.core.get().module.name))
+
+    // Coroutines
+    implementation(libs.kotlin.coroutines.core)
 }

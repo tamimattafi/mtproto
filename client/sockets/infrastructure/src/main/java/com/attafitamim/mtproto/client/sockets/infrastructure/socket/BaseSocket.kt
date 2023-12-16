@@ -4,6 +4,7 @@ import com.attafitamim.mtproto.client.sockets.infrastructure.endpoint.Endpoint
 import com.attafitamim.mtproto.client.sockets.infrastructure.endpoint.IEndpointProvider
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.sync.Mutex
 abstract class BaseSocket<S : CoroutineScope>(
     protected val scope: CoroutineScope,
     protected val connectRetryInterval: Long,
+    protected val maxRetryCount: Int,
     protected val endpointProvider: IEndpointProvider
 ) : ISocket {
 
@@ -31,10 +33,8 @@ abstract class BaseSocket<S : CoroutineScope>(
     protected abstract suspend fun forceClose()
     protected abstract fun S.handlePostInit()
 
-    override fun start(onStart: suspend ISocket.() -> Unit) {
-        startInternal {
-            onStart()
-        }
+    override suspend fun start() {
+        safeProvideSession()
     }
 
     override fun readText(): Flow<String> =
@@ -46,31 +46,43 @@ abstract class BaseSocket<S : CoroutineScope>(
     override fun readEvents(): Flow<SocketEvent> =
         eventsFlow.asSharedFlow()
 
-    override fun close() {
+    override suspend fun close() {
+        mutex.lock()
         scope.coroutineContext.cancelChildren()
-        scope.launch {
+
+        val closingTask = scope.async {
             forceClose()
         }
-    }
 
-    protected fun startInternal(onStart: suspend S.() -> Unit) {
-        provideSession {
-            scope.launch {
-                onStart()
-            }
-        }
-    }
-
-    protected fun provideSession(
-        onProvide: suspend S.() -> Unit = {}
-    ) = scope.launch {
-        mutex.lock()
-        val session = provideSession()
+        closingTask.await()
         mutex.unlock()
-        onProvide.invoke(session)
     }
 
-    protected suspend fun provideSession(): S {
+    protected suspend fun <T : Any> startInternal(
+        onStart: suspend S.() -> T
+    ): T? {
+        val session = safeProvideSession() ?: return null
+
+        val startTask = session.async {
+            session.onStart()
+        }
+
+        return startTask.await()
+    }
+
+    protected suspend fun safeProvideSession(): S? {
+        mutex.lock()
+        val providingSession = scope.async {
+            provideSession()
+        }
+
+        val session = providingSession.await()
+        mutex.unlock()
+
+        return session
+    }
+
+    protected suspend fun provideSession(): S? {
         val session = this@BaseSocket.currentSession
         val isActive = this@BaseSocket.isActive
         if (session != null && isActive) {
@@ -82,7 +94,8 @@ abstract class BaseSocket<S : CoroutineScope>(
         // Keep retrying to connect to the socket
         val endpoint = endpointProvider.provideEndpoint(retryCount.get())
         var newSession = tryCreateSession(endpoint)
-        while (newSession == null) {
+
+        while (newSession == null && retryCount.get() < maxRetryCount) {
             retryCount.incrementAndGet()
             delay(connectRetryInterval)
             newSession = tryCreateSession(endpoint)
@@ -90,8 +103,15 @@ abstract class BaseSocket<S : CoroutineScope>(
 
         retryCount.set(0)
         currentSession = newSession
-        newSession.handlePostInit()
-        emitEvent(SocketEvent.Connected)
+
+        val event = if (newSession != null) {
+            newSession.handlePostInit()
+            SocketEvent.Connected
+        } else {
+            SocketEvent.Error.MaxConnectRetriesReached(maxRetryCount)
+        }
+
+        emitEvent(event)
         return newSession
     }
 

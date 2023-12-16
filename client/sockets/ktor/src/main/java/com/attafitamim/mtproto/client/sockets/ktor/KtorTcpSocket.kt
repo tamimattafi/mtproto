@@ -19,10 +19,12 @@ import kotlinx.coroutines.launch
 class KtorTcpSocket(
     scope: CoroutineScope,
     connectRetryInterval: Long,
+    maxRetryCount: Int,
     endpointProvider: IEndpointProvider
 ) : BaseSocket<Socket>(
     scope,
     connectRetryInterval,
+    maxRetryCount,
     endpointProvider
 ) {
 
@@ -32,12 +34,12 @@ class KtorTcpSocket(
     @Volatile
     private var writeChannel: ByteWriteChannel? = null
 
-    override fun writeText(data: String) {
-        writeData(data.toByteArray())
+    override suspend fun writeText(data: String): Boolean {
+        return writeData(data.toByteArray())
     }
 
-    override fun writeBytes(bytes: ByteArray) {
-        writeData(bytes)
+    override suspend fun writeBytes(bytes: ByteArray): Boolean {
+        return writeData(bytes)
     }
 
     override suspend fun createSession(endpoint: Endpoint): Socket =
@@ -71,9 +73,11 @@ class KtorTcpSocket(
         //closeReason.awaitClose()
     }
 
-    private fun writeData(data: ByteArray) {
-        startInternal {
+    private suspend fun writeData(data: ByteArray): Boolean {
+        val result = startInternal {
             requireNotNull(writeChannel).writeFully(data)
         }
+
+        return result != null
     }
 }

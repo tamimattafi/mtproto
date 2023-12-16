@@ -14,30 +14,30 @@ class DefaultAuthenticatorStorage(
     @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
         ignoreUnknownKeys = false
-        encodeDefaults = false
+        encodeDefaults = true
         explicitNulls = true
     }
 
     override fun saveAuthCredentials(authCredentials: AuthCredentials) {
-        val credentialsJson = Json.encodeToString(authCredentials)
+        val credentialsJson = json.encodeToString(authCredentials)
         settings.putString(KEY_CREDENTIALS, credentialsJson)
     }
 
     override fun getAuthCredentials(): AuthCredentials? {
         val credentialsJson = settings.getStringOrNull(KEY_CREDENTIALS) ?: return null
-        return Json.decodeFromString(credentialsJson)
+        return json.decodeFromString(credentialsJson)
     }
 
     override fun saveSession(connectionType: ConnectionType, session: Session) {
         val key = connectionType.toKey()
-        val sessionJson = Json.encodeToString(session)
+        val sessionJson = json.encodeToString(session)
         settings.putString(key, sessionJson)
     }
 
     override fun getSession(connectionType: ConnectionType): Session? {
         val key = connectionType.toKey()
         val sessionJson = settings.getStringOrNull(key) ?: return null
-        return Json.decodeFromString(sessionJson)
+        return json.decodeFromString(sessionJson)
     }
 
     private fun ConnectionType.toKey(): String {

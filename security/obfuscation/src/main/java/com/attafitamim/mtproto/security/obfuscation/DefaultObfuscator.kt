@@ -32,6 +32,8 @@ class DefaultObfuscator(
     private var mutex = Mutex()
 
     override suspend fun init(): ByteArray = mutex.withLock {
+        release()
+
         val initBytes = generateInitBytes()
 
         val encryptionKey = initBytes.getAesKey()
@@ -77,6 +79,9 @@ class DefaultObfuscator(
         decryptionCipher = null
         encryptionCipher = null
     }
+
+    override suspend fun isInitialized() =
+        decryptionCipher != null && encryptionCipher != null
 
     private fun generateInitBytes(): ByteArray {
         while (true) {

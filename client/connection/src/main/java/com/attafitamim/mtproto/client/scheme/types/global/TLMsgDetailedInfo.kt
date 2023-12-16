@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLObject
 
-public sealed interface TLMsgDetailedInfo : TLObject {
+public sealed interface TLMsgDetailedInfo : TLObject, TLProtocolMessage {
   /**
    * msg_detailed_info#276d3ec6 msg_id:long answer_msg_id:long bytes:int status:int =
    * MsgDetailedInfo;

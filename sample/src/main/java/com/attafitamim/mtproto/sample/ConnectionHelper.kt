@@ -7,8 +7,10 @@ import com.attafitamim.mtproto.client.connection.auth.DefaultAuthenticatorStorag
 import com.attafitamim.mtproto.client.connection.auth.IAuthenticator
 import com.attafitamim.mtproto.client.connection.core.IConnection
 import com.attafitamim.mtproto.client.connection.core.IConnectionProvider
-import com.attafitamim.mtproto.client.connection.manager.ConnectionManager
 import com.attafitamim.mtproto.client.connection.manager.ConnectionPassport
+import com.attafitamim.mtproto.client.connection.manager.DefaultConnectionManager
+import com.attafitamim.mtproto.client.connection.manager.IUnknownMessageHandler
+import com.attafitamim.mtproto.client.connection.utils.toHex
 import com.attafitamim.mtproto.client.sockets.connection.SocketConnection
 import com.attafitamim.mtproto.client.sockets.infrastructure.endpoint.Endpoint
 import com.attafitamim.mtproto.client.sockets.infrastructure.endpoint.IEndpointProvider
@@ -29,6 +31,7 @@ import kotlinx.coroutines.Job
 object ConnectionHelper {
 
     private val retryInterval = 40.seconds.inWholeMilliseconds
+    private val maxRetryCount = 0
 
     private val client by lazy {
         KtorModule.provideHttpClient()
@@ -43,7 +46,13 @@ object ConnectionHelper {
         passport: ConnectionPassport
     ): IConnectionManager {
         val authenticator = createAuthenticator()
-        return ConnectionManager(scope, connectionProvider, authenticator, passport)
+        val unknownMessageHandler = object : IUnknownMessageHandler {
+            override fun handle(data: ByteArray) {
+                println("IUnknownMessageHandler: ${data.toHex()}")
+            }
+        }
+
+        return DefaultConnectionManager(scope, connectionProvider, authenticator, unknownMessageHandler, passport)
     }
 
     fun createSocketProvider(
@@ -52,6 +61,7 @@ object ConnectionHelper {
         client,
         scope,
         retryInterval,
+        maxRetryCount,
         endpointProvider
     )
 
@@ -94,7 +104,7 @@ object ConnectionHelper {
         val settings = PreferencesSettings(preferences)
         val storage = DefaultAuthenticatorStorage(settings)
 
-        val serverKeys = listOf(rsaKey)
+        val serverKeys = listOf(serverKey)
         return DefaultAuthenticator(secureRandom, storage, serverKeys)
     }
 

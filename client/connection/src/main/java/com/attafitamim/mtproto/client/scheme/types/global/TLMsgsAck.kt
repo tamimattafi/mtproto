@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLObject
 
-public sealed interface TLMsgsAck : TLObject {
+public sealed interface TLMsgsAck : TLObject, TLProtocolMessage {
   /**
    * msgs_ack#62d6b459 msg_ids:Vector<long> = MsgsAck;
    */

@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLObject
 
-public sealed interface TLRpcResult : TLObject {
+public sealed interface TLRpcResult : TLObject, TLProtocolMessage {
   /**
    * rpc_result#f35c6d01 req_msg_id:long result:byteArray = RpcResult;
    */

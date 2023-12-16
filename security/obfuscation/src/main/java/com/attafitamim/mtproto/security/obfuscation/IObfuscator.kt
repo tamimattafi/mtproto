@@ -5,4 +5,5 @@ interface IObfuscator {
     suspend fun obfuscate(data: ByteArray): ByteArray
     suspend fun clarify(data: ByteArray): ByteArray
     suspend fun release()
+    suspend fun isInitialized(): Boolean
 }

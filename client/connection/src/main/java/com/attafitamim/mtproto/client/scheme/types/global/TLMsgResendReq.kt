@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLObject
 
-public sealed interface TLMsgResendReq : TLObject {
+public sealed interface TLMsgResendReq : TLObject, TLProtocolMessage {
   /**
    * msg_resend_req#7d861a08 msg_ids:Vector<long> = MsgResendReq;
    */

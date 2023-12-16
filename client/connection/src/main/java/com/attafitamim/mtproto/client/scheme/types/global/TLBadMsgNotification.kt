@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLObject
 
-public sealed interface TLBadMsgNotification : TLObject {
+public sealed interface TLBadMsgNotification : TLObject, TLProtocolMessage {
   /**
    * bad_msg_notification#a7eff811 bad_msg_id:long bad_msg_seqno:int error_code:int =
    * BadMsgNotification;

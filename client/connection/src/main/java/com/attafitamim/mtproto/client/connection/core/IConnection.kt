@@ -6,6 +6,6 @@ interface IConnection {
     suspend fun connect()
     suspend fun disconnect()
     suspend fun sendData(byteArray: ByteArray)
-    suspend fun listenToData(): Flow<ByteArray>
-    suspend fun awaitClose()
+    fun listenToData(): Flow<ByteArray>
+    fun listenToEvents(): Flow<ConnectionEvent>
 }

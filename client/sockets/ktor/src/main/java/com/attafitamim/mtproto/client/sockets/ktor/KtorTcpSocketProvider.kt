@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 class KtorTcpSocketProvider(
     private val scope: CoroutineScope,
     private val connectRetryInterval: Long,
+    private val maxRetryCount: Int,
     private val endpointProvider: IEndpointProvider
 ) : ISocketProvider {
 
@@ -15,6 +16,7 @@ class KtorTcpSocketProvider(
         KtorTcpSocket(
             scope,
             connectRetryInterval,
+            maxRetryCount,
             endpointProvider
         )
 }

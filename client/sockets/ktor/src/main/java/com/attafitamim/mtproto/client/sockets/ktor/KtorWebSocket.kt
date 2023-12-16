@@ -21,24 +21,26 @@ class KtorWebSocket(
     private val client: HttpClient,
     scope: CoroutineScope,
     connectRetryInterval: Long,
+    maxRetryCount: Int,
     endpointProvider: IEndpointProvider
 ) : BaseSocket<DefaultWebSocketSession>(
     scope,
     connectRetryInterval,
+    maxRetryCount,
     endpointProvider
 ) {
 
     override val isActive: Boolean
         get() = currentSession?.isActive == true
 
-    override fun writeText(data: String) {
+    override suspend fun writeText(data: String): Boolean {
         val frame = Frame.Text(data)
-        sendFrame(frame)
+        return sendFrame(frame)
     }
 
-    override fun writeBytes(bytes: ByteArray) {
+    override suspend fun writeBytes(bytes: ByteArray): Boolean {
         val frame = Frame.Binary(fin = true, bytes)
-        sendFrame(frame)
+        return sendFrame(frame)
     }
 
     override suspend fun createSession(endpoint: Endpoint): DefaultWebSocketSession =
@@ -65,10 +67,12 @@ class KtorWebSocket(
         closeReason.awaitClose()
     }
 
-    private fun sendFrame(frame: Frame) {
-        startInternal {
+    private suspend fun sendFrame(frame: Frame): Boolean {
+        val result = startInternal {
             send(frame)
         }
+
+        return result != null
     }
 
     private fun Deferred<CloseReason?>.awaitClose() = scope.launch {

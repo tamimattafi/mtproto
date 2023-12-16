@@ -1,6 +1,6 @@
 [versions]
 # Lib
-mtproto = "3.0.0-local15"
+mtproto = "3.0.0-local25"
 
 # Plugins
 android-gradle = "8.1.3"

@@ -52,13 +52,13 @@ fun serializeData(
     return javaBuffer.getByteArray()
 }
 
-fun ByteArray.toInputStream(): TLInputStream {
+fun ByteArray.toTLInputStream(): TLInputStream {
     val javaBuffer = JavaByteBuffer.wrap(this)
     return TLBufferedInputStream(javaBuffer)
 }
 
 fun <T : Any> TLParser<T>.parseBytes(byteArray: ByteArray) =
-    parse(byteArray.toInputStream())
+    parse(byteArray.toTLInputStream())
 
 fun <T : Any> TLInputStream.tryParse(onParse: (TLInputStream) -> T): T? {
     val result = kotlin.runCatching {

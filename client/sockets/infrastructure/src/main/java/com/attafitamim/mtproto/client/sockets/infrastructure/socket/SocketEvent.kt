@@ -5,10 +5,13 @@ sealed interface SocketEvent {
     data object Connected : SocketEvent
 
     sealed interface Error : SocketEvent {
-        val cause: Throwable?
 
         data class NoConnection(
-            override val cause: Throwable?,
+            val cause: Throwable?,
+            val retryCount: Int
+        ) : Error
+
+        data class MaxConnectRetriesReached(
             val retryCount: Int
         ) : Error
     }

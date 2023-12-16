@@ -19,8 +19,8 @@ object Playground {
         val connectionProvider = ConnectionHelper.createConnectionProvider(socketProvider)
 
         val passport = ConnectionPassport(
-            apiId =,
-            apiHash =,
+            apiId = ,
+            apiHash = ,
             deviceModel = "android",
             systemVersion = "1.2.3",
             appVersion = "playground-1",
@@ -35,42 +35,27 @@ object Playground {
             passport
         )
 
-        // Public request
-        val getSalts = TLGetFutureSalts(1)
         val connectionType = ConnectionType.Generic("calls")
-        val salts = connectionManager.sendRequest(getSalts, connectionType)
-        println("TLGetFutureSalts: $salts")
+        connectionManager.initConnection(connectionType)
 
-        delay(3000)
-    }
+        repeat(10) {
+            kotlin.runCatching {
+                // Generic connection
+                val getSalts = TLGetFutureSalts(1)
+                val salts = connectionManager.sendRequest(getSalts, connectionType)
+                println("TLGetFutureSalts: $salts")
+            }
 
+            delay(3000)
 
-    fun readUInt(src: ByteArray, offset: Int): Long {
-        val a = (src[offset].toInt() and 0xFF).toLong()
-        val b = (src[offset + 1].toInt() and 0xFF).toLong()
-        val c = (src[offset + 2].toInt() and 0xFF).toLong()
-        val d = (src[offset + 3].toInt() and 0xFF).toLong()
-        return a + (b shl 8) + (c shl 16) + (d shl 24)
-    }
+            kotlin.runCatching {
+                // Download connection
+                val getSalts = TLGetFutureSalts(1)
+                val salts = connectionManager.sendRequest(getSalts, ConnectionType.Download)
+                println("TLGetFutureSalts: $salts")
+            }
 
-    fun readLong(src: ByteArray, offset: Int): Long {
-        val a: Long = readUInt(src, offset)
-        val b: Long = readUInt(src, offset + 4)
-        return (a and 0xFFFFFFFFL) + (b and 0xFFFFFFFFL shl 32)
-    }
-
-    private fun fromBigInt(value: BigInteger): ByteArray {
-        val res = value.toByteArray()
-        return if (res[0].toInt() == 0) {
-            val res2 = ByteArray(res.size - 1)
-            System.arraycopy(res, 1, res2, 0, res2.size)
-            res2
-        } else {
-            res
+            delay(3000)
         }
-    }
-
-    private fun <T : Any> TLVector<T>.toList() = when (this) {
-        is TLVector.Vector -> elements
     }
 }

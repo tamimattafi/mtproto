@@ -6,12 +6,12 @@ import com.attafitamim.mtproto.client.connection.auth.CryptoUtils.align
 import com.attafitamim.mtproto.client.connection.auth.CryptoUtils.subArray
 import com.attafitamim.mtproto.client.connection.auth.CryptoUtils.xor
 import com.attafitamim.mtproto.client.connection.core.IConnection
-import com.attafitamim.mtproto.client.connection.manager.ConnectionSession
 import com.attafitamim.mtproto.client.connection.session.Session
 import com.attafitamim.mtproto.client.connection.utils.SECOND_IN_MILLIS
 import com.attafitamim.mtproto.client.connection.utils.convertTimeToMessageId
 import com.attafitamim.mtproto.client.connection.utils.parseResponse
 import com.attafitamim.mtproto.client.connection.utils.toHex
+import com.attafitamim.mtproto.client.scheme.containers.global.TLEncryptedMessage
 import com.attafitamim.mtproto.client.scheme.types.global.TLClientDHInnerData
 import com.attafitamim.mtproto.client.scheme.types.global.TLPQInnerData
 import com.attafitamim.mtproto.client.scheme.types.global.TLResPQ
@@ -53,54 +53,54 @@ class DefaultAuthenticator(
     private var authCredentials: AuthCredentials? = null
     private val mutex = Mutex()
 
-    override suspend fun generateSession(connectionType: ConnectionType): Session {
+    override suspend fun authenticate(
+        connectionType: ConnectionType,
+        connection: IConnection
+    ): Session = mutex.withLock {
+        val authCredentials = authenticate(connection)
         val currentSession = storage.getSession(connectionType)
         if (currentSession != null) {
             return currentSession
         }
 
         val id = secureRandom.getRandomLong()
-        val newSession = Session(id)
+        val authKeyId = authCredentials.keyId.toHex(appendSpaces = false)
+        val newSession = Session(id, authKeyId)
         storage.saveSession(connectionType, newSession)
         return newSession
     }
 
-    override suspend fun authenticate(connectionSession: ConnectionSession) {
-        mutex.withLock {
-            if (authCredentials != null) {
-                return
-            }
-
-            val currentAuthCredentials = storage.getAuthCredentials()
-            if (currentAuthCredentials != null) {
-                authCredentials = currentAuthCredentials
-                return
-            }
-
-            val authResult = connectionSession.connection.generateAuthKey()
-            storage.saveAuthCredentials(authResult.credentials)
-            authCredentials = authResult.credentials
-            connectionSession.session.apply {
-                serverTimeDiff = authResult.serverTime - System.currentTimeMillis()
-            }
+    private suspend fun authenticate(connection: IConnection): AuthCredentials {
+        val currentAuthCredentials = authCredentials
+        if (currentAuthCredentials != null) {
+            return currentAuthCredentials
         }
+
+        val savedAuthCredentials = storage.getAuthCredentials()
+        if (savedAuthCredentials != null) {
+            authCredentials = savedAuthCredentials
+            return savedAuthCredentials
+        }
+
+        val authResult = connection.generateAuthKey()
+        storage.saveAuthCredentials(authResult.credentials)
+        authCredentials = authResult.credentials
+
+        return authResult.credentials
     }
 
-    override suspend fun cleanup() {
+    override suspend fun cleanup() = mutex.withLock {
         authCredentials = null
     }
 
     override suspend fun wrapData(session: Session, data: ByteArray): ByteArray {
-        val authCredentials = requireNotNull(authCredentials) {
-            "Authentication is required to wrap data"
-        }
+        val authCredentials = requireAuthCredentials()
 
-        val encryptedMessage =
-            com.attafitamim.mtproto.client.scheme.containers.global.TLEncryptedMessage(
-                authCredentials.serverSalt,
-                session.id,
-                data
-            )
+        val encryptedMessage = TLEncryptedMessage(
+            authCredentials.serverSalt,
+            session.id,
+            data
+        )
 
         val unencryptedData = serializeData {
             writeLong(authCredentials.serverSalt)
@@ -126,9 +126,7 @@ class DefaultAuthenticator(
     }
 
     override suspend fun unwrapData(session: Session, data: ByteArray): ByteArray {
-        val authCredentials = requireNotNull(authCredentials) {
-            "Authentication is required to unwrap data"
-        }
+        val authCredentials = requireAuthCredentials()
 
         val stream = TLBufferedInputStream
             .Provider(JavaByteBuffer)
@@ -180,7 +178,13 @@ class DefaultAuthenticator(
         return messageBytes
     }
 
-    fun generateMsgKey(
+    private suspend fun requireAuthCredentials() = mutex.withLock {
+        requireNotNull(authCredentials) {
+            "Authentication is required to unwrap data"
+        }
+    }
+
+    private fun generateMsgKey(
         serverSalt: ByteArray,
         sessionId: Long,
         message: ByteArray

@@ -10,6 +10,7 @@ class KtorWebSocketProvider(
     private val client: HttpClient,
     private val scope: CoroutineScope,
     private val connectRetryInterval: Long,
+    private val maxRetryCount: Int,
     private val endpointProvider: IEndpointProvider
 ) : ISocketProvider {
 
@@ -18,6 +19,7 @@ class KtorWebSocketProvider(
             client,
             scope,
             connectRetryInterval,
+            maxRetryCount,
             endpointProvider
         )
 }

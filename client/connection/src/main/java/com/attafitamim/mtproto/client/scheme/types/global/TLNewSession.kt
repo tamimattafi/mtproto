@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLObject
 
-public sealed interface TLNewSession : TLObject {
+public sealed interface TLNewSession : TLObject, TLProtocolMessage {
   /**
    * new_session_created#9ec20908 first_msg_id:long unique_id:long server_salt:long = NewSession;
    */
