@@ -32,6 +32,7 @@
       <module name="mtproto.security.core.test" target="17" />
       <module name="mtproto.security.digest.main" target="17" />
       <module name="mtproto.security.digest.test" target="17" />
+      <module name="mtproto.security.ige" target="17" />
       <module name="mtproto.security.ige.main" target="17" />
       <module name="mtproto.security.ige.test" target="17" />
       <module name="mtproto.security.main" target="1.7" />

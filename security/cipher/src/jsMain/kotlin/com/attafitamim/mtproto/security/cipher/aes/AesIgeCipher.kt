@@ -1,34 +1,24 @@
-package com.attafitamim.mtproto.security.ige
+package com.attafitamim.mtproto.security.cipher.aes
 
-import com.attafitamim.mtproto.security.cipher.aes.AesKey
-import com.attafitamim.mtproto.security.cipher.aes.IAesCipher
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
+import com.attafitamim.mtproto.security.cipher.core.ICipher
 import kotlin.experimental.xor
 
 class AesIgeCipher(
-    mode: CipherMode
-) : IAesCipher {
+    mode: CipherMode,
+    private val aesKey: AesKey
+) : ICipher {
 
     private var processedBlocks = 0
     private val engine = AESFastEngine()
-
-    private lateinit var iv: ByteArray
-    private lateinit var key: ByteArray
 
     private val forEncryption = when (mode) {
         CipherMode.ENCRYPT -> true
         CipherMode.DECRYPT -> false
     }
 
-    override fun init(key: ByteArray, iv: ByteArray) {
-        this.iv = iv
-        this.key = key
-
+    init {
         reset()
-    }
-
-    override fun init(aesKey: AesKey) {
-        init(aesKey.key, aesKey.iv)
     }
 
     override fun updateData(data: ByteArray): ByteArray =
@@ -43,7 +33,7 @@ class AesIgeCipher(
     private fun reset() {
         processedBlocks = 0
         engine.reset()
-        engine.init(forEncryption, key)
+        engine.init(forEncryption, aesKey.key)
     }
 
     private fun update(
@@ -65,8 +55,8 @@ class AesIgeCipher(
         len: Int
     ) {
         val blocksCount = len / 16
-        var curIvX = iv
-        var curIvY = iv
+        var curIvX = aesKey.iv
+        var curIvY = aesKey.iv
         var curIvXOffset = 16
         var curIvYOffset = 0
 
@@ -99,8 +89,8 @@ class AesIgeCipher(
         len: Int
     ) {
         val blocksCount = len / 16
-        var curIvX = iv
-        var curIvY = iv
+        var curIvX = aesKey.iv
+        var curIvY = aesKey.iv
         var curIvXOffset = 16
         var curIvYOffset = 0
         for (i in 0 until blocksCount) {

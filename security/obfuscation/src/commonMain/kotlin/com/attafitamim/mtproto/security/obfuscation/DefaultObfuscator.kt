@@ -1,12 +1,11 @@
 package com.attafitamim.mtproto.security.obfuscation
 
-import com.attafitamim.mtproto.buffer.core.IByteBufferProvider
-import com.attafitamim.mtproto.security.cipher.aes.AesCipher
+import com.attafitamim.mtproto.buffer.core.ByteBuffer
+import com.attafitamim.mtproto.security.cipher.aes.AesCtrCipher
 import com.attafitamim.mtproto.security.cipher.aes.AesKey
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
-import com.attafitamim.mtproto.security.cipher.utils.ctr
-import com.attafitamim.mtproto.security.utils.ISecureRandom
+import com.attafitamim.mtproto.security.utils.SecureRandom
 import kotlin.concurrent.Volatile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -15,11 +14,8 @@ import kotlinx.coroutines.sync.withLock
  * The default obfuscator, check telegram docs for more info:
  * https://core.telegram.org/mtproto/mtproto-transports#transport-obfuscation
  *
- * @property secureRandom A randomizer that gives a reliable result
  */
 class DefaultObfuscator(
-    private val secureRandom: ISecureRandom,
-    private val bufferProvider: IByteBufferProvider,
     private val protocol: Int = DEFAULT_PROTOCOL,
     private val dataCenter: Int = DEFAULT_DATA_CENTER
 ) : IObfuscator {
@@ -38,14 +34,14 @@ class DefaultObfuscator(
         val initBytes = generateInitBytes()
 
         val encryptionKey = initBytes.getAesKey()
-        val encryptionCipher = AesCipher.ctr(
+        val encryptionCipher = AesCtrCipher(
             CipherMode.ENCRYPT,
             encryptionKey
         )
 
         val initBytesReversed = initBytes.reversedArray()
         val decryptionKey = initBytesReversed.getAesKey()
-        val decryptionCipher = AesCipher.ctr(
+        val decryptionCipher = AesCtrCipher(
             CipherMode.DECRYPT,
             decryptionKey
         )
@@ -86,8 +82,8 @@ class DefaultObfuscator(
 
     private fun generateInitBytes(): ByteArray {
         while (true) {
-            val randomBytes = secureRandom.getRandomBytes(RANDOM_BYTES_SIZE)
-            val bytesBuffer = bufferProvider.wrap(randomBytes)
+            val randomBytes = SecureRandom().getRandomBytes(RANDOM_BYTES_SIZE)
+            val bytesBuffer = ByteBuffer.wrap(randomBytes)
 
             val firstByte = bytesBuffer.getByte()
             if (prohibitedFirstBytes.contains(firstByte)) {

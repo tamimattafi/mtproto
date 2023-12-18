@@ -7,7 +7,7 @@ import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 import javax.crypto.Cipher
 
-abstract class JvmBaseCipher(
+abstract class BaseCipher(
     mode: CipherMode,
     algorithm: Algorithm,
     algorithmMode: AlgorithmMode,

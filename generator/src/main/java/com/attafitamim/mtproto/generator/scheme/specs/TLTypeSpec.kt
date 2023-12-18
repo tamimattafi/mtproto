@@ -4,9 +4,9 @@ import kotlin.reflect.KClass
 
 sealed interface TLTypeSpec {
 
-    object Type : TLTypeSpec
+    data object Type : TLTypeSpec
 
-    object Flag : TLTypeSpec
+    data object Flag : TLTypeSpec
 
     data class Primitive(
         val clazz: KClass<out Any>
@@ -14,9 +14,9 @@ sealed interface TLTypeSpec {
 
     sealed interface TLType : TLTypeSpec {
 
-        object SuperObject : TLType
+        data object SuperObject : TLType
 
-        object SuperContainer : TLType
+        data object SuperContainer : TLType
 
         data class Object(
             val namespace: String?,

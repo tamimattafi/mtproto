@@ -39,7 +39,6 @@ mtproto-buffer = { group = "-", name = ":buffer" }
 mtproto-serialization = { group = "-", name = ":serialization" }
 
 mtproto-security-cipher = { group = "-", name = ":security:cipher" }
-mtproto-security-ige = { group = "-", name = ":security:ige" }
 mtproto-security-obfuscation = { group = "-", name = ":security:obfuscation" }
 mtproto-security-utils = { group = "-", name = ":security:utils" }
 mtproto-security-digest = { group = "-", name = ":security:digest" }

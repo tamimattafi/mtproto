@@ -12,7 +12,6 @@ import com.attafitamim.mtproto.generator.scheme.specs.TLTypeSpec
 import com.attafitamim.mtproto.generator.syntax.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import java.util.*
 import kotlin.math.pow
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction2
@@ -303,7 +302,13 @@ fun FunSpec.Builder.addCollectionParseStatement(
     }
 
     val genericTypeName = typeNameFactory.createTypeName(elementGeneric)
-    val arrayTypeName = ArrayList::class.asTypeName().parameterizedBy(genericTypeName)
+
+    // TODO: remove workaround of using raw package, when java imports are fixed
+    val arrayTypeName = ClassName(
+        "kotlin.collections",
+        "ArrayList"
+    ).parameterizedBy(genericTypeName)
+
     addStatement(arrayInitializeStatement, arrayTypeName)
 
     val collectionSizeName = java.lang.StringBuilder().append(
@@ -914,11 +919,11 @@ fun createTypeParserAsParameter(
             TLParser<*>::parse.name
         )
     }
-    TLTypeSpec.TLType.SuperContainer -> createTypeParserParameterName(TLContainer::class.java.simpleName)
-    TLTypeSpec.TLType.SuperObject -> createTypeParserParameterName(TLContainer::class.java.simpleName)
-    TLTypeSpec.Type -> createTypeParserParameterName(Any::class.java.simpleName)
+    is TLTypeSpec.TLType.SuperContainer -> createTypeParserParameterName(TLContainer::class.java.simpleName)
+    is TLTypeSpec.TLType.SuperObject -> createTypeParserParameterName(TLContainer::class.java.simpleName)
+    is TLTypeSpec.Type -> createTypeParserParameterName(Any::class.java.simpleName)
     is TLTypeSpec.Structure.Collection -> null
-    TLTypeSpec.Flag -> null
+    is TLTypeSpec.Flag -> null
 }
 
 fun getTypeParseMethod(type: KClass<out Any>) = when(type) {

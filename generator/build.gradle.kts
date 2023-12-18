@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     id(libs.plugins.java.gradle.plugin.get().pluginId)
+    id(libs.plugins.convention.plugin.get().pluginId)
 }
 
 java {

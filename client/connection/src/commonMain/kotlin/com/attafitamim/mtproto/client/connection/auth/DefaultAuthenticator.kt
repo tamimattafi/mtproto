@@ -24,15 +24,14 @@ import com.attafitamim.mtproto.client.scheme.types.global.TLVector
 import com.attafitamim.mtproto.core.types.TLMethod
 import com.attafitamim.mtproto.security.cipher.aes.AesKey
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
-import com.attafitamim.mtproto.security.cipher.rsa.RsaCipher
+import com.attafitamim.mtproto.security.cipher.rsa.RsaEcbCipher
 import com.attafitamim.mtproto.security.cipher.rsa.RsaKey
-import com.attafitamim.mtproto.security.cipher.utils.ecb
 import com.attafitamim.mtproto.security.digest.core.Digest
 import com.attafitamim.mtproto.security.digest.core.DigestMode
 import com.attafitamim.mtproto.security.digest.utls.sha1
 import com.attafitamim.mtproto.security.digest.utls.sha256
 import com.attafitamim.mtproto.security.ige.AesIgeCipher
-import com.attafitamim.mtproto.security.utils.ISecureRandom
+import com.attafitamim.mtproto.security.utils.SecureRandom
 import com.attafitamim.mtproto.security.utils.init
 import com.attafitamim.mtproto.serialization.stream.TLBufferedInputStream
 import com.attafitamim.mtproto.serialization.utils.calculateData
@@ -46,13 +45,13 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 
 class DefaultAuthenticator(
-    private val secureRandom: ISecureRandom,
     private val storage: IAuthenticatorStorage,
     private val serverKeys: List<RsaKey>
 ) : IAuthenticator {
 
     private var authCredentials: AuthCredentials? = null
     private val mutex = Mutex()
+    private val secureRandom = SecureRandom()
 
     override suspend fun authenticate(
         connectionType: ConnectionType,
@@ -339,7 +338,7 @@ class DefaultAuthenticator(
         val padding = if (paddingSize > 0) Random.nextBytes(paddingSize) else ByteArray(0)
         val dataWithHash = pqDataHash + pqDataBytes + padding
 
-        val encryptedData = RsaCipher.ecb(
+        val encryptedData = RsaEcbCipher(
             CipherMode.ENCRYPT,
             rsaKey
         ).finalize(dataWithHash)
@@ -426,22 +425,6 @@ class DefaultAuthenticator(
         val gbBytes = fromBigInt(gb)
         println("CONNECTION: got gbBytes")
         return AuthKey(authKey, keyId, gbBytes)
-    }
-
-    fun power(x: Int, y: Int, p: Int): Int {
-        var x = x
-        var y = y
-        var res = 1 // Initialize result
-        while (y > 0) {
-
-            // If y is odd, multiply x with result
-            if (y and 1 != 0) res = res * x
-
-            // y must be even now
-            y = y shr 1 // y = y/2
-            x = x * x // Change x to x^2
-        }
-        return res % p
     }
 
     /* Iterative Function to calculate (x^y) in O(log y) */

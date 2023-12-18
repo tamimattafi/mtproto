@@ -26,11 +26,11 @@ class TypeNameFactory(private val basePackage: String) {
             is TLTypeSpec.Primitive -> mtTypeSpec.clazz.asTypeName()
             is TLTypeSpec.TLType.Object -> mtTypeSpec.toTypeName()
             is TLTypeSpec.TLType.Container -> mtTypeSpec.toTypeName()
-            TLTypeSpec.TLType.SuperContainer -> TLContainer::class.asTypeName()
-            TLTypeSpec.TLType.SuperObject -> TLObject::class.asTypeName()
+            is TLTypeSpec.TLType.SuperContainer -> TLContainer::class.asTypeName()
+            is TLTypeSpec.TLType.SuperObject -> TLObject::class.asTypeName()
             is TLTypeSpec.Structure -> mtTypeSpec.toTypeName()
-            TLTypeSpec.Type -> Any::class.asTypeName()
-            TLTypeSpec.Flag -> Boolean::class.asTypeName()
+            is TLTypeSpec.Type -> Any::class.asTypeName()
+            is TLTypeSpec.Flag -> Boolean::class.asTypeName()
     }
 
     fun createClassName(name: String, superClassName: ClassName): ClassName {

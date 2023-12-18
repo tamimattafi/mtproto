@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.security.ige
+package com.attafitamim.mtproto.security.cipher.aes
 
 /**
  * an implementation of the AES (Rijndael), from FIPS-197.

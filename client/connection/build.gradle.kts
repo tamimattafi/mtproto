@@ -25,7 +25,6 @@ kotlin {
                 api(project(libs.mtproto.serialization.get().module.name))
                 api(project(libs.mtproto.security.cipher.get().module.name))
                 api(project(libs.mtproto.security.digest.get().module.name))
-                api(project(libs.mtproto.security.ige.get().module.name))
                 api(project(libs.mtproto.security.utils.get().module.name))
 
                 // Storage
