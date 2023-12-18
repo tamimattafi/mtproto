@@ -1,33 +1,49 @@
 plugins {
-    id(libs.plugins.java.library.get().pluginId)
-    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
+    id(libs.plugins.convention.plugin.get().pluginId)
 }
 
-ext.set("PUBLISH_ARTIFACT_ID", "client-connection")
-apply(from = "${rootProject.projectDir}/scripts/publish-module.gradle")
+kotlin {
+    applyDefaultHierarchyTemplate()
+    jvmToolchain(17)
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
+    jvm()
+    js {
+        browser()
+    }
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
 
-dependencies {
-    // MTProto
-    api(project(libs.mtproto.core.get().module.name))
-    api(project(libs.mtproto.client.api.get().module.name))
-    api(project(libs.mtproto.serialization.get().module.name))
-    api(project(libs.mtproto.security.cipher.get().module.name))
-    api(project(libs.mtproto.security.digest.get().module.name))
-    api(project(libs.mtproto.security.ige.get().module.name))
-    api(project(libs.mtproto.security.utils.get().module.name))
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                // MTProto
+                api(project(libs.mtproto.core.get().module.name))
+                api(project(libs.mtproto.client.api.get().module.name))
+                api(project(libs.mtproto.serialization.get().module.name))
+                api(project(libs.mtproto.security.cipher.get().module.name))
+                api(project(libs.mtproto.security.digest.get().module.name))
+                api(project(libs.mtproto.security.ige.get().module.name))
+                api(project(libs.mtproto.security.utils.get().module.name))
 
-    // Coroutines
-    implementation(libs.kotlin.coroutines.core)
+                // Storage
+                api(libs.settings)
 
-    // Storage
-    api(libs.settings)
+                // Kotlin
+                implementation(libs.kotlin.serialization.json)
+                implementation(libs.kotlin.coroutines.core)
+                implementation(libs.kotlin.datetime)
 
-    // Serialization
-    implementation(libs.kotlin.serialization.json)
+                // Math
+                implementation(libs.bignum)
+            }
+        }
+    }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }

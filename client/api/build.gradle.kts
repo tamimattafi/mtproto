@@ -1,21 +1,34 @@
 plugins {
-    id(libs.plugins.java.library.get().pluginId)
-    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.multiplatform)
+    id(libs.plugins.convention.plugin.get().pluginId)
 }
 
-ext.set("PUBLISH_ARTIFACT_ID", "client-api")
+kotlin {
+    applyDefaultHierarchyTemplate()
+    jvmToolchain(17)
 
-apply(from = "${rootProject.projectDir}/scripts/publish-module.gradle")
+    jvm()
+    js {
+        browser()
+    }
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                // MTProto
+                api(project(libs.mtproto.core.get().module.name))
 
-dependencies {
-    // MTProto
-    api(project(libs.mtproto.core.get().module.name))
+                // Coroutines
+                implementation(libs.kotlin.coroutines.core)
+            }
+        }
+    }
 
-    // Coroutines
-    implementation(libs.kotlin.coroutines.core)
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }

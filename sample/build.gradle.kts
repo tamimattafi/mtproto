@@ -1,26 +1,66 @@
 plugins {
-    id(libs.plugins.java.library.get().pluginId)
-    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.multiplatform)
+    id(libs.plugins.convention.plugin.get().pluginId)
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
+kotlin {
+    applyDefaultHierarchyTemplate()
+    jvmToolchain(17)
 
-dependencies {
-    // MTProto
-    api(project(libs.mtproto.client.connection.get().module.name))
-    api(project(libs.mtproto.client.sockets.ktor.get().module.name))
-    api(project(libs.mtproto.client.sockets.connect.get().module.name))
+    jvm()
+    js {
+        browser()
+    }
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
 
-    // Ktor
-    implementation(libs.ktor.webscokets)
-    implementation(libs.ktor.network)
-    implementation(libs.ktor.cio)
-    implementation(libs.ktor.logger)
-    implementation(libs.ktor.core)
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                // MTProto
+                api(project(libs.mtproto.client.connection.get().module.name))
+                api(project(libs.mtproto.client.sockets.ktor.get().module.name))
+                api(project(libs.mtproto.client.sockets.connect.get().module.name))
 
-    // IO
-    implementation(libs.kotlinx.io)
+                // Ktor
+                implementation(libs.ktor.webscokets)
+                implementation(libs.ktor.logger)
+                implementation(libs.ktor.core)
+
+                // IO
+                implementation(libs.kotlinx.io)
+            }
+        }
+
+        val jvmMain by getting {
+            dependsOn(commonMain)
+
+            dependencies {
+                // Ktor
+                implementation(libs.ktor.cio)
+            }
+        }
+
+        val jsMain by getting {
+            dependsOn(commonMain)
+
+            dependencies {
+                implementation(libs.ktor.js)
+            }
+        }
+
+        val iosMain by getting {
+            dependsOn(commonMain)
+
+            dependencies {
+                implementation(libs.ktor.darwin)
+            }
+        }
+    }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }

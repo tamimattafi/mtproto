@@ -1,18 +1,32 @@
 plugins {
-    id(libs.plugins.java.library.get().pluginId)
-    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.multiplatform)
+    id(libs.plugins.convention.plugin.get().pluginId)
 }
 
-ext.set("PUBLISH_ARTIFACT_ID", "serialization")
-apply(from = "${rootProject.projectDir}/scripts/publish-module.gradle")
+kotlin {
+    applyDefaultHierarchyTemplate()
+    jvmToolchain(17)
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
+    jvm()
+    js {
+        browser()
+    }
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
 
-dependencies {
-    // MTProto
-    api(project(libs.mtproto.core.get().module.name))
-    api(project(libs.mtproto.buffer.get().module.name))
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                // MTProto
+                api(project(libs.mtproto.core.get().module.name))
+                api(project(libs.mtproto.buffer.get().module.name))
+            }
+        }
+    }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }
