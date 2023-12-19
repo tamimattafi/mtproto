@@ -17,7 +17,7 @@ object Playground {
         val connectionProvider = ConnectionHelper.createConnectionProvider(socketProvider)
 
         val passport = ConnectionPassport(
-            apiId = ,
+            apiId =,
             apiHash = ,
             deviceModel = "android",
             systemVersion = "1.2.3",

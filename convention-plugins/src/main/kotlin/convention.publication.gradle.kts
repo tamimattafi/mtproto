@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.attafitamim.mtproto"
-version = "3.0.0-local31"
+version = "3.0.0-local34"
 
 val javadocJar by tasks.registering(Jar::class) {
     archiveClassifier.set("javadoc")

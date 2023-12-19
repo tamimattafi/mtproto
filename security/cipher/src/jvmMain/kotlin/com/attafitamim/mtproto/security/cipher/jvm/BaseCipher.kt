@@ -16,6 +16,7 @@ abstract class BaseCipher(
 
     protected val cipher: Cipher
     protected val cipherMode: Int = mode.toJavaMode()
+    protected val keyAlgorithm: String = algorithm.toJavaAlgorithm()
 
     init {
         val transformation = listOf(
@@ -41,10 +42,13 @@ abstract class BaseCipher(
     protected fun AlgorithmMode.toJavaMode() = when (this) {
         AlgorithmMode.CTR -> MODE_CTR
         AlgorithmMode.ECB -> MODE_ECB
+        AlgorithmMode.GCM -> MODE_GCM
+        AlgorithmMode.CBC -> MODE_CBC
     }
 
     protected fun AlgorithmPadding.toJavaPadding() = when (this) {
         AlgorithmPadding.NONE -> PADDING_NONE
+        AlgorithmPadding.PKCS7 -> PADDING_PKCS7
     }
 
     protected fun Algorithm.toJavaAlgorithm() = when (this) {
@@ -62,8 +66,11 @@ abstract class BaseCipher(
         // Modes
         const val MODE_CTR = "CTR"
         const val MODE_ECB = "ECB"
+        const val MODE_GCM = "GCM"
+        const val MODE_CBC = "CBC"
 
         // Paddings
         const val PADDING_NONE = "NoPadding"
+        const val PADDING_PKCS7 = "PKCS7Padding"
     }
 }

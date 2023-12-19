@@ -1,7 +1,7 @@
 package com.attafitamim.mtproto.security.digest.core
 
 interface IDigest {
-    fun updateData(data: ByteArray)
-    fun digest(data: ByteArray? = null): ByteArray
+    fun updateData(vararg data: ByteArray)
+    fun digest(vararg data: ByteArray): ByteArray
     fun reset()
 }

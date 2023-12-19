@@ -1,11 +1,13 @@
 package com.attafitamim.mtproto.security.cipher.aes
 
+import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmMode
 import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmPadding
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 
-actual class AesCtrCipher actual constructor(
+actual class AesIvCipher actual constructor(
     mode: CipherMode,
+    algorithmMode: AlgorithmMode,
     aesKey: AesKey,
     padding: AlgorithmPadding
 ) : ICipher {

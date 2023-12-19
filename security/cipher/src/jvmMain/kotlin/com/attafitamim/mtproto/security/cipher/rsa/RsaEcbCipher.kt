@@ -22,7 +22,7 @@ actual class RsaEcbCipher actual constructor(
 ), ICipher {
 
     init {
-        val keyFactory = KeyFactory.getInstance(ALGORITHM_RSA)
+        val keyFactory = KeyFactory.getInstance(keyAlgorithm)
 
         val modulus = BigInteger(rsaKey.modulusHex, KEY_BASE)
         val exponent = BigInteger(rsaKey.exponentHex, KEY_BASE)

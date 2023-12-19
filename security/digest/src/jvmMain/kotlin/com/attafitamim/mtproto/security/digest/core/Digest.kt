@@ -1,9 +1,37 @@
 package com.attafitamim.mtproto.security.digest.core
 
-import com.attafitamim.mtproto.security.digest.jvm.JvmDigest
+import java.security.MessageDigest
 
-actual object Digest : IDigestFactory {
+actual class Digest actual constructor(mode: DigestMode) : IDigest {
 
-    override fun createDigest(mode: DigestMode): IDigest =
-        JvmDigest(mode)
+    private val messageDigest = MessageDigest.getInstance(mode.toJavaMode())
+
+    override fun updateData(vararg data: ByteArray) {
+        update(data)
+    }
+
+    override fun digest(vararg data: ByteArray): ByteArray {
+        update(data)
+        return messageDigest.digest()
+    }
+
+    override fun reset() {
+        messageDigest.reset()
+    }
+
+    private fun update(data: Array<out ByteArray>) {
+        data.forEach(messageDigest::update)
+    }
+
+    private fun DigestMode.toJavaMode() = when (this) {
+        DigestMode.SHA1 -> DIGEST_SHA_1
+        DigestMode.SHA256 -> DIGEST_SHA_256
+        DigestMode.MD5 -> DIGEST_MD5
+    }
+
+    private companion object {
+        private const val DIGEST_SHA_1 = "SHA-1"
+        private const val DIGEST_SHA_256 = "SHA-256"
+        private const val DIGEST_MD5 = "MD5"
+    }
 }

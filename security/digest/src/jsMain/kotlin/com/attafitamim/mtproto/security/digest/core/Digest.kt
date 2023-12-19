@@ -1,7 +1,16 @@
 package com.attafitamim.mtproto.security.digest.core
 
-actual object Digest : IDigestFactory {
+actual class Digest actual constructor(mode: DigestMode) : IDigest {
 
-    override fun createDigest(mode: DigestMode): IDigest =
-        TODO()
+    override fun updateData(vararg data: ByteArray) {
+        TODO("Not yet implemented")
+    }
+
+    override fun digest(vararg data: ByteArray): ByteArray {
+        TODO("Not yet implemented")
+    }
+
+    override fun reset() {
+        TODO("Not yet implemented")
+    }
 }

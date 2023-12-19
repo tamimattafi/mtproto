@@ -1,8 +1,9 @@
 package com.attafitamim.mtproto.security.obfuscation
 
 import com.attafitamim.mtproto.buffer.core.ByteBuffer
-import com.attafitamim.mtproto.security.cipher.aes.AesCtrCipher
+import com.attafitamim.mtproto.security.cipher.aes.AesIvCipher
 import com.attafitamim.mtproto.security.cipher.aes.AesKey
+import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmMode
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 import com.attafitamim.mtproto.security.utils.SecureRandom
@@ -34,15 +35,17 @@ class DefaultObfuscator(
         val initBytes = generateInitBytes()
 
         val encryptionKey = initBytes.getAesKey()
-        val encryptionCipher = AesCtrCipher(
+        val encryptionCipher = AesIvCipher(
             CipherMode.ENCRYPT,
+            AlgorithmMode.CTR,
             encryptionKey
         )
 
         val initBytesReversed = initBytes.reversedArray()
         val decryptionKey = initBytesReversed.getAesKey()
-        val decryptionCipher = AesCtrCipher(
+        val decryptionCipher = AesIvCipher(
             CipherMode.DECRYPT,
+            AlgorithmMode.CTR,
             decryptionKey
         )
 

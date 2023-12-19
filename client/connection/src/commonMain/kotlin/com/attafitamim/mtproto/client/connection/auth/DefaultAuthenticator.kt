@@ -22,17 +22,14 @@ import com.attafitamim.mtproto.client.scheme.types.global.TLServerDHParams
 import com.attafitamim.mtproto.client.scheme.types.global.TLSetClientDHParamsAnswer
 import com.attafitamim.mtproto.client.scheme.types.global.TLVector
 import com.attafitamim.mtproto.core.types.TLMethod
+import com.attafitamim.mtproto.security.cipher.aes.AesIgeCipher
 import com.attafitamim.mtproto.security.cipher.aes.AesKey
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.rsa.RsaEcbCipher
 import com.attafitamim.mtproto.security.cipher.rsa.RsaKey
 import com.attafitamim.mtproto.security.digest.core.Digest
 import com.attafitamim.mtproto.security.digest.core.DigestMode
-import com.attafitamim.mtproto.security.digest.utls.sha1
-import com.attafitamim.mtproto.security.digest.utls.sha256
-import com.attafitamim.mtproto.security.ige.AesIgeCipher
 import com.attafitamim.mtproto.security.utils.SecureRandom
-import com.attafitamim.mtproto.security.utils.init
 import com.attafitamim.mtproto.serialization.stream.TLBufferedInputStream
 import com.attafitamim.mtproto.serialization.utils.calculateData
 import com.attafitamim.mtproto.serialization.utils.serializeData
@@ -112,7 +109,7 @@ class DefaultAuthenticator(
 
         // Encrypt data
         val aesKey = computeAesKey(authCredentials.key.key, msgKey)
-        val encryptedData = AesIgeCipher.init(
+        val encryptedData = AesIgeCipher(
             CipherMode.ENCRYPT,
             aesKey,
         ).finalize(align(unencryptedData, 16))
@@ -145,7 +142,7 @@ class DefaultAuthenticator(
         val encryptedData = stream.readBytes(encryptedDataLength)
 
         // Decrypt
-        val unencryptedData = AesIgeCipher.init(
+        val unencryptedData = AesIgeCipher(
             CipherMode.DECRYPT,
             aesKeyIvPair
         ).finalize(encryptedData)
@@ -192,11 +189,14 @@ class DefaultAuthenticator(
         sessionId: Long,
         message: ByteArray
     ): ByteArray {
-        val crypt = Digest.createDigest(DigestMode.SHA1)
+        val crypt = Digest(DigestMode.SHA1)
         crypt.reset()
-        crypt.updateData(serverSalt)
-        crypt.updateData(longToBytes(sessionId))
-        crypt.updateData(message)
+
+        crypt.updateData(
+            serverSalt,
+            longToBytes(sessionId),
+            message
+        )
 
         return subArray(crypt.digest(), 4, 16)
     }
@@ -330,8 +330,7 @@ class DefaultAuthenticator(
             pqData.serialize(this)
         }
 
-        val pqDataHash = Digest
-            .createDigest(DigestMode.SHA1)
+        val pqDataHash = Digest(DigestMode.SHA1)
             .digest(pqDataBytes)
 
         val paddingSize = 255 - (pqDataBytes.size + pqDataHash.size)
@@ -359,19 +358,27 @@ class DefaultAuthenticator(
         newNonce: TLInt256,
         serverNonce: TLInt128
     ): AesKey {
-        val key = Digest.sha1(
+        val key = Digest(
+            DigestMode.SHA1
+        ).digest(
             newNonce.bytes,
             serverNonce.bytes
-        ) + Digest.sha1(
+        ) + Digest(
+            DigestMode.SHA1
+        ).digest(
             serverNonce.bytes,
             newNonce.bytes
         ).sliceArray(0..<12)
 
 
-        val iv = Digest.sha1(
+        val iv = Digest(
+            DigestMode.SHA1
+        ).digest(
             serverNonce.bytes,
             newNonce.bytes
-        ).sliceArray(12..<20) + Digest.sha1(
+        ).sliceArray(12..<20) + Digest(
+            DigestMode.SHA1
+        ).digest(
             newNonce.bytes,
             newNonce.bytes
         ) + newNonce.bytes.sliceArray(0..<4)
@@ -382,7 +389,7 @@ class DefaultAuthenticator(
     private fun TLServerDHParams.ServerDHParamsOk.getDecryptedData(
         aesKey: AesKey
     ): TLServerDHInnerData {
-        val answer = AesIgeCipher.init(
+        val answer = AesIgeCipher(
             CipherMode.DECRYPT,
             aesKey
         ).finalize(encryptedAnswer)
@@ -395,7 +402,12 @@ class DefaultAuthenticator(
             dhInner.serialize(this)
         }
 
-        val serializedHash = Digest.sha1(serializedDhInner)
+        val serializedHash = Digest(
+            DigestMode.SHA1
+        ).digest(
+            serializedDhInner
+        )
+
         if (!answerHash.contentEquals(serializedHash)) {
             error("Security issue")
         }
@@ -419,7 +431,7 @@ class DefaultAuthenticator(
         val authKeyVal = loadBigInt(serverDHInnerData.gA).modPow(b, dhPrime)
         println("CONNECTION: got authKeyVal $authKeyVal")
         val authKey =  alignKeyZero(fromBigInt(authKeyVal), size)
-        val keyId = subArray(Digest.sha1(authKey), 12, 8)
+        val keyId = subArray(Digest(DigestMode.SHA1).digest(authKey), 12, 8)
         println("CONNECTION: got keyId")
 
         val gbBytes = fromBigInt(gb)
@@ -497,8 +509,8 @@ class DefaultAuthenticator(
             clientDHInner.serialize(this)
         }
 
-        val innerDataWithHash = align(Digest.sha1(innerDataBytes) + innerDataBytes, 16)
-        val dataWithHashEnc = AesIgeCipher.init(
+        val innerDataWithHash = align(Digest(DigestMode.SHA1).digest(innerDataBytes) + innerDataBytes, 16)
+        val dataWithHashEnc = AesIgeCipher(
             CipherMode.ENCRYPT,
             aesKey
         ).finalize(innerDataWithHash)
@@ -530,11 +542,13 @@ class DefaultAuthenticator(
         newNonce: TLInt256,
         authKey: AuthKey
     ): AuthCredentials? {
-        val authAuxHash = Digest.sha1(authKey.key).sliceArray(0 ..< 8)
+        val authAuxHash = Digest(DigestMode.SHA1).digest(authKey.key).sliceArray(0 ..< 8)
 
         return when (this) {
             is TLSetClientDHParamsAnswer.DhGenOk -> {
-                val newNonceHash = subArray(Digest.sha1(
+                val newNonceHash = subArray(Digest(
+                    DigestMode.SHA1
+                ).digest(
                     newNonce.bytes,
                     byteArrayOf(1),
                     authAuxHash
@@ -554,7 +568,9 @@ class DefaultAuthenticator(
             }
 
             is TLSetClientDHParamsAnswer.DhGenRetry -> {
-                val newNonceHash = subArray(Digest.sha1(
+                val newNonceHash = subArray(Digest(
+                    DigestMode.SHA1
+                ).digest(
                     newNonce.bytes,
                     byteArrayOf(2),
                     authAuxHash
@@ -568,7 +584,9 @@ class DefaultAuthenticator(
             }
 
             is TLSetClientDHParamsAnswer.DhGenFail -> {
-                val newNonceHash = subArray(Digest.sha1(
+                val newNonceHash = subArray(Digest(
+                    DigestMode.SHA1
+                ).digest(
                     newNonce.bytes,
                     byteArrayOf(3),
                     authAuxHash
@@ -602,7 +620,8 @@ class DefaultAuthenticator(
         is TLVector.Vector -> elements
     }
 
-    fun generateMsgKey(unencryptedData: ByteArray) = subArray(Digest.sha1(unencryptedData), 4, 16)
+    fun generateMsgKey(unencryptedData: ByteArray) = subArray(Digest(DigestMode.SHA1
+    ).digest(unencryptedData), 4, 16)
 
     fun computeAesKey(
         authKey: ByteArray,
@@ -610,8 +629,8 @@ class DefaultAuthenticator(
         isOutgoing: Boolean = true
     ): AesKey {
         val x = if (isOutgoing) 0 else 8
-        val a = Digest.sha256(msgKey, subArray(authKey, x, 36))
-        val b = Digest.sha256(subArray(authKey, x + 40, 36), msgKey)
+        val a = Digest(DigestMode.SHA256).digest(msgKey, subArray(authKey, x, 36))
+        val b = Digest(DigestMode.SHA256).digest(subArray(authKey, x + 40, 36), msgKey)
 
         val key = subArray(a, 0, 8) + subArray(b, 8, 16) + subArray(a, 24, 8)
         val iv = subArray(b, 0, 8) + subArray(a, 8, 16) + subArray(b, 24, 8)
