@@ -14,44 +14,46 @@ abstract class BaseCipher(
     padding: AlgorithmPadding
 ) : ICipher {
 
-    protected val cipher: Cipher
-    protected val cipherMode: Int = mode.toJavaMode()
-    protected val keyAlgorithm: String = algorithm.toJavaAlgorithm()
+    protected val platformCipher: Cipher
+    protected val platformCipherMode: Int = mode.toPlatform()
+    protected val platformAlgorithm: String = algorithm.toPlatform()
+    protected val platformAlgorithmMode: String = algorithmMode.toPlatform()
+    protected val platformPadding: String = padding.toPlatform()
 
     init {
         val transformation = listOf(
-            algorithm.toJavaAlgorithm(),
-            algorithmMode.toJavaMode(),
-            padding.toJavaPadding()
+            platformAlgorithm,
+            platformAlgorithmMode,
+            platformPadding
         ).joinToString(TRANSFORMATION_SEPARATOR)
 
-        cipher = Cipher.getInstance(transformation)
+        platformCipher = Cipher.getInstance(transformation)
     }
 
     override fun updateData(data: ByteArray): ByteArray =
-        cipher.update(data)
+        platformCipher.update(data)
 
     override fun finalize(data: ByteArray): ByteArray =
-        cipher.doFinal(data)
+        platformCipher.doFinal(data)
 
-    protected fun CipherMode.toJavaMode() = when (this) {
+    protected fun CipherMode.toPlatform() = when (this) {
         CipherMode.ENCRYPT -> Cipher.ENCRYPT_MODE
         CipherMode.DECRYPT -> Cipher.DECRYPT_MODE
     }
 
-    protected fun AlgorithmMode.toJavaMode() = when (this) {
+    protected fun AlgorithmMode.toPlatform() = when (this) {
         AlgorithmMode.CTR -> MODE_CTR
         AlgorithmMode.ECB -> MODE_ECB
         AlgorithmMode.GCM -> MODE_GCM
         AlgorithmMode.CBC -> MODE_CBC
     }
 
-    protected fun AlgorithmPadding.toJavaPadding() = when (this) {
+    protected fun AlgorithmPadding.toPlatform() = when (this) {
         AlgorithmPadding.NONE -> PADDING_NONE
         AlgorithmPadding.PKCS7 -> PADDING_PKCS7
     }
 
-    protected fun Algorithm.toJavaAlgorithm() = when (this) {
+    protected fun Algorithm.toPlatform() = when (this) {
         Algorithm.AES -> ALGORITHM_AES
         Algorithm.RSA -> ALGORITHM_RSA
     }

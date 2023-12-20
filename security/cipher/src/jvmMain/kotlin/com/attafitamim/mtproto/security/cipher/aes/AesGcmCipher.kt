@@ -22,11 +22,11 @@ actual class AesGcmCipher actual constructor(
 ), ICipher {
 
     init {
-        val keySpec = SecretKeySpec(aesKey.key, keyAlgorithm)
+        val keySpec = SecretKeySpec(aesKey.key, platformAlgorithm)
         val ivSpec = GCMParameterSpec(authLength, aesKey.iv)
 
-        cipher.init(
-            cipherMode,
+        platformCipher.init(
+            platformCipherMode,
             keySpec,
             ivSpec
         )

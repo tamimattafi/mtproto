@@ -10,6 +10,7 @@ actual class AesGcmCipher actual constructor(
     authLength: Int,
     padding: AlgorithmPadding
 ) : ICipher {
+
     override fun updateData(data: ByteArray): ByteArray {
         TODO("Not yet implemented")
     }

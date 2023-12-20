@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmPadding
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 
-actual class AesIvCipher actual constructor(
+actual class AesCipher actual constructor(
     mode: CipherMode,
     algorithmMode: AlgorithmMode,
     aesKey: AesKey,

@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmPadding
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 
-expect class AesIvCipher(
+expect class AesCipher(
     mode: CipherMode,
     algorithmMode: AlgorithmMode,
     aesKey: AesKey,

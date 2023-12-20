@@ -18,7 +18,7 @@ object Playground {
 
         val passport = ConnectionPassport(
             apiId =,
-            apiHash = ,
+            apiHash =,
             deviceModel = "android",
             systemVersion = "1.2.3",
             appVersion = "playground-1",

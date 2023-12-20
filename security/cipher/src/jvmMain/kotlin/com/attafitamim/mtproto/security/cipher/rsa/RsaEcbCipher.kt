@@ -22,14 +22,14 @@ actual class RsaEcbCipher actual constructor(
 ), ICipher {
 
     init {
-        val keyFactory = KeyFactory.getInstance(keyAlgorithm)
+        val keyFactory = KeyFactory.getInstance(platformAlgorithm)
 
         val modulus = BigInteger(rsaKey.modulusHex, KEY_BASE)
         val exponent = BigInteger(rsaKey.exponentHex, KEY_BASE)
         val keySpec = RSAPublicKeySpec(modulus, exponent)
         val publicKey = keyFactory.generatePublic(keySpec)
 
-        cipher.init(cipherMode, publicKey)
+        platformCipher.init(platformCipherMode, publicKey)
     }
 
     private companion object {

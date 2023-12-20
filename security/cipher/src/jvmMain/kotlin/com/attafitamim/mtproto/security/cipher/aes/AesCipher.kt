@@ -9,7 +9,7 @@ import com.attafitamim.mtproto.security.cipher.jvm.BaseCipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-actual class AesIvCipher actual constructor(
+actual class AesCipher actual constructor(
     mode: CipherMode,
     algorithmMode: AlgorithmMode,
     aesKey: AesKey,
@@ -22,11 +22,11 @@ actual class AesIvCipher actual constructor(
 ), ICipher {
 
     init {
-        val keySpec = SecretKeySpec(aesKey.key, keyAlgorithm)
+        val keySpec = SecretKeySpec(aesKey.key, platformAlgorithm)
         val ivSpec = IvParameterSpec(aesKey.iv)
 
-        cipher.init(
-            cipherMode,
+        platformCipher.init(
+            platformCipherMode,
             keySpec,
             ivSpec
         )
