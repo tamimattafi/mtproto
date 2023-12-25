@@ -18,6 +18,7 @@ import platform.CoreCrypto.CCAlgorithm
 import platform.CoreCrypto.CCCryptorFinal
 import platform.CoreCrypto.CCCryptorGetOutputLength
 import platform.CoreCrypto.CCCryptorRefVar
+import platform.CoreCrypto.CCCryptorRelease
 import platform.CoreCrypto.CCCryptorStatus
 import platform.CoreCrypto.CCCryptorUpdate
 import platform.CoreCrypto.CCMode
@@ -77,11 +78,14 @@ abstract class BaseAesCipher(
         val output = data.update(final = true)
         val moved: Int = dataOutMoved.value.convert()
 
-        return if (output.size != moved) {
+        val finalOutput = if (output.size != moved) {
             output.finalize(moved)
         } else {
             output
         }
+
+        CCCryptorRelease(platformCipher.value)
+        return finalOutput
     }
 
     private fun ByteArray.outputSize(
@@ -171,6 +175,7 @@ abstract class BaseAesCipher(
             kCCUnimplemented  -> "Function not implemented for the current algorithm."
             else              -> "CCCrypt failed with code $result"
         }
+
         throw CryptographyException(error)
     }
 

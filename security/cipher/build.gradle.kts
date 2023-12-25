@@ -18,7 +18,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                // Add common dependencies here
+                implementation(project(libs.mtproto.buffer.get().module.name))
+                implementation(libs.kotlin.io)
             }
         }
     }

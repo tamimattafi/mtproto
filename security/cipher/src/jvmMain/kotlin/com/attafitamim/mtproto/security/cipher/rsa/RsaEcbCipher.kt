@@ -6,9 +6,13 @@ import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmPadding
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 import com.attafitamim.mtproto.security.cipher.jvm.BaseCipher
+import com.attafitamim.mtproto.security.cipher.utils.toDERFormat
 import java.math.BigInteger
+import java.security.Key
 import java.security.KeyFactory
+import java.security.spec.RSAPrivateKeySpec
 import java.security.spec.RSAPublicKeySpec
+
 
 actual class RsaEcbCipher actual constructor(
     mode: CipherMode,
@@ -21,15 +25,36 @@ actual class RsaEcbCipher actual constructor(
     padding
 ), ICipher {
 
+    private val keyFactory: KeyFactory get() =
+        KeyFactory.getInstance(platformAlgorithm)
+
     init {
-        val keyFactory = KeyFactory.getInstance(platformAlgorithm)
+        val key = rsaKey.toPlatform()
+        platformCipher.init(platformCipherMode, key)
+    }
 
-        val modulus = BigInteger(rsaKey.modulusHex, KEY_BASE)
-        val exponent = BigInteger(rsaKey.exponentHex, KEY_BASE)
-        val keySpec = RSAPublicKeySpec(modulus, exponent)
-        val publicKey = keyFactory.generatePublic(keySpec)
+    private fun RsaKey.toPlatform(): Key = when (this) {
+        is RsaKey.Raw -> {
+            toDERFormat()
+            toPlatform()
+        }
+    }
 
-        platformCipher.init(platformCipherMode, publicKey)
+    private fun RsaKey.Raw.toPlatform(): Key {
+        val modulus = BigInteger(modulusHex, KEY_BASE)
+        val exponent = BigInteger(exponentHex, KEY_BASE)
+
+        return when (type) {
+            RsaKey.Type.PUBLIC -> {
+                val keySpec = RSAPublicKeySpec(modulus, exponent)
+                keyFactory.generatePublic(keySpec)
+            }
+
+            RsaKey.Type.PRIVATE -> {
+                val keySpec = RSAPrivateKeySpec(modulus, exponent)
+                keyFactory.generatePrivate(keySpec)
+            }
+        }
     }
 
     private companion object {

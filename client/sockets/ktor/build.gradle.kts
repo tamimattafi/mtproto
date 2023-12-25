@@ -25,7 +25,7 @@ kotlin {
                 implementation(libs.ktor.webscokets)
 
                 // IO
-                implementation(libs.kotlinx.io)
+                implementation(libs.kotlin.io)
             }
         }
     }

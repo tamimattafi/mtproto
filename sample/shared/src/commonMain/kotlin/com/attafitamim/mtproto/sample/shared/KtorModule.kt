@@ -1,7 +1,7 @@
-package com.attafitamim.mtproto.sample
+package com.attafitamim.mtproto.sample.shared
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpRedirect
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.logging.LogLevel
@@ -10,12 +10,14 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
 import kotlin.time.Duration.Companion.seconds
 
+expect fun createHttpClient(onConfig: HttpClientConfig<*>.() -> Unit): HttpClient
+
 object KtorModule {
 
-    private const val TIMEOUT = 5000
-    private const val PING_INTERVAL = 2
+    const val TIMEOUT = 5000
+    const val PING_INTERVAL = 2
 
-    fun provideHttpClient(): HttpClient = HttpClient(CIO) {
+    fun provideHttpClient(): HttpClient = createHttpClient {
         expectSuccess = true
         install(HttpRedirect)
 
@@ -26,10 +28,6 @@ object KtorModule {
                     println("Socket: $message")
                 }
             }
-        }
-
-        engine {
-            requestTimeout = TIMEOUT.seconds.inWholeMilliseconds
         }
 
         install(HttpTimeout) {

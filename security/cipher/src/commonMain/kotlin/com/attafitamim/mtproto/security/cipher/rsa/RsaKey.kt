@@ -1,7 +1,18 @@
 package com.attafitamim.mtproto.security.cipher.rsa
 
-data class RsaKey(
-    val fingerprint: Long,
-    val modulusHex: String,
-    val exponentHex: String
-)
+sealed interface RsaKey {
+    val fingerprint: Long
+    val type: Type
+
+    data class Raw(
+        override val fingerprint: Long,
+        override val type: Type,
+        val modulusHex: String,
+        val exponentHex: String
+    ) : RsaKey
+
+    enum class Type {
+        PUBLIC,
+        PRIVATE
+    }
+}

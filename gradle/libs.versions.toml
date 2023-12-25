@@ -12,9 +12,7 @@ kotlin-coroutines = "1.7.3"
 kotlin = "1.9.20"
 kotlin-serialization = "1.6.0"
 kotlin-datetime = "0.4.1"
-
-# IO
-kotlinx-io = "0.3.0"
+kotlin-io = "0.3.0"
 
 # Docs
 dokka = "1.9.10"
@@ -49,6 +47,8 @@ mtproto-client-sockets-infrastructure = { group = "-", name = ":client:sockets:i
 mtproto-client-sockets-ktor = { group = "-", name = ":client:sockets:ktor" }
 mtproto-client-sockets-connect = { group = "-", name = ":client:sockets:connect" }
 
+mtproto-sample-shared = { group = "-", name = ":sample:shared" }
+
 # Plugins
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
@@ -63,9 +63,6 @@ ktor-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
 ktor-logger = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 
-# IO
-kotlinx-io = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
-
 # Testing
 junit = { module = "junit:junit", version.ref = "junit" }
 
@@ -74,6 +71,7 @@ kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-co
 kotlin-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin-coroutines" }
 kotlin-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlin-serialization" }
 kotlin-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlin-datetime" }
+kotlin-io = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlin-io" }
 
 # Storage
 settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "settings" }

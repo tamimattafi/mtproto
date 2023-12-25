@@ -31,7 +31,8 @@ include(":security:cipher")
 include(":security:obfuscation")
 include(":security:utils")
 include(":security:digest")
-include(":sample")
+include(":sample:shared")
+include(":sample:jvmApp")
 
 // Publish
 includeBuild("convention-plugins")

@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.sample
+package com.attafitamim.mtproto.sample.shared
 
 import com.attafitamim.mtproto.client.api.connection.IConnectionManager
 import com.attafitamim.mtproto.client.connection.auth.DefaultAuthenticator
@@ -16,8 +16,7 @@ import com.attafitamim.mtproto.client.sockets.infrastructure.endpoint.SimpleEndp
 import com.attafitamim.mtproto.client.sockets.infrastructure.socket.ISocketProvider
 import com.attafitamim.mtproto.client.sockets.ktor.KtorWebSocketProvider
 import com.attafitamim.mtproto.security.cipher.rsa.RsaKey
-import com.russhwolf.settings.PreferencesSettings
-import java.util.prefs.Preferences
+import com.russhwolf.settings.Settings
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,9 +37,9 @@ object ConnectionHelper {
 
     fun createConnectionManager(
         connectionProvider: IConnectionProvider,
-        passport: ConnectionPassport
+        passport: ConnectionPassport,
+        authenticator: IAuthenticator
     ): IConnectionManager {
-        val authenticator = createAuthenticator()
         val unknownMessageHandler =
             IUnknownMessageHandler { data -> println("IUnknownMessageHandler: ${data.toHex()}") }
 
@@ -61,10 +60,9 @@ object ConnectionHelper {
         socketProvider: ISocketProvider
     ) = SocketConnectionProvider(scope, socketProvider)
 
-    private fun createAuthenticator(): IAuthenticator {
-        val preferences = Preferences.systemNodeForPackage(DefaultAuthenticator::class.java)
-        val settings = PreferencesSettings(preferences)
+    fun createAuthenticator(settings: Settings): IAuthenticator {
         val storage = DefaultAuthenticatorStorage(settings)
+
 
 
         val serverKeys = listOf(serverKey)

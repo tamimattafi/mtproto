@@ -1,8 +1,9 @@
-package com.attafitamim.mtproto.sample
+package com.attafitamim.mtproto.sample.shared
 
 import com.attafitamim.mtproto.client.api.connection.ConnectionType
 import com.attafitamim.mtproto.client.connection.manager.ConnectionPassport
 import com.attafitamim.mtproto.client.scheme.methods.global.TLGetFutureSalts
+import com.russhwolf.settings.Settings
 import kotlinx.coroutines.delay
 
 object Playground {
@@ -11,15 +12,15 @@ object Playground {
     private const val SERVER_IP = "127.0.0.1"
     private const val SERVER_PORT = 2047
 
-    suspend fun initConnection() {
+    suspend fun initConnection(settings: Settings) {
         val endpointProvider = ConnectionHelper.createdEndpointProvider(WEB_SOCKET_URL)
         val socketProvider = ConnectionHelper.createSocketProvider(endpointProvider)
         val connectionProvider = ConnectionHelper.createConnectionProvider(socketProvider)
 
         val passport = ConnectionPassport(
-            apiId =,
-            apiHash =,
-            deviceModel = "android",
+            apiId = ,
+            apiHash = ,
+            deviceModel = getPlatform().name,
             systemVersion = "1.2.3",
             appVersion = "playground-1",
             systemLangCode = "en",
@@ -28,9 +29,11 @@ object Playground {
             layer = 130
         )
 
+        val authenticator = ConnectionHelper.createAuthenticator(settings)
         val connectionManager = ConnectionHelper.createConnectionManager(
             connectionProvider,
-            passport
+            passport,
+            authenticator
         )
 
         val connectionType = ConnectionType.Generic("calls")
