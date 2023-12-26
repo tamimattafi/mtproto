@@ -24,7 +24,16 @@
       <module name="mtproto.core.main" target="17" />
       <module name="mtproto.core.test" target="17" />
       <module name="MTProto.sample" target="11" />
+      <module name="mtproto.sample-temp.androidApp" target="17" />
+      <module name="mtproto.sample-temp.jvmApp" target="17" />
+      <module name="mtproto.sample-temp.jvmApp.main" target="17" />
+      <module name="mtproto.sample-temp.jvmApp.test" target="17" />
+      <module name="mtproto.sample-temp.shared" target="17" />
+      <module name="mtproto.sample.jvmApp" target="17" />
+      <module name="mtproto.sample.jvmApp.main" target="17" />
+      <module name="mtproto.sample.jvmApp.test" target="17" />
       <module name="mtproto.sample.main" target="17" />
+      <module name="mtproto.sample.shared" target="17" />
       <module name="mtproto.sample.test" target="17" />
       <module name="mtproto.security.cipher.main" target="17" />
       <module name="mtproto.security.cipher.test" target="17" />

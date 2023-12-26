@@ -9,8 +9,4 @@ actual class Digest actual constructor(mode: DigestMode) : IDigest {
     override fun digest(vararg data: ByteArray): ByteArray {
         TODO("Not yet implemented")
     }
-
-    override fun reset() {
-        TODO("Not yet implemented")
-    }
 }

@@ -1,15 +1,18 @@
 package com.attafitamim.mtproto.security.digest.core
 
 actual class Digest actual constructor(mode: DigestMode) : IDigest {
+
+    private val platformDigest: BaseDigest = mode.toPlatform()
+
     override fun updateData(vararg data: ByteArray) {
-        TODO("Not yet implemented")
+        platformDigest.update(data)
     }
 
-    override fun digest(vararg data: ByteArray): ByteArray {
-        TODO("Not yet implemented")
-    }
+    override fun digest(vararg data: ByteArray): ByteArray =
+        platformDigest.finalize(data)
 
-    override fun reset() {
-        TODO("Not yet implemented")
+    private fun DigestMode.toPlatform(): BaseDigest = when (this) {
+        DigestMode.SHA1 -> SHA1Digest()
+        DigestMode.SHA256 -> SHA256Digest()
     }
 }

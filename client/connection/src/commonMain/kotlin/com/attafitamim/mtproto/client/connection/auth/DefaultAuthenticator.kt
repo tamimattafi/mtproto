@@ -190,7 +190,6 @@ class DefaultAuthenticator(
         message: ByteArray
     ): ByteArray {
         val crypt = Digest(DigestMode.SHA1)
-        crypt.reset()
 
         crypt.updateData(
             serverSalt,
@@ -224,6 +223,7 @@ class DefaultAuthenticator(
 
         // Step 1
         val newNonce = generateNewNonce()
+        println("CONNECTION: newNonce ${newNonce.bytes.toHex()}")
 
         // Step 2
         val serverDhParams = sendReqDhParams(resPq, newNonce)
@@ -313,7 +313,11 @@ class DefaultAuthenticator(
             serverFingerPrints.contains(serverKey.fingerprint)
         } ?: error("No finger prints from the list are supported by the client: $serverFingerPrints")
 
+        println("CONNECTION: rsaKey $rsaKey")
+
         val solvedPQ = PQSolver.solve(BigInteger.fromByteArray(resPq.pq, Sign.POSITIVE))
+
+        println("CONNECTION: solvedPQ $solvedPQ")
 
         val solvedP = solvedPQ.p.toByteArray()
         val solvedQ = solvedPQ.q.toByteArray()
@@ -337,10 +341,14 @@ class DefaultAuthenticator(
         val padding = if (paddingSize > 0) Random.nextBytes(paddingSize) else ByteArray(0)
         val dataWithHash = pqDataHash + pqDataBytes + padding
 
+        println("CONNECTION: beginning to do RSA, data with hash: ${dataWithHash.toHex()}")
+
         val encryptedData = RsaEcbCipher(
             CipherMode.ENCRYPT,
             rsaKey
         ).finalize(dataWithHash)
+
+        println("CONNECTION: end RSA, encrypted data: ${encryptedData.toHex()}")
 
         val request = TLReqDHParams(
             resPq.nonce,

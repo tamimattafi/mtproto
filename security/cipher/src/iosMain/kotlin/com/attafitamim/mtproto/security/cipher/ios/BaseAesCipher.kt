@@ -6,7 +6,7 @@ import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmPadding
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 import com.attafitamim.mtproto.security.cipher.exception.CryptographyException
-import com.attafitamim.mtproto.security.cipher.utils.fixEmpty
+import com.attafitamim.mtproto.security.utils.fixEmpty
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.MemScope
 import kotlinx.cinterop.alloc

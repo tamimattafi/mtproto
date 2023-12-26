@@ -18,7 +18,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(project(libs.mtproto.buffer.get().module.name))
+                implementation(projects.mtproto.buffer)
+                implementation(projects.mtproto.security.utils)
                 implementation(libs.kotlin.io)
             }
         }

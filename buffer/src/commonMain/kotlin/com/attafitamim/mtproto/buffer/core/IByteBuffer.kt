@@ -10,9 +10,9 @@ interface IByteBuffer {
 
     fun putByteArray(byteArray: ByteArray)
 
-    fun putInt(value: Int)
-
     fun putShort(value: Short)
+
+    fun putInt(value: Int)
 
     fun putLong(value: Long)
 
@@ -23,6 +23,8 @@ interface IByteBuffer {
     fun getByteArray(): ByteArray
 
     fun fillByteArray(destination: ByteArray, offset: Int, limit: Int)
+
+    fun getShort(): Short
 
     fun getInt(): Int
 

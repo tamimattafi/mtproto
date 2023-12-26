@@ -59,6 +59,11 @@ class CalculationByteBuffer(
         read(limit)
     }
 
+    override fun getShort(): Short {
+        read(SHORT_SLOT_SIZE)
+        return 0
+    }
+
     override fun getInt(): Int {
         read(INT_SLOT_SIZE)
         return 0

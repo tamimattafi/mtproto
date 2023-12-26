@@ -1,3 +1,4 @@
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 pluginManagement {
     repositories {
         gradlePluginPortal()
@@ -31,8 +32,9 @@ include(":security:cipher")
 include(":security:obfuscation")
 include(":security:utils")
 include(":security:digest")
-include(":sample:shared")
-include(":sample:jvmApp")
+include(":client:sample:shared")
+include(":client:sample:androidApp")
+include(":client:sample:jvmApp")
 
 // Publish
 includeBuild("convention-plugins")

@@ -3,21 +3,20 @@ package com.attafitamim.mtproto.security.cipher.rsa
 import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmPadding
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
-import com.attafitamim.mtproto.security.cipher.utils.CFMutableDictionary
-import com.attafitamim.mtproto.security.cipher.utils.add
-import com.attafitamim.mtproto.security.cipher.utils.releaseBridgeAs
-import com.attafitamim.mtproto.security.cipher.utils.retainBridgeAs
-import com.attafitamim.mtproto.security.cipher.utils.toByteArray
-import com.attafitamim.mtproto.security.cipher.utils.toCFData
 import com.attafitamim.mtproto.security.cipher.utils.toDERFormat
-import com.attafitamim.mtproto.security.cipher.utils.useNSData
+import com.attafitamim.mtproto.security.utils.CFMutableDictionary
+import com.attafitamim.mtproto.security.utils.add
+import com.attafitamim.mtproto.security.utils.releaseBridgeAs
+import com.attafitamim.mtproto.security.utils.retainBridgeAs
+import com.attafitamim.mtproto.security.utils.toByteArray
+import com.attafitamim.mtproto.security.utils.toCFData
+import com.attafitamim.mtproto.security.utils.useNSData
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.MemScope
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.convert
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
-import platform.CoreFoundation.CFDataRef
 import platform.CoreFoundation.CFErrorRefVar
 import platform.Foundation.NSData
 import platform.Foundation.NSError
@@ -32,7 +31,7 @@ import platform.Security.kSecAttrKeyTypeRSA
 import platform.Security.kSecKeyAlgorithmRSAEncryptionRaw
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalForeignApi::class)
-actual class RsaEcbCipher actual constructor(
+actual open class RsaEcbCipher actual constructor(
     mode: CipherMode,
     rsaKey: RsaKey,
     padding: AlgorithmPadding
@@ -66,7 +65,7 @@ actual class RsaEcbCipher actual constructor(
             val ciphertext = SecKeyCreateEncryptedData(
                 key = secKey,
                 algorithm = platformAlgorithm,
-                plaintext = plaintext.retainBridgeAs<CFDataRef>(),
+                plaintext = plaintext.retainBridgeAs(),
                 error = error.ptr
             )?.releaseBridgeAs<NSData>()
 

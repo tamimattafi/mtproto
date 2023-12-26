@@ -18,7 +18,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                // Add common dependencies here
+                implementation(projects.security.utils)
             }
         }
     }
