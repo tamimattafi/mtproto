@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.attafitamim.mtproto"
-version = "3.0.0-pre-alpha01"
+version = "3.0.0-pre-alpha02"
 
 val javadocJar by tasks.registering(Jar::class) {
     archiveClassifier.set("javadoc")
@@ -71,7 +71,7 @@ afterEvaluate {
                 rootProject.getExtraString("signing.password"),
             )
 
-            //sign(publications)
+            sign(publications)
         }
     }
 }
