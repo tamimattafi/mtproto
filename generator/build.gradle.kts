@@ -1,10 +1,8 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     id(libs.plugins.java.gradle.plugin.get().pluginId)
+    id(libs.plugins.convention.legacy.publication.get().pluginId)
 }
-
-ext.set("PUBLISH_ARTIFACT_ID", "generator")
-apply(from = "$rootDir/convention-plugins/src/main/kotlin/publish-module.gradle")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17

@@ -97,5 +97,6 @@ java-gradle-plugin = { id = "java-gradle-plugin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 
 # Publishing
-convention-plugin = { id = "convention.publication" }
+convention-publication = { id = "convention.publication" }
+convention-legacy-publication = { id = "convention.publication.legacy" }
 nexus = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus" }

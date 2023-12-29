@@ -7,12 +7,6 @@
  *
  * Check https://getstream.io/blog/publishing-libraries-to-mavencentral-2021/ for more info
  */
-
-ext {
-    PUBLISH_GROUP_ID = 'com.attafitamim.mtproto'
-    PUBLISH_VERSION = '3.0.0-pre-alpha03'
-}
-
 ext["signing.keyId"] = ''
 ext["signing.password"] = ''
 ext["signing.key"] = ''

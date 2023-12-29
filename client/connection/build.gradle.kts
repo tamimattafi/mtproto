@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
-    id(libs.plugins.convention.plugin.get().pluginId)
+    id(libs.plugins.convention.publication.get().pluginId)
 }
 
 kotlin {
