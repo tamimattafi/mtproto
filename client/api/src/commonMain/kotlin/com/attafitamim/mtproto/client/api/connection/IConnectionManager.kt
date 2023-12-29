@@ -13,5 +13,6 @@ interface IConnectionManager {
         connectionType: ConnectionType = ConnectionType.Generic()
     ): T
 
-    suspend fun release()
+    suspend fun disconnect()
+    suspend fun release(resetAuth: Boolean)
 }

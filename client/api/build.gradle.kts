@@ -19,7 +19,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 // MTProto
-                api(project(libs.mtproto.core.get().module.name))
+                api(projects.mtproto.core)
 
                 // Coroutines
                 implementation(libs.kotlin.coroutines.core)

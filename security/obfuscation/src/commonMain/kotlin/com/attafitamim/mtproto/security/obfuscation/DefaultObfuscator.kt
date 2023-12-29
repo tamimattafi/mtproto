@@ -8,8 +8,6 @@ import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
 import com.attafitamim.mtproto.security.utils.SecureRandom
 import kotlin.concurrent.Volatile
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * The default obfuscator, check telegram docs for more info:
@@ -27,9 +25,8 @@ class DefaultObfuscator(
     @Volatile
     private var decryptionCipher: ICipher? = null
 
-    private var mutex = Mutex()
 
-    override suspend fun init(): ByteArray = mutex.withLock {
+    override fun init(): ByteArray {
         release()
 
         val initBytes = generateInitBytes()
@@ -59,7 +56,7 @@ class DefaultObfuscator(
         return initBytes.sliceArray(0..< PROTOCOL_POSITION) + encryptedFooter
     }
 
-    override suspend fun obfuscate(data: ByteArray): ByteArray = mutex.withLock {
+    override fun obfuscate(data: ByteArray): ByteArray {
         val encryptionCipher = requireNotNull(encryptionCipher) {
             "Obfuscator not initialized"
         }
@@ -67,7 +64,7 @@ class DefaultObfuscator(
         return encryptionCipher.updateData(data)
     }
 
-    override suspend fun clarify(data: ByteArray): ByteArray = mutex.withLock {
+    override fun clarify(data: ByteArray): ByteArray {
         val decryptionCipher = requireNotNull(decryptionCipher) {
             "Obfuscator not initialized"
         }
@@ -75,12 +72,12 @@ class DefaultObfuscator(
         return decryptionCipher.updateData(data)
     }
 
-    override suspend fun release() {
+    override fun release() {
         decryptionCipher = null
         encryptionCipher = null
     }
 
-    override suspend fun isInitialized() =
+    override fun isInitialized() =
         decryptionCipher != null && encryptionCipher != null
 
     private fun generateInitBytes(): ByteArray {

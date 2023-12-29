@@ -19,9 +19,9 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 // MTProto
-                api(project(libs.mtproto.buffer.get().module.name))
-                api(project(libs.mtproto.security.cipher.get().module.name))
-                api(project(libs.mtproto.security.utils.get().module.name))
+                api(projects.mtproto.buffer)
+                api(projects.mtproto.security.cipher)
+                api(projects.mtproto.security.utils)
 
                 // Coroutines
                 implementation(libs.kotlin.coroutines.core)

@@ -4,7 +4,6 @@ import com.attafitamim.mtproto.client.connection.session.Session
 import kotlin.random.Random
 import kotlinx.datetime.Clock
 
-const val MESSAGE_ID_STEP = 4
 const val CONTENT_RELATED_SEQ_STEP = 1
 const val CONTENT_RELATED_SEQ_MULTIPLIER = 2
 
@@ -23,15 +22,8 @@ fun Session.generateSeqNo(contentRelated: Boolean): Int {
     return seqNo
 }
 
-fun Session.createMessageId(): Long {
-    // TODO: use server time instead of random
-    val serverTime = Random.nextLong()
-    val weakMessageId = convertTimeToMessageId(serverTime)
-    val strongMessageId = lastMessageId + MESSAGE_ID_STEP
-    val newMessageId = weakMessageId.coerceAtLeast(strongMessageId)
-    lastMessageId = newMessageId
-    return newMessageId
+fun createMessageId(): Long {
+    val currentTime = Clock.System.now().toEpochMilliseconds()
+    val randomInt = Random.nextInt()
+    return currentTime + randomInt
 }
-
-fun Session.getServerTime(): Long =
-    Clock.System.now().toEpochMilliseconds() + serverTimeDiff

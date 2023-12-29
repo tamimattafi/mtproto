@@ -12,6 +12,7 @@ actual class Digest actual constructor(mode: DigestMode) : IDigest {
         platformDigest.finalize(data)
 
     private fun DigestMode.toPlatform(): BaseDigest = when (this) {
+        DigestMode.MD5 -> MD5Digest()
         DigestMode.SHA1 -> SHA1Digest()
         DigestMode.SHA256 -> SHA256Digest()
     }

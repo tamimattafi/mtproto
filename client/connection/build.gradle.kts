@@ -20,12 +20,13 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 // MTProto
-                api(project(libs.mtproto.core.get().module.name))
-                api(project(libs.mtproto.client.api.get().module.name))
-                api(project(libs.mtproto.serialization.get().module.name))
-                api(project(libs.mtproto.security.cipher.get().module.name))
-                api(project(libs.mtproto.security.digest.get().module.name))
-                api(project(libs.mtproto.security.utils.get().module.name))
+                api(projects.mtproto.core)
+                api(projects.mtproto.client.api)
+                api(projects.mtproto.serialization)
+                api(projects.mtproto.security.cipher)
+                api(projects.mtproto.security.digest)
+                api(projects.mtproto.security.obfuscation)
+                api(projects.mtproto.security.utils)
 
                 // Storage
                 api(libs.settings)
@@ -34,6 +35,9 @@ kotlin {
                 implementation(libs.kotlin.serialization.json)
                 implementation(libs.kotlin.coroutines.core)
                 implementation(libs.kotlin.datetime)
+
+                // For ConcurrentHash
+                api(libs.ktor.core)
 
                 // Math
                 implementation(libs.bignum)

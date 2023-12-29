@@ -5,7 +5,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.serialization.streams.TLOutputStream
 import com.attafitamim.mtproto.core.types.TLObject
 
-public sealed interface TLFutureSalts : TLObject {
+public sealed interface TLFutureSalts : TLObject, TLProtocolMessage {
   /**
    * future_salts#ae500895 req_msg_id:long now:int salts:vector<future_salt> = FutureSalts;
    */

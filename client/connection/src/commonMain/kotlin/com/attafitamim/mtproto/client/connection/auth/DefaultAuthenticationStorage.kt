@@ -7,9 +7,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class DefaultAuthenticatorStorage(
+class DefaultAuthenticationStorage(
     private val settings: Settings
-) : IAuthenticatorStorage {
+) : IAuthenticationStorage {
 
     @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
@@ -38,6 +38,10 @@ class DefaultAuthenticatorStorage(
         val key = connectionType.toKey()
         val sessionJson = settings.getStringOrNull(key) ?: return null
         return json.decodeFromString(sessionJson)
+    }
+
+    override fun clear() {
+        settings.clear()
     }
 
     private fun ConnectionType.toKey(): String {

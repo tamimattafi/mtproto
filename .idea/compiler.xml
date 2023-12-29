@@ -10,12 +10,14 @@
       <module name="mtproto.client.api.test" target="17" />
       <module name="mtproto.client.connection.main" target="17" />
       <module name="mtproto.client.connection.test" target="17" />
+      <module name="mtproto.client.sockets.connect" target="17" />
       <module name="mtproto.client.sockets.connect.main" target="17" />
       <module name="mtproto.client.sockets.connect.test" target="17" />
       <module name="mtproto.client.sockets.connection.main" target="17" />
       <module name="mtproto.client.sockets.connection.test" target="17" />
       <module name="mtproto.client.sockets.core.main" target="17" />
       <module name="mtproto.client.sockets.core.test" target="17" />
+      <module name="mtproto.client.sockets.infrastructure" target="17" />
       <module name="mtproto.client.sockets.infrastructure.main" target="17" />
       <module name="mtproto.client.sockets.infrastructure.test" target="17" />
       <module name="mtproto.client.sockets.ktor.main" target="17" />

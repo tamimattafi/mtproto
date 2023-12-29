@@ -3,7 +3,7 @@ package com.attafitamim.mtproto.client.connection.auth
 import com.attafitamim.mtproto.client.api.connection.ConnectionType
 import com.attafitamim.mtproto.client.connection.session.Session
 
-interface IAuthenticatorStorage {
+interface IAuthenticationStorage {
     fun saveAuthCredentials(authCredentials: AuthCredentials)
 
     fun getAuthCredentials(): AuthCredentials?
@@ -11,4 +11,6 @@ interface IAuthenticatorStorage {
     fun saveSession(connectionType: ConnectionType, session: Session)
 
     fun getSession(connectionType: ConnectionType): Session?
+
+    fun clear()
 }

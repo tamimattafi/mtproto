@@ -1,4 +1,4 @@
-package com.attafitamim.mtproto.client.sockets.infrastructure.endpoint
+package com.attafitamim.mtproto.client.api.connection
 
 sealed interface Endpoint {
 

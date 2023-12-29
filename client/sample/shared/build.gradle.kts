@@ -40,9 +40,8 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 // MTProto
-                api(project(libs.mtproto.client.connection.get().module.name))
-                api(project(libs.mtproto.client.sockets.ktor.get().module.name))
-                api(project(libs.mtproto.client.sockets.connect.get().module.name))
+                api(projects.mtproto.client.connection)
+                api(projects.mtproto.client.sockets.ktor)
 
                 // Ktor
                 implementation(libs.ktor.webscokets)

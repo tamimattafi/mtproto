@@ -6,7 +6,5 @@ import kotlinx.serialization.Serializable
 data class Session(
     val id: Long,
     val authKeyId: String,
-    var contentRelatedCount: Int = 0,
-    var lastMessageId: Long = 0,
-    var serverTimeDiff: Long = 0
+    var contentRelatedCount: Int = 0
 )

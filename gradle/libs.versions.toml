@@ -36,25 +36,6 @@ compose-material3 = "1.1.2"
 androidx-activityCompose = "1.8.0"
 
 [libraries]
-# Local (Use as implementation(project(...))
-# Usage Example: implementation(project(libs.mtproto.client.api.get().module.name))
-mtproto-core = { group = "-", name = ":core" }
-mtproto-buffer = { group = "-", name = ":buffer" }
-mtproto-serialization = { group = "-", name = ":serialization" }
-
-mtproto-security-cipher = { group = "-", name = ":security:cipher" }
-mtproto-security-obfuscation = { group = "-", name = ":security:obfuscation" }
-mtproto-security-utils = { group = "-", name = ":security:utils" }
-mtproto-security-digest = { group = "-", name = ":security:digest" }
-
-mtproto-client-api = { group = "-", name = ":client:api" }
-mtproto-client-connection = { group = "-", name = ":client:connection" }
-mtproto-client-sockets-infrastructure = { group = "-", name = ":client:sockets:infrastructure" }
-mtproto-client-sockets-ktor = { group = "-", name = ":client:sockets:ktor" }
-mtproto-client-sockets-connect = { group = "-", name = ":client:sockets:connect" }
-
-mtproto-sample-shared = { group = "-", name = ":sample:shared" }
-
 # Plugins
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
@@ -65,6 +46,7 @@ ktor-webscokets = { module = "io.ktor:ktor-client-websockets", version.ref = "kt
 # Ktor
 ktor-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
 ktor-logger = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }

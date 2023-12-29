@@ -1,59 +1,49 @@
 package com.attafitamim.mtproto.client.sample
 
 import com.attafitamim.mtproto.client.api.connection.ConnectionType
-import com.attafitamim.mtproto.client.connection.manager.ConnectionPassport
-import com.attafitamim.mtproto.client.sample.ConnectionHelper.WEB_SOCKET_URL
-import com.attafitamim.mtproto.client.scheme.methods.global.TLGetFutureSalts
+import com.attafitamim.mtproto.client.api.methods.TLHelpGetServerConfig
 import com.russhwolf.settings.Settings
+import kotlin.random.Random
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 object Playground {
 
     suspend fun initConnection(settings: Settings) {
-        val endpointProvider = ConnectionHelper.createdEndpointProvider(WEB_SOCKET_URL)
-        val socketProvider = ConnectionHelper.createSocketProvider(endpointProvider)
-        val connectionProvider = ConnectionHelper.createConnectionProvider(socketProvider)
-
-        val passport = ConnectionPassport(
-            apiId = 1234,
-            apiHash = "1234",
-            deviceModel = getPlatform().name,
-            systemVersion = "1.2.3",
-            appVersion = "playground-1",
-            systemLangCode = "en",
-            langPack = "en",
-            langCode = "en",
-            layer = 130
-        )
-
-        val authenticator = ConnectionHelper.createAuthenticator(settings)
-        val connectionManager = ConnectionHelper.createConnectionManager(
-            connectionProvider,
-            passport,
-            authenticator
-        )
-
+        val connectionManager = ConnectionHelper.createConnectionManager(settings)
         val connectionType = ConnectionType.Generic("calls")
-        connectionManager.initConnection(connectionType)
 
-        repeat(10) {
-            kotlin.runCatching {
-                // Generic connection
-                val getSalts = TLGetFutureSalts(1)
-                val salts = connectionManager.sendRequest(getSalts, connectionType)
-                println("TLGetFutureSalts: $salts")
+        repeat(5) {
+            GlobalScope.launch {
+                kotlin.runCatching {
+                    delay(Random.nextLong(100, 300))
+                    // Generic connection
+                    val getConfig = TLHelpGetServerConfig
+                    val config = connectionManager.sendRequest(getConfig, connectionType)
+                    println("CONNECTION: TLHelpGetServerConfig: $config")
+                }.onFailure { error ->
+                    println("CONNECTION: TLHelpGetServerConfig: $error")
+                }
             }
 
-            delay(3000)
+            GlobalScope.launch {
+                kotlin.runCatching {
+                    delay(Random.nextLong(100, 300))
 
-            kotlin.runCatching {
-                // Download connection
-                val getSalts = TLGetFutureSalts(1)
-                val salts = connectionManager.sendRequest(getSalts, ConnectionType.Download)
-                println("TLGetFutureSalts: $salts")
+                    // Download connection
+                    val getConfig = TLHelpGetServerConfig
+                    val config = connectionManager.sendRequest(getConfig, ConnectionType.Download)
+                    println("TLHelpGetServerConfig: $config")
+                }.onFailure { error ->
+                    println("CONNECTION: TLHelpGetServerConfig: $error")
+                }
             }
+        }
 
-            delay(3000)
+        GlobalScope.launch {
+            delay(10000L)
+            connectionManager.release(resetAuth = false)
         }
     }
 }

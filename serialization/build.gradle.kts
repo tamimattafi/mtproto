@@ -19,8 +19,8 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 // MTProto
-                api(project(libs.mtproto.core.get().module.name))
-                api(project(libs.mtproto.buffer.get().module.name))
+                api(projects.mtproto.core)
+                api(projects.mtproto.buffer)
             }
         }
     }
