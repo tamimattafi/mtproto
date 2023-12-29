@@ -51,6 +51,9 @@ jobs:
       - name: Build Client Ktor Sockets
         run: ./gradlew :client:sockets:ktor:assemble
 
+      - name: Source jar
+        run: ./gradlew projectSourcesJar javadocJar
+
         # Runs upload, and then closes & releases the repository
       - name: Publish to MavenCentral
         run: ./gradlew publishAllPublicationToSonatypeRepository --max-workers 1 closeAndReleaseSonatypeStagingRepository
