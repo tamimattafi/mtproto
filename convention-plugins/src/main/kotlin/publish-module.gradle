@@ -99,5 +99,5 @@ signing {
             rootProject.ext["signing.key"],
             rootProject.ext["signing.password"],
     )
-    //sign publishing.publications
+    sign publishing.publications
 }
