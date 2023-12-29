@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.js).apply(false)
     alias(libs.plugins.kotlin.native.cocoapods).apply(false)
     alias(libs.plugins.nexus)
+    alias(libs.plugins.dokka)
 }
 
 apply(from = "convention-plugins/src/main/kotlin/publish.root.gradle")

@@ -1,13 +1,13 @@
 import GradleUtils.correctArtifactId
-import GradleUtils.getExtraString
+import GradleUtils.requireExtraString
 
 plugins {
     `maven-publish`
     signing
 }
 
-group = "com.attafitamim.mtproto"
-version = "3.0.0-pre-alpha02"
+group = rootProject.requireExtraString("PUBLISH_GROUP_ID")
+version = rootProject.requireExtraString("PUBLISH_VERSION")
 
 val javadocJar by tasks.registering(Jar::class) {
     archiveClassifier.set("javadoc")
@@ -66,12 +66,12 @@ afterEvaluate {
 
         extensions.configure<SigningExtension> {
             useInMemoryPgpKeys(
-                rootProject.getExtraString("signing.keyId"),
-                rootProject.getExtraString("signing.key"),
-                rootProject.getExtraString("signing.password"),
+                rootProject.requireExtraString("signing.keyId"),
+                rootProject.requireExtraString("signing.key"),
+                rootProject.requireExtraString("signing.password"),
             )
 
-            sign(publications)
+            //sign(publications)
         }
     }
 }

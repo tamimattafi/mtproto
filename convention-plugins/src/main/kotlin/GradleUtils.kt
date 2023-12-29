@@ -7,8 +7,11 @@ object GradleUtils {
     const val DISABLE_ARTIFACT_ID_CHANGE = "DISABLE_ARTIFACT_ID_CHANGE"
 
     fun Project.getExtraString(name: String): String? = runCatching {
-        ext[name]?.toString()
+        requireExtraString(name)
     }.getOrNull()
+
+    fun Project.requireExtraString(name: String): String =
+        ext[name].toString()
 
     /**
      * Artifact id corrects to project structure.

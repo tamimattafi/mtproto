@@ -1,8 +1,10 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     id(libs.plugins.java.gradle.plugin.get().pluginId)
-    id(libs.plugins.convention.plugin.get().pluginId)
 }
+
+ext.set("PUBLISH_ARTIFACT_ID", "generator")
+apply(from = "$rootDir/convention-plugins/src/main/kotlin/publish-module.gradle")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -14,10 +16,8 @@ java {
 }
 
 dependencies {
-    api(project(":core"))
-    implementation("com.squareup:kotlinpoet:1.11.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.7.1")
+    api(projects.core)
+    implementation(libs.kotlinpoet)
 }
 
 gradlePlugin {
