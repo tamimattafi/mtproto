@@ -11,7 +11,7 @@ import org.gradle.plugins.signing.SigningExtension
 
 object PublishUtils {
 
-    const val VERSION = "3.0.0-pre-alpha04"
+    const val VERSION = "3.0.0-pre-alpha05"
     const val GROUP_ID = "com.attafitamim.mtproto"
 
     fun Project.configurePublishing(

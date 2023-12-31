@@ -21,7 +21,7 @@ dependencies {
 gradlePlugin {
     plugins {
         create("MTGenerator") {
-            id = "mtproto-generator"
+            id = "com.attafitamim.mtproto.generator"
             implementationClass = "com.attafitamim.mtproto.generator.plugin.TLGeneratorPlugin"
         }
     }
