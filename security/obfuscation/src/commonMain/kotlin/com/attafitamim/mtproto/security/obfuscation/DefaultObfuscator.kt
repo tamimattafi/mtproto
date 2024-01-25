@@ -3,6 +3,7 @@ package com.attafitamim.mtproto.security.obfuscation
 import com.attafitamim.mtproto.buffer.core.ByteBuffer
 import com.attafitamim.mtproto.security.cipher.aes.AesCipher
 import com.attafitamim.mtproto.security.cipher.aes.AesKey
+import com.attafitamim.mtproto.security.cipher.aes.EncodedAesSecretKey
 import com.attafitamim.mtproto.security.cipher.algorithm.AlgorithmMode
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.core.ICipher
@@ -114,7 +115,8 @@ class DefaultObfuscator(
         val key = getKey()
         val iv = getIV()
 
-        return AesKey(key, iv)
+        val aesSecretKey = EncodedAesSecretKey(key)
+        return AesKey(aesSecretKey, iv)
     }
 
     private fun ByteArray.getKey(): ByteArray = sliceArray(8..< 40)

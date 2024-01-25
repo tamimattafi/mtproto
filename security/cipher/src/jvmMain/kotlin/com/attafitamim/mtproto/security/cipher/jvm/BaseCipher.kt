@@ -12,9 +12,9 @@ abstract class BaseCipher(
     algorithm: Algorithm,
     algorithmMode: AlgorithmMode,
     padding: AlgorithmPadding
-) : ICipher {
+) : PlatformCipher(), ICipher {
 
-    protected val platformCipher: Cipher
+    final override val platformCipher: Cipher
     protected val platformCipherMode: Int = mode.toPlatform()
     protected val platformAlgorithm: String = algorithm.toPlatform()
     protected val platformAlgorithmMode: String = algorithmMode.toPlatform()

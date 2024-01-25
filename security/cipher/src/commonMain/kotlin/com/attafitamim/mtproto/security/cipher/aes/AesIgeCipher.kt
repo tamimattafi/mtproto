@@ -33,7 +33,7 @@ class AesIgeCipher(
     private fun reset() {
         processedBlocks = 0
         engine.reset()
-        engine.init(forEncryption, aesKey.key)
+        engine.init(forEncryption, aesKey.key.encodedBytes)
     }
 
     private fun update(

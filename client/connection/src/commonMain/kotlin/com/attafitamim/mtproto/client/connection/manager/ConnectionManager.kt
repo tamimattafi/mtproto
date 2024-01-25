@@ -47,6 +47,7 @@ import com.attafitamim.mtproto.core.serialization.streams.TLInputStream
 import com.attafitamim.mtproto.core.types.TLMethod
 import com.attafitamim.mtproto.security.cipher.aes.AesIgeCipher
 import com.attafitamim.mtproto.security.cipher.aes.AesKey
+import com.attafitamim.mtproto.security.cipher.aes.EncodedAesSecretKey
 import com.attafitamim.mtproto.security.cipher.core.CipherMode
 import com.attafitamim.mtproto.security.cipher.rsa.RsaEcbCipher
 import com.attafitamim.mtproto.security.cipher.rsa.RsaKey
@@ -771,7 +772,8 @@ class ConnectionManager(
             newNonce.bytes
         ) + newNonce.bytes.sliceArray(0..<4)
 
-        return AesKey(key, iv)
+        val aesSecretKey = EncodedAesSecretKey(key)
+        return AesKey(aesSecretKey, iv)
     }
 
     private fun TLServerDHParams.ServerDHParamsOk.getDecryptedData(
@@ -1035,8 +1037,9 @@ class ConnectionManager(
             16
         ) + CryptoUtils.subArray(b, 24, 8)
 
+        val aesSecretKey = EncodedAesSecretKey(key)
         return AesKey(
-            key,
+            aesSecretKey,
             iv
         )
     }

@@ -7,15 +7,14 @@ import com.attafitamim.mtproto.security.cipher.core.ICipher
 actual class AesGcmCipher actual constructor(
     mode: CipherMode,
     aesKey: AesKey,
-    authLength: Int,
+    authLength: Int?,
     padding: AlgorithmPadding
 ) : ICipher {
 
-    override fun updateData(data: ByteArray): ByteArray {
-        TODO("Not yet implemented")
-    }
+    // TODO: implement this
+    override fun updateData(data: ByteArray): ByteArray =
+        data
 
-    override fun finalize(data: ByteArray): ByteArray {
-        TODO("Not yet implemented")
-    }
+    override fun finalize(data: ByteArray): ByteArray =
+        data
 }

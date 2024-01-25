@@ -7,6 +7,6 @@ import com.attafitamim.mtproto.security.cipher.core.ICipher
 expect class AesGcmCipher(
     mode: CipherMode,
     aesKey: AesKey,
-    authLength: Int,
+    authLength: Int? = null,
     padding: AlgorithmPadding = AlgorithmPadding.NONE
 ) : ICipher

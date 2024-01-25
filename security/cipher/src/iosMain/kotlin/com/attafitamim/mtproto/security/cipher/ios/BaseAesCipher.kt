@@ -61,10 +61,10 @@ abstract class BaseAesCipher(
     protected val platformPadding: CCPadding = padding.toPlatform()
     protected val cipherOptions: CCModeOptions = algorithmMode.toPlatformOptions()
 
-    protected val keyRef = aesKey.key.refTo(0)
+    protected val keyRef = aesKey.key.encodedBytes.refTo(0)
     protected val ivRef = aesKey.iv.refTo(0)
 
-    protected val keySize = aesKey.key.size.toULong()
+    protected val keySize = aesKey.key.encodedBytes.size.toULong()
     protected val tweak = null
     protected val tweakLength = TWEAK_LENGTH.toULong()
     protected val numRounds = NUM_ROUNDS
@@ -144,10 +144,10 @@ abstract class BaseAesCipher(
         AlgorithmPadding.PKCS7 -> ccPKCS7Padding
     }
 
-    private fun AesKey.toPlatformAlgorithm() = when (key.size) {
+    private fun AesKey.toPlatformAlgorithm() = when (key.encodedBytes.size) {
         AES_128_KEY_SIZE -> kCCAlgorithmAES128
         AES_256_KEY_SIZE -> kCCAlgorithmAES
-        else -> error("Wrong aes key length ${key.size}")
+        else -> error("Wrong aes key length ${key.encodedBytes.size}")
     }
 
     private fun AlgorithmMode.toPlatform() = when (this) {
