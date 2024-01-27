@@ -147,7 +147,6 @@ class ConnectionManager(
     }
 
     private suspend fun forceDisconnect() {
-        println("CONNECTION: disconnecting all connections")
         connectionScope.coroutineContext.cancelChildren()
 
         connectionSessions.forEach { entry ->
@@ -155,14 +154,11 @@ class ConnectionManager(
         }
 
         connectionSessions.clear()
-        println("CONNECTION: disconnected all connections")
     }
 
     override suspend fun release(resetAuth: Boolean) = mutex.withLock {
         forceDisconnect()
-        println("CONNECTION: releasing")
         localScope.coroutineContext.cancelChildren()
-        println("CONNECTION: released")
 
         if (resetAuth) {
             cleanup()
@@ -381,24 +377,18 @@ class ConnectionManager(
         }
 
         val obfuscatedBytes = obfuscator.obfuscate(packetBytes)
-        if (connection.sendData(obfuscatedBytes)) {
-            println("CONNECTION: ${hashCode()} wrote packet ${packetBytes.toHex()}")
-        } else {
+        if (!connection.sendData(obfuscatedBytes)) {
             println("CONNECTION: ${hashCode()} error writing packet ${packetBytes.toHex()}")
         }
     }
 
     private fun ObfuscatedConnection.listenToData() = connection.listenToData()
         .map { data ->
-            println("CONNECTION: obfuscated response ${data.toHex()}")
             val clarifiedBytes = obfuscator.clarify(data)
             val inputStream = clarifiedBytes.toTLInputStream()
             val size = inputStream.readInt()
-            val rawResponse = inputStream.readBytes(size)
 
-            println("CONNECTION: raw response ${data.toHex()}")
-
-            rawResponse
+            inputStream.readBytes(size)
         }
 
     private fun ConnectionSession.listenToMessages() = connectionScope.launch {
@@ -420,11 +410,9 @@ class ConnectionManager(
         messagesFlow.asSharedFlow().collect { message ->
             val protocolMessage = message.parseProtocolMessage()
             if (protocolMessage != null) {
-                println("CONNECTION: protocol message $protocolMessage")
                 protocolMessagesFlow.emit(protocolMessage)
             } else {
                 val hash = message.data.toTLInputStream().readInt().toHexString()
-                println("CONNECTION: unknown message $hash")
                 delegate?.onUnknownMessage(message.data)
             }
         }
