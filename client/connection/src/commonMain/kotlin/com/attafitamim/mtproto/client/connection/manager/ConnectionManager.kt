@@ -82,6 +82,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.Clock
 
 class ConnectionManager(
     private val connectionProvider: IConnectionProvider,
@@ -691,7 +692,11 @@ class ConnectionManager(
             serverFingerPrints.contains(serverKey.fingerprint)
         } ?: error("No finger prints from the list are supported by the client: $serverFingerPrints")
 
+        val startAt = Clock.System.now().toEpochMilliseconds()
+        println("CONNECTION: Start solve PQ $startAt")
         val solvedPQ = PQSolver.solve(BigInteger.fromByteArray(resPq.pq, Sign.POSITIVE))
+        val endAt = Clock.System.now().toEpochMilliseconds()
+        println("CONNECTION: End solve PQ in ${endAt - startAt} millis at $endAt")
         val solvedP = solvedPQ.p.toByteArray()
         val solvedQ = solvedPQ.q.toByteArray()
         val pqData = TLPQInnerData.PQInnerData(
