@@ -8,7 +8,7 @@ import com.attafitamim.mtproto.client.connection.auth.AuthKey
 import com.attafitamim.mtproto.client.connection.auth.AuthResult
 import com.attafitamim.mtproto.client.connection.auth.CryptoUtils
 import com.attafitamim.mtproto.client.connection.auth.IAuthenticationStorage
-import com.attafitamim.mtproto.client.connection.auth.PQSolver
+import com.attafitamim.mtproto.client.connection.auth.PQLongSolver
 import com.attafitamim.mtproto.client.connection.exceptions.TLRequestError
 import com.attafitamim.mtproto.client.connection.interceptor.IRequestInterceptor
 import com.attafitamim.mtproto.client.connection.session.Session
@@ -692,13 +692,16 @@ class ConnectionManager(
             serverFingerPrints.contains(serverKey.fingerprint)
         } ?: error("No finger prints from the list are supported by the client: $serverFingerPrints")
 
+        val pq = BigInteger.fromByteArray(resPq.pq, Sign.POSITIVE).longValue(exactRequired = true)
+
+        println("CONNECTION: Start solve PQ $pq")
         val startAt = Clock.System.now().toEpochMilliseconds()
-        println("CONNECTION: Start solve PQ $startAt")
-        val solvedPQ = PQSolver.solve(BigInteger.fromByteArray(resPq.pq, Sign.POSITIVE))
+        val solvedPQ = PQLongSolver.solve(pq)
         val endAt = Clock.System.now().toEpochMilliseconds()
-        println("CONNECTION: End solve PQ in ${endAt - startAt} millis at $endAt")
-        val solvedP = solvedPQ.p.toByteArray()
-        val solvedQ = solvedPQ.q.toByteArray()
+        val time = endAt - startAt
+        println("CONNECTION: End solve PQ $pq in $time with p: ${solvedPQ.p} and q: ${solvedPQ.q}")
+        val solvedP = longToBytes(solvedPQ.p)
+        val solvedQ = longToBytes(solvedPQ.q)
         val pqData = TLPQInnerData.PQInnerData(
             resPq.pq,
             solvedP,
