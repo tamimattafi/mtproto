@@ -58,11 +58,11 @@ object ConnectionHelper {
     fun createConnectionManager(settings: Settings): IConnectionManager {
         val unknownMessageHandler = object : IConnectionDelegate {
             override fun onUnknownMessage(data: ByteArray) {
-                println("IConnectionDelegate: ${data.toHex()}")
+                println("CONNECTION: ${data.toHex()}")
             }
 
             override fun onSessionConnected(sessionId: Long, connectionType: ConnectionType) {
-                println("IConnectionDelegate: session(${sessionId.toULong()}) type($connectionType) connected")
+                println("CONNECTION: session(${sessionId.toULong()}) type($connectionType) connected")
             }
         }
 

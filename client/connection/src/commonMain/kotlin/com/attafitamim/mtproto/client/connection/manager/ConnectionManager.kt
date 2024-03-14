@@ -1,5 +1,6 @@
 package com.attafitamim.mtproto.client.connection.manager
 
+import com.attafitamim.mtproto.client.api.connection.ConnectionState
 import com.attafitamim.mtproto.client.api.connection.ConnectionType
 import com.attafitamim.mtproto.client.api.connection.IConnectionManager
 import com.attafitamim.mtproto.client.api.connection.IConnectionProvider
@@ -9,6 +10,7 @@ import com.attafitamim.mtproto.client.connection.auth.AuthResult
 import com.attafitamim.mtproto.client.connection.auth.CryptoUtils
 import com.attafitamim.mtproto.client.connection.auth.IAuthenticationStorage
 import com.attafitamim.mtproto.client.connection.auth.PQLongSolver
+import com.attafitamim.mtproto.client.connection.exceptions.TLConnectionError
 import com.attafitamim.mtproto.client.connection.exceptions.TLRequestError
 import com.attafitamim.mtproto.client.connection.interceptor.IRequestInterceptor
 import com.attafitamim.mtproto.client.connection.session.Session
@@ -84,6 +86,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 
+@OptIn(ExperimentalStdlibApi::class)
 class ConnectionManager(
     private val connectionProvider: IConnectionProvider,
     private val authStorage: IAuthenticationStorage,
@@ -96,13 +99,13 @@ class ConnectionManager(
     private val localScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val connectionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val mutex = Mutex()
+    private val globalMutex = Mutex()
     private val connectionSessions = ConcurrentMap<ConnectionType, ConnectionSession>()
 
     private val messagesFlow = MutableSharedFlow<TLPublicMessage>()
     private val protocolMessagesFlow = MutableSharedFlow<TLProtocolMessage>()
 
-    private val queue = ConcurrentMap<ConnectionType, ArrayDeque<ByteArray>>()
+    private val requestsQueue = ConcurrentMap<ConnectionType, ArrayDeque<ByteArray>>()
 
     @Volatile
     private var authCredentials: AuthCredentials? = null
@@ -124,7 +127,8 @@ class ConnectionManager(
 
     override suspend fun initConnection(connectionType: ConnectionType) {
         val initAsync = connectionScope.async {
-            requireConnection(connectionType)
+            val newConnection = requireConnection(connectionType)
+            newConnection.processQueue()
         }
 
         initAsync.await()
@@ -135,15 +139,17 @@ class ConnectionManager(
         connectionType: ConnectionType
     ): R {
         val connectionSession = requireConnection(connectionType)
-        val messageId = createMessageId()
-        return if (interceptors.isEmpty()) {
-            connectionSession.execute(messageId, method)
-        } else {
-            connectionSession.intercept(messageId, method)
+        return connectionSession.connectionMutex.withLock {
+            val messageId = createMessageId()
+            if (interceptors.isEmpty()) {
+                connectionSession.execute(messageId, method)
+            } else {
+                connectionSession.intercept(messageId, method)
+            }
         }
     }
 
-    override suspend fun disconnect() = mutex.withLock {
+    override suspend fun disconnect() = globalMutex.withLock {
         forceDisconnect()
     }
 
@@ -157,7 +163,7 @@ class ConnectionManager(
         connectionSessions.clear()
     }
 
-    override suspend fun release(resetAuth: Boolean) = mutex.withLock {
+    override suspend fun release(resetAuth: Boolean) = globalMutex.withLock {
         forceDisconnect()
         localScope.coroutineContext.cancelChildren()
 
@@ -219,7 +225,7 @@ class ConnectionManager(
         return getResponse(method, messageId)
     }
 
-    private suspend fun requireConnection(connectionType: ConnectionType): ConnectionSession = mutex.withLock {
+    private suspend fun requireConnection(connectionType: ConnectionType): ConnectionSession = globalMutex.withLock {
         val currentConnection = connectionSessions[connectionType]
         if (currentConnection != null) {
             return@withLock currentConnection
@@ -235,10 +241,11 @@ class ConnectionManager(
         val obfuscator = DefaultObfuscator()
         val initData = obfuscator.init()
         val sendDataSuccess = connection.sendData(initData)
-        println("CONNECTION: $connectionType send init data success: $sendDataSuccess")
+        println("CONNECTION: type($connectionType) send init data success($sendDataSuccess)")
 
         val obfuscatedConnection = ObfuscatedConnection(connection, obfuscator)
         val session = authenticate(connectionType, obfuscatedConnection)
+        println("CONNECTION: type($connectionType) created session(${session.uId})")
 
         val connectionSession = ConnectionSession(
             session,
@@ -248,6 +255,7 @@ class ConnectionManager(
 
         connectionSessions[connectionType] = connectionSession
         connectionSession.listenToMessages()
+        connectionSession.listenToDisconnect()
 
         delegate?.onSessionConnected(session.id, connectionType)
         return connectionSession
@@ -260,7 +268,9 @@ class ConnectionManager(
         .asSharedFlow()
         .filterIsInstance(TLRpcResult::class)
         .mapNotNull { rpcResult ->
-            getResponse(rpcResult, method, messageId)
+            val response = getResponse(rpcResult, method, messageId)
+            println("CONNECTION: session(${session.uId}) message(${messageId.toHexString()}) get response($response)")
+            response
         }.first()
 
     private fun <R : Any> ConnectionSession.getResponse(
@@ -268,6 +278,7 @@ class ConnectionManager(
         method: TLMethod<R>,
         messageId: Long
     ): R? = when (rpcResult) {
+
         is TLRpcResult.RpcResult -> if (rpcResult.reqMsgId != messageId) {
             null
         } else {
@@ -304,7 +315,7 @@ class ConnectionManager(
     private suspend fun ConnectionSession.sendRequest(
         messageId: Long,
         method: TLMethod<*>
-    ) = mutex.withLock {
+    ) {
         val request = if (isInitialized) {
             method
         } else {
@@ -349,10 +360,12 @@ class ConnectionManager(
         }
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     private suspend fun ConnectionSession.sendMessage(
         messageId: Long,
         message: TLSerializable
     ) {
+        println("CONNECTION: session(${session.uId}) message(${messageId.toHexString()}) type($connectionType) sendMessage($message)")
         val messageBytes = message.serializeToBytes()
 
         val requestMessage = TLPublicMessage(
@@ -368,29 +381,78 @@ class ConnectionManager(
             serializedMessage
         )
 
-        obfuscatedConnection.sendObfuscatedBytes(encryptedMessage)
+        enqueueMessage(messageId, encryptedMessage)
     }
 
-    private suspend fun ObfuscatedConnection.sendObfuscatedBytes(byteArray: ByteArray) {
-        val packetBytes = serializeData {
-            writeInt(byteArray.size)
-            writeByteArray(byteArray)
+    private suspend fun ConnectionSession.enqueueMessage(
+        messageId: Long,
+        message: ByteArray
+    ) {
+        println("CONNECTION: session(${session.uId}) message(${messageId.toHexString()}) enqueue message(${message.toHex()})")
+        val queue = requestsQueue.provideQueue(connectionType)
+        queue.addLast(message)
+        println("CONNECTION: session(${session.uId}) new queue size(${queue.size})")
+        fireQueue()
+    }
+
+    private suspend fun ConnectionSession.processQueue() = connectionMutex.withLock {
+        println("CONNECTION: session(${session.uId}) processQueue")
+        fireQueue()
+    }
+
+    private suspend fun ConnectionSession.fireQueue() {
+        println("CONNECTION: session(${session.uId}) fireQueue")
+        val queue = requestsQueue.provideQueue(connectionType)
+        while (queue.isNotEmpty()) {
+            val message = queue.first()
+            if (obfuscatedConnection.sendObfuscatedBytes(message)) {
+                queue.remove(message)
+            } else {
+                println("session(${session.uId}) error sending obfuscated bytes [${message.toHex()}]")
+                reconnect()
+                break
+            }
         }
 
-        val obfuscatedBytes = obfuscator.obfuscate(packetBytes)
-        if (!connection.sendData(obfuscatedBytes)) {
-            println("CONNECTION: ${hashCode()} error writing packet ${packetBytes.toHex()}")
+        println("CONNECTION: session(${session.uId}) fireQueue END with queue size(${queue.size})")
+    }
+
+    private suspend fun reconnect(connectionType: ConnectionType) {
+        println("CONNECTION: type($connectionType) reconnecting")
+        removeConnection(connectionType)
+        initConnection(connectionType)
+    }
+
+    private suspend fun removeConnection(connectionType: ConnectionType) = globalMutex.withLock {
+        connectionSessions.remove(connectionType)?.apply {
+            obfuscatedConnection.apply {
+                connection.disconnect()
+                obfuscator.release()
+            }
         }
     }
 
-    private fun ObfuscatedConnection.listenToData() = connection.listenToData()
-        .map { data ->
-            val clarifiedBytes = obfuscator.clarify(data)
-            val inputStream = clarifiedBytes.toTLInputStream()
-            val size = inputStream.readInt()
+    private suspend fun ObfuscatedConnection.sendObfuscatedBytes(byteArray: ByteArray): Boolean =
+        try {
+            val packetBytes = serializeData {
+                writeInt(byteArray.size)
+                writeByteArray(byteArray)
+            }
 
-            inputStream.readBytes(size)
+            val obfuscatedBytes = obfuscator.obfuscate(packetBytes)
+            connection.sendData(obfuscatedBytes)
+        } catch (exception: Exception) {
+            println("CONNECTION: Error sending obfuscated data $exception")
+            false
         }
+
+    private fun ObfuscatedConnection.listenToData() = connection.listenToData().map { data ->
+        val clarifiedBytes = obfuscator.clarify(data)
+        val inputStream = clarifiedBytes.toTLInputStream()
+        val size = inputStream.readInt()
+
+        inputStream.readBytes(size)
+    }
 
     private fun ConnectionSession.listenToMessages() = connectionScope.launch {
         obfuscatedConnection.listenToData().collect { rawResponse ->
@@ -406,14 +468,32 @@ class ConnectionManager(
         }
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
+    private fun ConnectionSession.listenToDisconnect() = connectionScope.launch {
+        obfuscatedConnection.connection.listenToState()
+            .collect { state ->
+                println("CONNECTION: session(${session.uId}) type($connectionType) new state($state)")
+                if (state == ConnectionState.Disconnected) {
+                    connectionMutex.withLock {
+                        reconnect()
+                    }
+                }
+            }
+    }
+
+    private suspend fun ConnectionSession.reconnect() {
+        if (isReconnecting) return
+        isReconnecting = true
+
+        reconnect(connectionType)
+    }
+
     private fun handleProtocolMessages() = localScope.launch {
         messagesFlow.asSharedFlow().collect { message ->
             val protocolMessage = message.parseProtocolMessage()
             if (protocolMessage != null) {
+                println("CONNECTION: protocolMessage($protocolMessage)")
                 protocolMessagesFlow.emit(protocolMessage)
             } else {
-                val hash = message.data.toTLInputStream().readInt().toHexString()
                 delegate?.onUnknownMessage(message.data)
             }
         }
@@ -435,10 +515,11 @@ class ConnectionManager(
         val messageIds = TLVector.Vector(listOf(messageId))
         val request = TLMsgsAck.MsgsAck(messageIds)
 
-        val acknowledgmentMessageId = createMessageId()
-        sendMessage(acknowledgmentMessageId, request)
+        connectionMutex.withLock {
+            val acknowledgmentMessageId = createMessageId()
+            sendMessage(acknowledgmentMessageId, request)
+        }
     }
-
 
     private suspend fun authenticate(
         connectionType: ConnectionType,
@@ -481,7 +562,7 @@ class ConnectionManager(
         authStorage.clear()
     }
 
-    private suspend fun wrapData(session: Session, data: ByteArray): ByteArray {
+    private fun wrapData(session: Session, data: ByteArray): ByteArray {
         val authCredentials = requireAuthCredentials()
 
         val encryptedMessage = TLEncryptedMessage(
@@ -490,20 +571,15 @@ class ConnectionManager(
             data
         )
 
-        val unencryptedData = serializeData {
-            writeLong(authCredentials.serverSalt)
-            writeLong(session.id)
-            writeByteArray(data)
-        }
-
-        val msgKey = generateMsgKey(unencryptedData)
+        val encryptedMessageBytes = encryptedMessage.serializeToBytes()
+        val msgKey = generateMsgKey(encryptedMessageBytes)
 
         // Encrypt data
         val aesKey = computeAesKey(authCredentials.key.key, msgKey)
         val encryptedData = AesIgeCipher(
             CipherMode.ENCRYPT,
             aesKey,
-        ).finalize(CryptoUtils.align(unencryptedData, 16))
+        ).finalize(CryptoUtils.align(encryptedMessageBytes, 16))
 
 
         return serializeData(24 + encryptedData.size) {
@@ -513,7 +589,7 @@ class ConnectionManager(
         }
     }
 
-    private suspend fun unwrapData(session: Session, data: ByteArray): ByteArray {
+    private fun unwrapData(session: Session, data: ByteArray): ByteArray {
         val authCredentials = requireAuthCredentials()
 
         val stream = TLBufferedInputStream.wrap(data)
@@ -522,7 +598,7 @@ class ConnectionManager(
         val size = data.size
         val msgAuthKeyId = stream.readBytes(8)
         if (!authCredentials.keyId.contentEquals(msgAuthKeyId))
-            throw RuntimeException("Message's authKey ${authCredentials.keyId.toHex()} doesn't match given authKey ${msgAuthKeyId.toHex()}")
+            connectionError("Message's authKey ${authCredentials.keyId.toHex()} doesn't match given authKey ${msgAuthKeyId.toHex()}")
 
         // Message key
         val msgKey = stream.readBytes(16)
@@ -551,13 +627,14 @@ class ConnectionManager(
 
         // Security checks
         if (paddingSize > 15 || paddingSize < 0) {
-            error("Padding must be between 0 and 15 included, found $paddingSize")
+            connectionError("Padding must be between 0 and 15 included, found $paddingSize")
         }
 
         if (session.id != sessionId) {
-            error("The message was not intended for this session, expected ${session.id}, found $sessionId")
+            connectionError("The message was not intended for this session, expected ${session.uId}, found ${sessionId.toULong()}")
         }
 
+        // TODO: important part, handle it
         /*
                 // Check that msgKey is equal to the 128 lower-order bits of the SHA1 hash of the previously encrypted portion
                 val checkMsgKey = generateMsgKey(serverSalt, sessionId, messageBytes)
@@ -607,7 +684,7 @@ class ConnectionManager(
         // Step 0
         val resPq = sendReqPQ()
         if (resPq !is TLResPQ.ResPQ) {
-            error("resPQ variant not supported $resPq")
+            connectionError("Unknown TLResPQ variant: $resPq")
         }
 
         // Step 1
@@ -616,7 +693,7 @@ class ConnectionManager(
         // Step 2
         val serverDhParams = sendReqDhParams(resPq, newNonce)
         if (serverDhParams !is TLServerDHParams.ServerDHParamsOk) {
-            error("TLServerDHParams variant not supported $serverDhParams")
+            connectionError("Unknown TLServerDHParams variant: $serverDhParams")
         }
 
         // Step 3
@@ -628,12 +705,13 @@ class ConnectionManager(
         // Step 4
         val serverDhInner = serverDhParams.getDecryptedData(tempAesCredentials)
         if (serverDhInner !is TLServerDHInnerData.ServerDHInnerData) {
-            error("TLServerDHInnerData variant not supported $serverDhInner")
+            connectionError("Unknown TLServerDHInnerData variant: $serverDhInner")
         }
 
         // Step 5
         val authKey = generateAuthKey(serverDhInner)
-        repeat(5) { retryId ->
+        val retries = 5
+        repeat(retries) { retryId ->
             // Step 6
             val response = sendReqSetDhClientParams(
                 resPq,
@@ -641,7 +719,6 @@ class ConnectionManager(
                 authKey,
                 retryId
             )
-
 
             // Step 7
             val authCredentials = response.toAuthCredentials(
@@ -658,7 +735,7 @@ class ConnectionManager(
             }
         }
 
-        error("AUTH_FAILED")
+        connectionError("Connection failed after $retries tries")
     }
 
     private suspend fun <T : Any> ObfuscatedConnection.sendRequest(request: TLMethod<T>): T {
@@ -690,7 +767,7 @@ class ConnectionManager(
         val serverFingerPrints = resPq.serverPublicKeyFingerprints.toList()
         val rsaKey = serverKeys.firstOrNull { serverKey ->
             serverFingerPrints.contains(serverKey.fingerprint)
-        } ?: error("No finger prints from the list are supported by the client: $serverFingerPrints")
+        } ?: connectionError("No fingerprints from the list are supported by the client: $serverFingerPrints")
 
         val pq = BigInteger.fromByteArray(resPq.pq, Sign.POSITIVE).longValue(exactRequired = true)
 
@@ -795,7 +872,7 @@ class ConnectionManager(
         )
 
         if (!answerHash.contentEquals(serializedHash)) {
-            error("Security issue")
+            connectionError("Security issue while decrypting Dh parameters data")
         }
 
         return dhInner
@@ -937,7 +1014,7 @@ class ConnectionManager(
                 )
 
                 if (!newNonceHash1.bytes.contentEquals(newNonceHash)) {
-                    error("Security issue")
+                    connectionError("Security issue while processing DhGenOk")
                 }
 
                 val serverSalt = readLong(
@@ -963,7 +1040,7 @@ class ConnectionManager(
                 )
 
                 if (!newNonceHash2.bytes.contentEquals(newNonceHash)) {
-                    error("Security issue")
+                    connectionError("Security issue while processing DhGenRetry")
                 }
 
                 null
@@ -981,10 +1058,10 @@ class ConnectionManager(
                 )
 
                 if (!newNonceHash3.bytes.contentEquals(newNonceHash)) {
-                    error("Security issue")
+                    connectionError("Security issue while processing DhGenFail")
                 }
 
-                error("Auth error")
+                connectionError("Failed to generate Dh parameters")
             }
         }
     }
@@ -1038,5 +1115,12 @@ class ConnectionManager(
             aesSecretKey,
             iv
         )
+    }
+
+    private fun MutableMap<ConnectionType, ArrayDeque<ByteArray>>.provideQueue(key: ConnectionType) =
+        getOrPut(key, ::ArrayDeque)
+
+    private fun connectionError(message: String): Nothing {
+        throw TLConnectionError(message)
     }
 }

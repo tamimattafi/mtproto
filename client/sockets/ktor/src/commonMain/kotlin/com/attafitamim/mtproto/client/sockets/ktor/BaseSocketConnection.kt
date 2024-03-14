@@ -30,7 +30,7 @@ abstract class BaseSocketConnection<S : CoroutineScope>(
 
     protected val mutex = Mutex()
     protected val bytesFlow = MutableSharedFlow<ByteArray>()
-    protected val stateFlow = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
+    protected val stateFlow = MutableStateFlow<ConnectionState>(ConnectionState.Connecting)
 
     protected abstract suspend fun createSession(endpoint: Endpoint): S
     protected abstract suspend fun forceDisconnect()

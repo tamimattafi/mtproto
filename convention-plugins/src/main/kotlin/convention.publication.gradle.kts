@@ -15,4 +15,3 @@ val javadocJar by tasks.registering(Jar::class) {
 afterEvaluate {
     configurePublishing()
 }
-

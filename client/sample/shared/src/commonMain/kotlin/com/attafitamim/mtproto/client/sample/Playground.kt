@@ -33,7 +33,7 @@ object Playground {
 
                     // Download connection
                     val getConfig = TLHelpGetServerConfig
-                    val config = connectionManager.sendRequest(getConfig, ConnectionType.Download)
+                    val config = connectionManager.sendRequest(getConfig, ConnectionType.Download())
                     println("TLHelpGetServerConfig: $config")
                 }.onFailure { error ->
                     println("CONNECTION: TLHelpGetServerConfig: $error")
