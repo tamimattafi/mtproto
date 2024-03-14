@@ -76,7 +76,7 @@ object PublishUtils {
                     rootProject.requireExtraString("signing.password"),
                 )
 
-                //sign(publications)
+                sign(publications)
             }
         }
     }
