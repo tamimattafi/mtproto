@@ -48,8 +48,7 @@ class KtorWebSocketConnection(
     }
 
     private fun Deferred<CloseReason?>.awaitClose() = scope.launch {
-        val closeReason = await()
-        println("CONNECTION: close reason $closeReason")
+        await()
         emitEvent(ConnectionState.Disconnected)
     }
 

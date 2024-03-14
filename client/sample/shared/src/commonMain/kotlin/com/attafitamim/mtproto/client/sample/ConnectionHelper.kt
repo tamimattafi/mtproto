@@ -66,9 +66,11 @@ object ConnectionHelper {
             }
         }
 
-        val logger = RequestLoggingInterceptor { log ->
-            println("CONNECTION: $log")
+        val logger = { message: String ->
+            println("CONNECTION: $message")
         }
+
+        val logInterceptor = RequestLoggingInterceptor(logger)
 
         val endpoint = createdEndpoint(WEB_SOCKET_URL)
         val connectionProvider = createConnectionProvider(endpoint)
@@ -80,7 +82,8 @@ object ConnectionHelper {
             serverKeys,
             passport,
             unknownMessageHandler,
-            listOf(logger)
+            listOf(logInterceptor),
+            logger
         )
     }
 

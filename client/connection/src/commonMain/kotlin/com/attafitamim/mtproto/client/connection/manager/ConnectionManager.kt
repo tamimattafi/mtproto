@@ -93,7 +93,8 @@ class ConnectionManager(
     private val serverKeys: List<RsaKey>,
     private val passport: ConnectionPassport,
     private val delegate: IConnectionDelegate? = null,
-    private val interceptors: List<IRequestInterceptor> = emptyList()
+    private val interceptors: List<IRequestInterceptor> = emptyList(),
+    private val logger: ((log: String) -> Unit)? = null
 ) : IConnectionManager {
 
     private val localScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -233,19 +234,19 @@ class ConnectionManager(
 
         val connection = connectionProvider.provideConnection()
         while (!connection.connect()) {
-            println("CONNECTION: connection failed")
+            logger?.invoke("connection failed")
             delay(1000L)
-            println("CONNECTION: reconnecting")
+            logger?.invoke("reconnecting")
         }
 
         val obfuscator = DefaultObfuscator()
         val initData = obfuscator.init()
         val sendDataSuccess = connection.sendData(initData)
-        println("CONNECTION: type($connectionType) send init data success($sendDataSuccess)")
+        logger?.invoke("type($connectionType) send init data success($sendDataSuccess)")
 
         val obfuscatedConnection = ObfuscatedConnection(connection, obfuscator)
         val session = authenticate(connectionType, obfuscatedConnection)
-        println("CONNECTION: type($connectionType) created session(${session.uId})")
+        logger?.invoke("type($connectionType) created session(${session.uId})")
 
         val connectionSession = ConnectionSession(
             session,
@@ -269,7 +270,7 @@ class ConnectionManager(
         .filterIsInstance(TLRpcResult::class)
         .mapNotNull { rpcResult ->
             val response = getResponse(rpcResult, method, messageId)
-            println("CONNECTION: session(${session.uId}) message(${messageId.toHexString()}) get response($response)")
+            logger?.invoke("session(${session.uId}) message(${messageId.toHexString()}) get response($response)")
             response
         }.first()
 
@@ -365,7 +366,7 @@ class ConnectionManager(
         messageId: Long,
         message: TLSerializable
     ) {
-        println("CONNECTION: session(${session.uId}) message(${messageId.toHexString()}) type($connectionType) sendMessage($message)")
+        logger?.invoke("session(${session.uId}) message(${messageId.toHexString()}) type($connectionType) sendMessage($message)")
         val messageBytes = message.serializeToBytes()
 
         val requestMessage = TLPublicMessage(
@@ -388,37 +389,37 @@ class ConnectionManager(
         messageId: Long,
         message: ByteArray
     ) {
-        println("CONNECTION: session(${session.uId}) message(${messageId.toHexString()}) enqueue message(${message.toHex()})")
+        logger?.invoke("session(${session.uId}) message(${messageId.toHexString()}) enqueue message(${message.toHex()})")
         val queue = requestsQueue.provideQueue(connectionType)
         queue.addLast(message)
-        println("CONNECTION: session(${session.uId}) new queue size(${queue.size})")
+        logger?.invoke("session(${session.uId}) new queue size(${queue.size})")
         fireQueue()
     }
 
     private suspend fun ConnectionSession.processQueue() = connectionMutex.withLock {
-        println("CONNECTION: session(${session.uId}) processQueue")
+        logger?.invoke("session(${session.uId}) processQueue")
         fireQueue()
     }
 
     private suspend fun ConnectionSession.fireQueue() {
-        println("CONNECTION: session(${session.uId}) fireQueue")
+        logger?.invoke("session(${session.uId}) fireQueue")
         val queue = requestsQueue.provideQueue(connectionType)
         while (queue.isNotEmpty()) {
             val message = queue.first()
             if (obfuscatedConnection.sendObfuscatedBytes(message)) {
                 queue.remove(message)
             } else {
-                println("session(${session.uId}) error sending obfuscated bytes [${message.toHex()}]")
+                logger?.invoke("session(${session.uId}) error sending obfuscated bytes [${message.toHex()}]")
                 reconnect()
                 break
             }
         }
 
-        println("CONNECTION: session(${session.uId}) fireQueue END with queue size(${queue.size})")
+        logger?.invoke("session(${session.uId}) fireQueue END with queue size(${queue.size})")
     }
 
     private suspend fun reconnect(connectionType: ConnectionType) {
-        println("CONNECTION: type($connectionType) reconnecting")
+        logger?.invoke("type($connectionType) reconnecting")
         removeConnection(connectionType)
         initConnection(connectionType)
     }
@@ -442,7 +443,7 @@ class ConnectionManager(
             val obfuscatedBytes = obfuscator.obfuscate(packetBytes)
             connection.sendData(obfuscatedBytes)
         } catch (exception: Exception) {
-            println("CONNECTION: Error sending obfuscated data $exception")
+            logger?.invoke("Error sending obfuscated data $exception")
             false
         }
 
@@ -471,7 +472,7 @@ class ConnectionManager(
     private fun ConnectionSession.listenToDisconnect() = connectionScope.launch {
         obfuscatedConnection.connection.listenToState()
             .collect { state ->
-                println("CONNECTION: session(${session.uId}) type($connectionType) new state($state)")
+                logger?.invoke("session(${session.uId}) type($connectionType) new state($state)")
                 if (state == ConnectionState.Disconnected) {
                     connectionMutex.withLock {
                         reconnect()
@@ -491,7 +492,7 @@ class ConnectionManager(
         messagesFlow.asSharedFlow().collect { message ->
             val protocolMessage = message.parseProtocolMessage()
             if (protocolMessage != null) {
-                println("CONNECTION: protocolMessage($protocolMessage)")
+                logger?.invoke("protocolMessage($protocolMessage)")
                 protocolMessagesFlow.emit(protocolMessage)
             } else {
                 delegate?.onUnknownMessage(message.data)
@@ -771,12 +772,12 @@ class ConnectionManager(
 
         val pq = BigInteger.fromByteArray(resPq.pq, Sign.POSITIVE).longValue(exactRequired = true)
 
-        println("CONNECTION: Start solve PQ $pq")
+        logger?.invoke("Start solve PQ $pq")
         val startAt = Clock.System.now().toEpochMilliseconds()
         val solvedPQ = PQLongSolver.solve(pq)
         val endAt = Clock.System.now().toEpochMilliseconds()
         val time = endAt - startAt
-        println("CONNECTION: End solve PQ $pq in $time with p: ${solvedPQ.p} and q: ${solvedPQ.q}")
+        logger?.invoke("End solve PQ $pq in $time with p: ${solvedPQ.p} and q: ${solvedPQ.q}")
         val solvedP = longToBytes(solvedPQ.p)
         val solvedQ = longToBytes(solvedPQ.q)
         val pqData = TLPQInnerData.PQInnerData(
